@@ -30,7 +30,6 @@ bool RTcan::send(RemoteSubscriber* sub, BaseMessage* msg, int size) {
 	}
 
 	rtcan_msg_p->id = sub->id();
-	rtcan_msg_p->type = RTCAN_SRT;
 //FIXME XXX
 	rtcan_msg_p->callback = sendcb;
 	rtcan_msg_p->params = sub;
@@ -39,7 +38,7 @@ bool RTcan::send(RemoteSubscriber* sub, BaseMessage* msg, int size) {
 	rtcan_msg_p->status = RTCAN_MSG_READY;
 	rtcan_msg_p->data = ((uint8_t *) msg) + sizeof(BaseMessage);
 
-	rtcanSendSrtI(rtcan_msg_p, 100);
+	rtcanTransmitI(&RTCAND1, rtcan_msg_p, 100);
 
 	return true;
 }

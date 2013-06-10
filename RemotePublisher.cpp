@@ -14,7 +14,6 @@ RemotePublisher::RemotePublisher(const char * topic, size_t msg_size) : BasePubl
 	_subscribers = NULL;
 
 	_rtcan_msg.id = 999;
-	_rtcan_msg.type = RTCAN_SRT;
 	_rtcan_msg.callback = RTcan::rxcb;
 	_rtcan_msg.params = this;
 	_rtcan_msg.size = msg_size;
@@ -58,7 +57,7 @@ void RemotePublisher::subscribe(LocalSubscriber * sub, void * buffer,
 
 	_rtcan_msg.data = (uint8_t *) allocI();
 	if (_rtcan_msg.data) {
-		rtcanRegister(&RTCAND, &_rtcan_msg);
+		rtcanReceive(&RTCAND1, &_rtcan_msg);
 	}
 
 	chSysUnlock();
