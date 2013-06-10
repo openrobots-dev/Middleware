@@ -4,7 +4,7 @@ import pcan
 
 if len(sys.argv) < 2:
         print "Usage: " + sys.argv[0] + " ID"
-        print "Set ID to 0 to sniff all packets"
+        print "Set ID to -1 to sniff all packets"
         sys.exit()
 
 filter_id = int(sys.argv[1])

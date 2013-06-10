@@ -9,8 +9,7 @@ template <typename T, int N>
 class RemoteSubscriberT : public RemoteSubscriber {
 private:
 	uint8_t _buffer[N*MEM_ALIGN_NEXT(sizeof(T))] __attribute__((aligned(sizeof(stkalign_t))));
-	//FIXME basterebbe un contatore!
-	T * _mail[N];
+	T * _queue_buffer[N];
 public:
 	RemoteSubscriberT(const char *);
 	int size(void);
@@ -18,7 +17,7 @@ public:
 };
 
 template <typename T, int N>
-RemoteSubscriberT<T,N>::RemoteSubscriberT(const char * topic) : RemoteSubscriber(topic, sizeof(T), _buffer, (BaseMessage *)_mail, N) {
+RemoteSubscriberT<T,N>::RemoteSubscriberT(const char * topic) : RemoteSubscriber(topic, sizeof(T), _buffer, (BaseMessage **)_queue_buffer, N) {
 
 }
 

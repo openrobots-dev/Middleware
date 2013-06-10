@@ -73,7 +73,7 @@ bool Node::localSubscribe(LocalPublisher * pub, LocalSubscriber * sub) {
 
 
 	// FIXME giusto farlo col sizeof()?
-	while ((++eid < sizeof(eventid_t) * 4) && (p->next() != NULL)) {
+	while ((++eid < sizeof(eventid_t) * 8) && (p->next() != NULL)) {
 		// FIXME ?
 		p = p->next();
 	}

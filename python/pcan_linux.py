@@ -9,7 +9,7 @@ class CANIOError(IOError):
 class CANIX(AbstractCANIX):
       def __init__(self):
             O_RDWR = 2
-            device_path = "/dev/pcanusb0"
+            device_path = "/dev/pcanusb1"
             self.h = LICAN.open(device_path,O_RDWR)
             if self.h == 0:
                   raise CANIOError(
