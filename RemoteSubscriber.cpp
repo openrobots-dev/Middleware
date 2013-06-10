@@ -32,7 +32,8 @@ RemoteSubscriber * RemoteSubscriber::notify(BaseMessage *msg, int &n) {
 
 	/* Put message on queue. */
 	if(_queue.putI(msg)) {
-		mw.transport().send(this, msg, _msg_size);
+		// TODO: put & get, qui basterebbe cnt, oppure si segnala il transport e fa lui la get (ma da quale sorgente?)
+		mw.transport().send(this, _queue.getI(), _msg_size);
 		msg->reference();
 		n++;
 	}
