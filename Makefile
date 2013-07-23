@@ -5,7 +5,7 @@
 
 # Compiler options here.
 ifeq ($(USE_OPT),)
-  USE_OPT = -O0 -ggdb -fomit-frame-pointer -pthread
+  USE_OPT = -O0 -ggdb -fomit-frame-pointer -falign-functions=16
 endif
 
 # C specific options here (added to USE_OPT).
@@ -15,12 +15,17 @@ endif
 
 # C++ specific options here (added to USE_OPT).
 ifeq ($(USE_CPPOPT),)
-  USE_CPPOPT = -fno-rtti -fno-exceptions
+  USE_CPPOPT = -fno-rtti -fno-exceptions -fno-threadsafe-statics
 endif
 
 # Enable this if you want the linker to remove unused code and data
 ifeq ($(USE_LINK_GC),)
   USE_LINK_GC = yes
+endif
+
+# If enabled, this option allows to compile the application in THUMB mode.
+ifeq ($(USE_THUMB),)
+  USE_THUMB = yes
 endif
 
 # Enable this if you want to see the full log while compiling.
@@ -33,27 +38,46 @@ endif
 ##############################################################################
 
 ##############################################################################
+# Architecture or project specific options
+#
+
+# Enable this if you really want to use the STM FWLib.
+ifeq ($(USE_FWLIB),)
+  USE_FWLIB = no
+endif
+
+#
+# Architecture or project specific options
+##############################################################################
+
+##############################################################################
 # Project, sources and paths
 #
 
 # Define project name here
-PROJECT = mw
+PROJECT = ch
 
 # Imported source files and paths
 CHIBIOS = /opt/ChibiStudio/chibios
-include $(CHIBIOS)/boards/simulator/board.mk
-include ${CHIBIOS}/os/hal/platforms/Posix/platform.mk
-include ${CHIBIOS}/os/ports/GCC/SIMIA32/port.mk
+RTCAN = ../RTCAN
+R2P = ../MiddlewareV2-dev/r2p
+
+include ./board.mk
+include $(CHIBIOS)/os/hal/platforms/STM32F1xx/platform.mk
 include $(CHIBIOS)/os/hal/hal.mk
+include $(CHIBIOS)/os/ports/GCC/ARMCMx/STM32F1xx/port.mk
 include $(CHIBIOS)/os/kernel/kernel.mk
 include $(CHIBIOS)/test/test.mk
-R2P = ./r2p
+include $(RTCAN)/platforms/STM32/platform.mk
+include $(RTCAN)/RTCAN.mk
 include $(R2P)/r2p.mk
+include $(R2P)/port/chibios/port.mk
 
 # Define linker script file here
-LDSCRIPT = 
+LDSCRIPT= ./STM32F103xB_bootloader.ld
 
-# C sources
+# C sources that can be compiled in ARM or THUMB mode depending on the global
+# setting.
 CSRC = $(PORTSRC) \
        $(KERNSRC) \
        $(TESTSRC) \
@@ -61,15 +85,45 @@ CSRC = $(PORTSRC) \
        $(PLATFORMSRC) \
        $(BOARDSRC) \
        $(CHIBIOS)/os/various/chprintf.c \
-       $(CHIBIOS)/os/various/shell.c
+       $(CHIBIOS)/os/various/evtimer.c \
+       $(CHIBIOS)/os/various/shell.c \
+       $(CHIBIOS)/os/various/syscalls.c \
+       $(RTCANSRC) \
+       $(RTCANPLATFORMSRC)
 
-# C++ sources
+# C++ sources that can be compiled in ARM or THUMB mode depending on the global
+# setting.
 CPPSRC = $(R2PSRC) \
-         main.cpp
+         DebugTransport.cpp DebugPublisher.cpp DebugSubscriber.cpp \
+         chnew.cpp main.cpp
+
+# C sources to be compiled in ARM mode regardless of the global setting.
+# NOTE: Mixing ARM and THUMB mode enables the -mthumb-interwork compiler
+#       option that results in lower performance and larger code size.
+ACSRC =
+
+# C++ sources to be compiled in ARM mode regardless of the global setting.
+# NOTE: Mixing ARM and THUMB mode enables the -mthumb-interwork compiler
+#       option that results in lower performance and larger code size.
+ACPPSRC =
+
+# C sources to be compiled in THUMB mode regardless of the global setting.
+# NOTE: Mixing ARM and THUMB mode enables the -mthumb-interwork compiler
+#       option that results in lower performance and larger code size.
+TCSRC =
+
+# C sources to be compiled in THUMB mode regardless of the global setting.
+# NOTE: Mixing ARM and THUMB mode enables the -mthumb-interwork compiler
+#       option that results in lower performance and larger code size.
+TCPPSRC =
+
+# List ASM source files here
+ASMSRC = $(PORTASM)
 
 INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
          $(HALINC) $(PLATFORMINC) $(BOARDINC) \
          $(CHIBIOS)/os/various \
+         $(RTCANINC) $(RTCANPLATFORMINC) \
          $(R2PINC)
 
 #
@@ -80,19 +134,28 @@ INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
 # Compiler settings
 #
 
-TRGT = 
+MCU  = cortex-m3
+
+#TRGT = arm-elf-
+TRGT = arm-none-eabi-
 CC   = $(TRGT)gcc
 CPPC = $(TRGT)g++
 # Enable loading with g++ only if you need C++ runtime support.
 # NOTE: You can use C++ even without C++ support if you are careful. C++
 #       runtime support makes code size explode.
-#LD   = $(TRGT)gcc
-LD   = $(TRGT)g++
+LD   = $(TRGT)gcc
+#LD   = $(TRGT)g++
 CP   = $(TRGT)objcopy
 AS   = $(TRGT)gcc -x assembler-with-cpp
 OD   = $(TRGT)objdump
 HEX  = $(CP) -O ihex
 BIN  = $(CP) -O binary
+
+# ARM-specific options here
+AOPT =
+
+# THUMB-specific options here
+TOPT = -mthumb -DTHUMB
 
 # Define C warning options here
 CWARN = -Wall -Wextra -Wstrict-prototypes
@@ -109,7 +172,7 @@ CPPWARN = -Wall -Wextra
 #
 
 # List all default C defines here, like -D_DEBUG=1
-DDEFS =
+DDEFS = -DPORT_INT_REQUIRED_STACK=64
 
 # List all default ASM defines here, like -D_DEBUG=1
 DADEFS =
@@ -121,7 +184,7 @@ DINCDIR =
 DLIBDIR =
 
 # List all default libraries here
-DLIBS = -lpthread
+DLIBS = -lm
 
 #
 # End of default section
@@ -132,7 +195,7 @@ DLIBS = -lpthread
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS =
+UDEFS = -DR2MW_TEST
 
 # Define ASM defines here
 UADEFS =
@@ -144,152 +207,17 @@ UINCDIR =
 ULIBDIR =
 
 # List all user libraries here
-ULIBS =
+ULIBS = 
 
 #
 # End of user defines
 ##############################################################################
 
-# ARM Cortex-Mx common makefile scripts and rules.
-
-# Output directory and files
-ifeq ($(BUILDDIR),)
-  BUILDDIR = build
-endif
-ifeq ($(BUILDDIR),.)
-  BUILDDIR = build
-endif
-OUTFILES = $(BUILDDIR)/$(PROJECT).elf $(BUILDDIR)/$(PROJECT).hex \
-           $(BUILDDIR)/$(PROJECT).bin $(BUILDDIR)/$(PROJECT).dmp
-
-# Automatic compiler options
-OPT = $(USE_OPT)
-COPT = $(USE_COPT)
-CPPOPT = $(USE_CPPOPT)
-ifeq ($(USE_LINK_GC),yes)
-  OPT += -ffunction-sections -fdata-sections -fno-common
+ifeq ($(USE_FWLIB),yes)
+  include $(CHIBIOS)/ext/stm32lib/stm32lib.mk
+  CSRC += $(STM32SRC)
+  INCDIR += $(STM32INC)
+  USE_OPT += -DUSE_STDPERIPH_DRIVER
 endif
 
-# Source files groups and paths
-SRCPATHS  = $(sort $(dir $(CSRC)) $(dir $(CPPSRC)))
-
-# Various directories
-OBJDIR    = $(BUILDDIR)/obj
-LSTDIR    = $(BUILDDIR)/lst
-
-# Object files groups
-COBJS     = $(addprefix $(OBJDIR)/, $(notdir $(CSRC:.c=.o)))
-CPPOBJS   = $(addprefix $(OBJDIR)/, $(notdir $(CPPSRC:.cpp=.o)))
-OBJS	  = $(COBJS) $(CPPOBJS)
-
-# Paths
-IINCDIR   = $(patsubst %,-I%,$(INCDIR) $(DINCDIR) $(UINCDIR))
-LLIBDIR   = $(patsubst %,-L%,$(DLIBDIR) $(ULIBDIR))
-
-# Macros
-DEFS      = $(DDEFS) $(UDEFS)
-ADEFS 	  = $(DADEFS) $(UADEFS)
-
-# Libs
-LIBS      = $(DLIBS) $(ULIBS)
-
-# Various settings
-MCFLAGS = -m32
-ODFLAGS	  = -x --syms
-CFLAGS    = $(MCFLAGS) $(OPT) $(COPT) $(CWARN) -Wa,-alms=$(LSTDIR)/$(notdir $(<:.c=.lst)) $(DEFS)
-CPPFLAGS  = $(MCFLAGS) $(OPT) $(CPPOPT) $(CPPWARN) -Wa,-alms=$(LSTDIR)/$(notdir $(<:.cpp=.lst)) $(DEFS)
-ifeq ($(USE_LINK_GC),yes)
-  LDFLAGS = $(MCFLAGS) -Wl,-Map=$(BUILDDIR)/$(PROJECT).map,--cref,--no-warn-mismatch,--gc-sections $(LLIBDIR)
-else
-  LDFLAGS = $(MCFLAGS) -Wl,-Map=$(BUILDDIR)/$(PROJECT).map,--cref,--no-warn-mismatch $(LLIBDIR)
-endif
-
-# Generate dependency information
-CFLAGS   += -MD -MP -MF .dep/$(@F).d
-CPPFLAGS += -MD -MP -MF .dep/$(@F).d
-
-# Paths where to search for sources
-VPATH     = $(SRCPATHS)
-
-#
-# Makefile rules
-#
-
-all: $(OBJS) $(OUTFILES) MAKE_ALL_RULE_HOOK
-
-MAKE_ALL_RULE_HOOK:
-
-$(OBJS): | $(BUILDDIR)
-
-$(BUILDDIR) $(OBJDIR) $(LSTDIR):
-ifneq ($(USE_VERBOSE_COMPILE),yes)
-	@echo Compiler Options
-	@echo $(CC) -c $(CFLAGS) -I. $(IINCDIR) main.c -o main.o
-	@echo
-endif
-	mkdir -p $(OBJDIR)
-	mkdir -p $(LSTDIR)
-
-$(CPPOBJS) : $(OBJDIR)/%.o : %.cpp Makefile
-ifeq ($(USE_VERBOSE_COMPILE),yes)
-	@echo
-	$(CPPC) -c $(CPPFLAGS) $(OPT) -I. $(IINCDIR) $< -o $@
-else
-	@echo Compiling $(<F)
-	@$(CPPC) -c $(CPPFLAGS) $(OPT) -I. $(IINCDIR) $< -o $@
-endif
-
-$(COBJS) : $(OBJDIR)/%.o : %.c Makefile
-ifeq ($(USE_VERBOSE_COMPILE),yes)
-	@echo
-	$(CC) -c $(CFLAGS) $(OPT) -I. $(IINCDIR) $< -o $@
-else
-	@echo Compiling $(<F)
-	@$(CC) -c $(CFLAGS) $(OPT) -I. $(IINCDIR) $< -o $@
-endif
-
-%.elf: $(OBJS) $(LDSCRIPT)
-ifeq ($(USE_VERBOSE_COMPILE),yes)
-	@echo
-	$(LD) $(OBJS) $(LDFLAGS) $(LIBS) -o $@
-else
-	@echo Linking $@
-	@$(LD) $(OBJS) $(LDFLAGS) $(LIBS) -o $@
-endif
-
-%.hex: %.elf $(LDSCRIPT)
-ifeq ($(USE_VERBOSE_COMPILE),yes)
-	$(HEX) $< $@
-else
-	@echo Creating $@
-	@$(HEX) $< $@
-endif
-
-%.bin: %.elf $(LDSCRIPT)
-ifeq ($(USE_VERBOSE_COMPILE),yes)
-	$(BIN) $< $@
-else
-	@echo Creating $@
-	@$(BIN) $< $@
-endif
-
-%.dmp: %.elf $(LDSCRIPT)
-ifeq ($(USE_VERBOSE_COMPILE),yes)
-	$(OD) $(ODFLAGS) $< > $@
-else
-	@echo Creating $@
-	@$(OD) $(ODFLAGS) $< > $@
-	@echo Done
-endif
-
-clean:
-	@echo Cleaning
-	-rm -fR .dep $(BUILDDIR)
-	@echo Done
-
-#
-# Include the dependency files, should be the last of the makefile
-#
--include $(shell mkdir .dep 2>/dev/null) $(wildcard .dep/*)
-
-# *** EOF ***
+include $(CHIBIOS)/os/ports/GCC/ARMCMx/rules.mk

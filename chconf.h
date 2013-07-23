@@ -1,17 +1,21 @@
 /*
-    ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
+    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+                 2011 Giovanni Di Sirio.
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+    This file is part of ChibiOS/RT.
 
-        http://www.apache.org/licenses/LICENSE-2.0
+    ChibiOS/RT is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    ChibiOS/RT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 /**
@@ -56,7 +60,7 @@
  *          and generally faster.
  */
 #if !defined(CH_TIME_QUANTUM) || defined(__DOXYGEN__)
-#define CH_TIME_QUANTUM                 20
+#define CH_TIME_QUANTUM                 0
 #endif
 
 /**
@@ -71,7 +75,7 @@
  * @note    Requires @p CH_USE_MEMCORE.
  */
 #if !defined(CH_MEMCORE_SIZE) || defined(__DOXYGEN__)
-#define CH_MEMCORE_SIZE                 0x20000
+#define CH_MEMCORE_SIZE                 0
 #endif
 
 /**
@@ -357,7 +361,7 @@
  * @note    The default is @p FALSE.
  */
 #if !defined(CH_DBG_SYSTEM_STATE_CHECK) || defined(__DOXYGEN__)
-#define CH_DBG_SYSTEM_STATE_CHECK       FALSE
+#define CH_DBG_SYSTEM_STATE_CHECK       TRUE
 #endif
 
 /**
@@ -368,7 +372,7 @@
  * @note    The default is @p FALSE.
  */
 #if !defined(CH_DBG_ENABLE_CHECKS) || defined(__DOXYGEN__)
-#define CH_DBG_ENABLE_CHECKS            FALSE
+#define CH_DBG_ENABLE_CHECKS            TRUE
 #endif
 
 /**
@@ -380,7 +384,7 @@
  * @note    The default is @p FALSE.
  */
 #if !defined(CH_DBG_ENABLE_ASSERTS) || defined(__DOXYGEN__)
-#define CH_DBG_ENABLE_ASSERTS           FALSE
+#define CH_DBG_ENABLE_ASSERTS           TRUE
 #endif
 
 /**
@@ -391,7 +395,7 @@
  * @note    The default is @p FALSE.
  */
 #if !defined(CH_DBG_ENABLE_TRACE) || defined(__DOXYGEN__)
-#define CH_DBG_ENABLE_TRACE             FALSE
+#define CH_DBG_ENABLE_TRACE             TRUE
 #endif
 
 /**
@@ -405,7 +409,7 @@
  *          @p panic_msg variable set to @p NULL.
  */
 #if !defined(CH_DBG_ENABLE_STACK_CHECK) || defined(__DOXYGEN__)
-#define CH_DBG_ENABLE_STACK_CHECK       FALSE
+#define CH_DBG_ENABLE_STACK_CHECK       TRUE
 #endif
 
 /**
@@ -417,7 +421,7 @@
  * @note    The default is @p FALSE.
  */
 #if !defined(CH_DBG_FILL_THREADS) || defined(__DOXYGEN__)
-#define CH_DBG_FILL_THREADS             FALSE
+#define CH_DBG_FILL_THREADS             TRUE
 #endif
 
 /**
@@ -455,7 +459,7 @@
  * @brief   Threads initialization hook.
  * @details User initialization code added to the @p chThdInit() API.
  *
- * @note    It is invoked from within @p chThdInit() and implicitly from all
+ * @note    It is invoked from within @p chThdInit() and implicitily from all
  *          the threads creation APIs.
  */
 #if !defined(THREAD_EXT_INIT_HOOK) || defined(__DOXYGEN__)
@@ -494,7 +498,7 @@
  */
 #if !defined(IDLE_LOOP_HOOK) || defined(__DOXYGEN__)
 #define IDLE_LOOP_HOOK() {                                                  \
-  /* Idle loop code here.*/                                                 \
+  chThdYield();/* Idle loop code here.*/                                                 \
 }
 #endif
 
@@ -508,7 +512,6 @@
   /* System tick event code here.*/                                         \
 }
 #endif
-
 
 /**
  * @brief   System halt hook.
