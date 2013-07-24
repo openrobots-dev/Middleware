@@ -10,72 +10,58 @@
 namespace r2p {
 
 
-#if !defined(R2P_TOPIC_MAXNAMELEN) || defined(__DOXYGEN__)
-#define R2P_TOPIC_MAXNAMELEN 63
-#endif
-
-#if R2P_TOPIC_MAXNAMELEN < 1 || R2P_TOPIC_MAXNAMELEN > 254
-#error "R2P_TOPIC_MAXNAMELEN should be in range 1..254"
-#endif
-
-
 class BaseMessage;
-class BaseSubscriber;
-class BasePublisher;
+class LocalPublisher;
+class LocalSubscriber;
+class RemotePublisher;
+class RemoteSubscriber;
 
 
 class Topic : public Named, private Uncopyable {
+  friend class Middleware;
+
 private:
   Time publish_timeout;
   MemoryPool_ msg_pool;
-  StaticList<BaseSubscriber> local_subscribers;
-  StaticList<BaseSubscriber> remote_subscribers;
-  size_t num_publishers;
+  size_t num_local_publishers;
+  size_t num_remote_publishers;
+  StaticList<LocalSubscriber> local_subscribers;
+  StaticList<RemoteSubscriber> remote_subscribers;
+
+  StaticList<Topic>::Link by_middleware;
 
 public:
-  mutable class ListEntryByMiddleware : private r2p::Uncopyable {
-    friend class Topic; friend class Middleware;
-    StaticList<Topic>::Link entry;
-    ListEntryByMiddleware(Topic &topic) : entry(topic) {}
-  } by_middleware;
-
-public:
-  size_t get_num_publishers_unsafe() const;
   const Time &get_publish_timeout() const;
-  size_t get_msg_size() const;
-  size_t get_num_publishers() const;
+  size_t get_size() const;
   void extend_pool(BaseMessage array[], size_t arraylen);
+  bool has_local_publishers() const;
+  bool has_remote_publishers() const;
+  bool has_local_subscribers() const;
+  bool has_remote_subscribers() const;
 
   BaseMessage *alloc();
   void free(BaseMessage &msg);
-  bool notify_locally(BaseMessage &msg, const Time &timestamp);
-  bool notify_remotely(BaseMessage &msg, const Time &timestamp);
+  bool notify_local(BaseMessage &msg, const Time &timestamp);
+  bool notify_remote(BaseMessage &msg, const Time &timestamp);
 
-  void advertise_cb(BasePublisher &pub, const Time &publish_timeout);
-  void subscribe_local_cb(BaseSubscriber &sub);
-  void subscribe_remote_cb(BaseSubscriber &sub);
+  void advertise(LocalPublisher &pub, const Time &publish_timeout);
+  void advertise(RemotePublisher &pub, const Time &publish_timeout);
+  void subscribe(LocalSubscriber &sub);
+  void subscribe(RemoteSubscriber &sub);
 
 public:
   Topic(const char *namep, size_t type_size);
-
-public:
-  static bool has_name(const Topic &topic, const char *namep);
 };
 
 
 } // namespace r2p
 
-#include <r2p/BaseSubscriber.hpp>
-#include <r2p/BasePublisher.hpp>
+#include <r2p/LocalPublisher.hpp>
+#include <r2p/LocalSubscriber.hpp>
+#include <r2p/RemotePublisher.hpp>
+#include <r2p/RemoteSubscriber.hpp>
 
 namespace r2p {
-
-
-inline
-size_t Topic::get_num_publishers_unsafe() const {
-
-  return num_publishers;
-}
 
 
 inline
@@ -86,7 +72,7 @@ const Time &Topic::get_publish_timeout() const {
 
 
 inline
-size_t Topic::get_msg_size() const {
+size_t Topic::get_size() const {
 
   return msg_pool.get_block_length();
 }
@@ -96,6 +82,20 @@ inline
 void Topic::extend_pool(BaseMessage array[], size_t arraylen) {
 
   msg_pool.grow(array, arraylen);
+}
+
+
+inline
+bool Topic::has_local_subscribers() const {
+
+  return !local_subscribers.is_empty();
+}
+
+
+inline
+bool Topic::has_remote_subscribers() const {
+
+  return !remote_subscribers.is_empty();
 }
 
 
@@ -114,23 +114,16 @@ void Topic::free(BaseMessage &msg) {
 
 
 inline
-void Topic::subscribe_local_cb(BaseSubscriber &sub) {
+void Topic::subscribe(LocalSubscriber &sub) {
 
   local_subscribers.link(sub.by_topic);
 }
 
 
 inline
-void Topic::subscribe_remote_cb(BaseSubscriber &sub) {
+void Topic::subscribe(RemoteSubscriber &sub) {
 
   remote_subscribers.link(sub.by_topic);
-}
-
-
-inline
-bool Topic::has_name(const Topic &topic, const char *namep) {
-
-  return Named::has_name(topic, namep);
 }
 
 

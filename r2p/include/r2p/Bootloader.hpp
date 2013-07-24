@@ -25,23 +25,23 @@ public:
   };
 
   struct AppInfo {
-    Flasher::Length     pgmlen;
-    Flasher::Address    pgmadr;
-    Flasher::Length     bsslen;
-    Flasher::Address    bssadr;
-    Flasher::Length     datalen;
-    Flasher::Address    dataadr;
-    Flasher::Address    datapgmadr;
-    Flasher::Length     stacklen;
-    Flasher::Address    threadadr;
-    char                name[NamingTraits<Node>::MAX_LENGTH] R2P_FLASH_ALIGNED;
-    uint8_t             namelen;
+    Flasher::Length   pgmlen;
+    Flasher::Address  pgmadr;
+    Flasher::Length   bsslen;
+    Flasher::Address  bssadr;
+    Flasher::Length   datalen;
+    Flasher::Address  dataadr;
+    Flasher::Address  datapgmadr;
+    Flasher::Length   stacklen;
+    Flasher::Address  threadadr;
+    char              name[NamingTraits<Node>::MAX_LENGTH] R2P_FLASH_ALIGNED;
+    uint8_t           namelen;
   } R2P_FLASH_ALIGNED;
 
   struct FlashLayout {
-    uint32_t            numapps R2P_FLASH_ALIGNED;
-    Flasher::Address    freeadr R2P_FLASH_ALIGNED;
-    AppInfo             infos[MAX_APPS] R2P_FLASH_ALIGNED;
+    uint32_t          numapps R2P_FLASH_ALIGNED;
+    Flasher::Address  freeadr R2P_FLASH_ALIGNED;
+    AppInfo           infos[MAX_APPS] R2P_FLASH_ALIGNED;
   } R2P_FLASH_ALIGNED;
 
 private:

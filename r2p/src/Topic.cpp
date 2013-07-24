@@ -2,28 +2,36 @@
 #include <r2p/Topic.hpp>
 #include <r2p/Middleware.hpp>
 #include <r2p/NamingTraits.hpp>
-
-#include <cstring>
+#include <r2p/BaseMessage.hpp>
 
 namespace r2p {
 
 
-size_t Topic::get_num_publishers() const {
+bool Topic::has_local_publishers() const {
 
   SysLock::acquire();
-  size_t n = num_publishers;
+  bool condition = num_local_publishers > 0;
   SysLock::release();
-  return n;
+  return condition;
 }
 
 
-bool Topic::notify_locally(BaseMessage &msg, const Time &timestamp) {
+bool Topic::has_remote_publishers() const {
+
+  SysLock::acquire();
+  bool condition = num_remote_publishers > 0;
+  SysLock::release();
+  return condition;
+}
+
+
+bool Topic::notify_local(BaseMessage &msg, const Time &timestamp) {
 
   msg.acquire();
 
-  for (StaticList<BaseSubscriber>::Iterator i = local_subscribers.begin();
+  for (StaticList<LocalSubscriber>::Iterator i = local_subscribers.begin();
        i != local_subscribers.end(); ++i) {
-    BaseSubscriber &sub = *i->datap;
+    LocalSubscriber &sub = *i->datap;
     msg.acquire();
     sub.notify(msg, timestamp);
   }
@@ -35,13 +43,13 @@ bool Topic::notify_locally(BaseMessage &msg, const Time &timestamp) {
 }
 
 
-bool Topic::notify_remotely(BaseMessage &msg, const Time &timestamp) {
+bool Topic::notify_remote(BaseMessage &msg, const Time &timestamp) {
 
   msg.acquire();
 
-  for (StaticList<BaseSubscriber>::Iterator i = remote_subscribers.begin();
+  for (StaticList<RemoteSubscriber>::Iterator i = remote_subscribers.begin();
        i != remote_subscribers.end(); ++i) {
-    BaseSubscriber &sub = *i->datap;
+    RemoteSubscriber &sub = *i->datap;
     msg.acquire();
     sub.notify(msg, timestamp);
   }
@@ -53,14 +61,26 @@ bool Topic::notify_remotely(BaseMessage &msg, const Time &timestamp) {
 }
 
 
-void Topic::advertise_cb(BasePublisher &pub, const Time &publish_timeout) {
+void Topic::advertise(LocalPublisher &pub, const Time &publish_timeout) {
 
   (void)pub;
   SysLock::acquire();
   if (this->publish_timeout > publish_timeout) {
     this->publish_timeout = publish_timeout;
   }
-  ++num_publishers;
+  ++num_local_publishers;
+  SysLock::release();
+}
+
+
+void Topic::advertise(RemotePublisher &pub, const Time &publish_timeout) {
+
+  (void)pub;
+  SysLock::acquire();
+  if (this->publish_timeout > publish_timeout) {
+    this->publish_timeout = publish_timeout;
+  }
+  ++num_remote_publishers;
   SysLock::release();
 }
 
@@ -70,7 +90,8 @@ Topic::Topic(const char *namep, size_t type_size)
   Named(namep),
   publish_timeout(Time::INFINITE),
   msg_pool(type_size),
-  num_publishers(0),
+  num_local_publishers(0),
+  num_remote_publishers(0),
   by_middleware(*this)
 {}
 

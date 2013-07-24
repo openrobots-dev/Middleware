@@ -7,6 +7,8 @@
 #include <r2p/Topic.hpp>
 #include <r2p/Node.hpp>
 #include <r2p/BaseTransport.hpp>
+#include <r2p/Publisher.hpp>
+#include <r2p/Subscriber.hpp>
 
 namespace r2p {
 
@@ -66,7 +68,7 @@ void Middleware::add(Node &node) {
 
   R2P_ASSERT(NULL == nodes.find_first(Named::has_name, node.get_name()));
 
-  nodes.link(node.by_middleware.entry);
+  nodes.link(node.by_middleware);
 }
 
 
@@ -75,7 +77,7 @@ void Middleware::add(BaseTransport &transport) {
   R2P_ASSERT(NULL == transports.find_first(Named::has_name,
                                            transport.get_name()));
 
-  transports.link(transport.by_middleware.entry);
+  transports.link(transport.by_middleware);
 }
 
 
@@ -83,10 +85,11 @@ void Middleware::add(Topic &topic) {
 
   R2P_ASSERT(NULL == topics.find_first(Named::has_name, topic.get_name()));
 
-  topics.link(topic.by_middleware.entry);
+  topics.link(topic.by_middleware);
 }
 
-bool Middleware::advertise(BasePublisher &pub, const char *namep,
+
+bool Middleware::advertise(LocalPublisher &pub, const char *namep,
                            const Time &publish_timeout, size_t type_size) {
 
   R2P_ASSERT(namep != NULL);
@@ -94,22 +97,41 @@ bool Middleware::advertise(BasePublisher &pub, const char *namep,
 
   Topic *topicp = touch_topic(namep, type_size);
   if (topicp == NULL) return false;
-  pub.advertise_cb(*topicp);
-  topicp->advertise_cb(pub, publish_timeout);
+  pub.notify_advertised(*topicp);
+  topicp->advertise(pub, publish_timeout);
 
   for (StaticList<BaseTransport>::Iterator i = transports.begin();
        i != transports.end(); ++i) {
-    i->datap->notify_advertise(*topicp);
+    i->datap->notify_advertisement(*topicp);
   }
 
   return true;
 }
 
 
-bool Middleware::subscribe_local(BaseSubscriber &sub, const char *namep,
-                                 BaseMessage msgpool_buf[],
-                                 size_t msgpool_buflen,
-                                 size_t type_size) {
+bool Middleware::advertise(RemotePublisher &pub, const char *namep,
+                           const Time &publish_timeout, size_t type_size) {
+
+  R2P_ASSERT(namep != NULL);
+  R2P_ASSERT(namep[0] != 0);
+
+  Topic *topicp = touch_topic(namep, type_size);
+  if (topicp == NULL) return false;
+  pub.notify_advertised(*topicp);
+  topicp->advertise(pub, publish_timeout);
+
+  for (StaticList<BaseTransport>::Iterator i = transports.begin();
+       i != transports.end(); ++i) {
+    i->datap->notify_advertisement(*topicp);
+  }
+
+  return true;
+}
+
+
+bool Middleware::subscribe(LocalSubscriber &sub, const char *namep,
+                           BaseMessage msgpool_buf[], size_t msgpool_buflen,
+                           size_t type_size) {
 
   R2P_ASSERT(namep != NULL);
   R2P_ASSERT(namep[0] != 0);
@@ -117,22 +139,21 @@ bool Middleware::subscribe_local(BaseSubscriber &sub, const char *namep,
   Topic *topicp = touch_topic(namep, type_size);
   if (topicp == NULL) return false;
   topicp->extend_pool(msgpool_buf, msgpool_buflen);
-  sub.subscribe_cb(*topicp);
-  topicp->subscribe_local_cb(sub);
+  sub.notify_subscribed(*topicp);
+  topicp->subscribe(sub);
 
   for (StaticList<BaseTransport>::Iterator i = transports.begin();
        i != transports.end(); ++i) {
-    i->datap->notify_subscribe(*topicp, sub.get_queue_length());
+    i->datap->notify_subscription(*topicp, sub.get_queue_length());
   }
 
   return true;
 }
 
 
-bool Middleware::subscribe_remote(BaseSubscriber &sub, const char *namep,
-                                  BaseMessage msgpool_buf[],
-                                  size_t msgpool_buflen,
-                                  size_t type_size) {
+bool Middleware::subscribe(RemoteSubscriber &sub, const char *namep,
+                           BaseMessage msgpool_buf[], size_t msgpool_buflen,
+                           size_t type_size) {
 
   R2P_ASSERT(namep != NULL);
   R2P_ASSERT(namep[0] != 0);
@@ -140,8 +161,8 @@ bool Middleware::subscribe_remote(BaseSubscriber &sub, const char *namep,
   Topic *topicp = touch_topic(namep, type_size);
   if (topicp == NULL) return false;
   topicp->extend_pool(msgpool_buf, msgpool_buflen);
-  sub.subscribe_cb(*topicp);
-  topicp->subscribe_remote_cb(sub);
+  sub.notify_subscribed(*topicp);
+  topicp->subscribe(sub);
 
   return true;
 }
@@ -169,7 +190,7 @@ Topic *Middleware::touch_topic(const char *namep, size_t type_size) {
   // Allocate a new topic
   topicp = new Topic(namep, type_size);
   if (topicp != NULL) {
-    topics.link(topicp->by_middleware.entry);
+    topics.link(topicp->by_middleware);
   }
   return topicp;
 }

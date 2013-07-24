@@ -8,7 +8,7 @@
 namespace r2p {
 
 #define R2P_FLASH_ALIGNED \
-  __attribute__((__aligned__(sizeof(r2p::Flasher::Data))))
+  __attribute__((aligned(sizeof(r2p::Flasher::Data))))
 
 
 class Flasher : private Uncopyable {

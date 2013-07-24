@@ -1,5 +1,7 @@
 
 #include "DebugTransport.hpp"
+#include "DebugPublisher.hpp"
+#include "DebugSubscriber.hpp"
 #include <r2p/Middleware.hpp>
 
 #include <cstring>
@@ -7,6 +9,7 @@
 namespace r2p {
 
 
+inline
 static bool send_char(BaseChannel *channelp, char c,
                       systime_t timeout = TIME_INFINITE) {
 
@@ -14,6 +17,7 @@ static bool send_char(BaseChannel *channelp, char c,
 }
 
 
+inline
 static bool expect_char(BaseChannel *channelp, char c,
                         systime_t timeout = TIME_INFINITE) {
 
@@ -33,6 +37,7 @@ static bool recv_char(BaseChannel *channelp, char &c,
 }
 
 
+inline
 static bool send_byte(BaseChannel *channelp, uint8_t byte,
                       systime_t timeout = TIME_INFINITE) {
 
@@ -213,11 +218,11 @@ static bool send_pubsub_msg(BaseChannel *channelp, const Topic &topic,
 
   // Send the deadline
   if (!send_char(channelp, '@')) return false;
-  if (!send_value(channelp, Time::Type(0))) return false;
+  if (!send_value(channelp, static_cast<Time::Type>(0))) return false;
 
   // Send the management topic name (null string)
   if (!send_char(channelp, ':')) return false;
-  if (!send_value(channelp, uint8_t(0))) return false;
+  if (!send_value(channelp, static_cast<uint8_t>(0))) return false;
   if (!send_char(channelp, ':')) return false;
 
   // Discriminate between publisher and subscriber
@@ -251,12 +256,14 @@ static bool send_stop_msg(BaseChannel *channelp) {
 
   // Send the deadline
   if (!send_char(channelp, '@')) return false;
-  if (!send_value(channelp, Time::Type(0))) return false;
+  if (!send_value(channelp, static_cast<Time::Type>(0))) return false;
 
   // Send the management topic name (null string)
   if (!send_char(channelp, ':')) return false;
-  if (!send_value(channelp, uint8_t(0))) return false;
+  if (!send_value(channelp, static_cast<uint8_t>(0))) return false;
   if (!send_char(channelp, ':')) return false;
+
+  // Stop command
   if (!send_char(channelp, 't')) return false;
 
   if (!send_char(channelp, '\r')) return false;
@@ -269,17 +276,56 @@ static bool send_reboot_msg(BaseChannel *channelp) {
 
   // Send the deadline
   if (!send_char(channelp, '@')) return false;
-  if (!send_value(channelp, Time::Type(0))) return false;
+  if (!send_value(channelp, static_cast<Time::Type>(0))) return false;
 
   // Send the management topic name (null string)
   if (!send_char(channelp, ':')) return false;
-  if (!send_value(channelp, uint8_t(0))) return false;
+  if (!send_value(channelp, static_cast<uint8_t>(0))) return false;
   if (!send_char(channelp, ':')) return false;
+
+  // Reboot command
   if (!send_char(channelp, 'r')) return false;
 
   if (!send_char(channelp, '\r')) return false;
   if (!send_char(channelp, '\n')) return false;
   return true;
+}
+
+
+bool DebugTransport::send_advertisement(const Topic &topic) {
+
+  send_lock.acquire();
+  bool success = send_pubsub_msg(channelp, topic);
+  send_lock.release();
+  return success;
+}
+
+
+bool DebugTransport::send_subscription(const Topic &topic,
+                                       size_t queue_length) {
+
+  send_lock.acquire();
+  bool success = send_pubsub_msg(channelp, topic, queue_length);
+  send_lock.release();
+  return success;
+}
+
+
+bool DebugTransport::send_stop() {
+
+  send_lock.acquire();
+  bool success = send_stop_msg(channelp);
+  send_lock.release();
+  return success;
+}
+
+
+bool DebugTransport::send_reboot() {
+
+  send_lock.acquire();
+  bool success = send_reboot_msg(channelp);
+  send_lock.release();
+  return success;
 }
 
 
@@ -296,18 +342,28 @@ void DebugTransport::initialize(void *rx_stackp, size_t rx_stacklen,
                                      rx_threadf, this, "DEBUG_RX" );
   R2P_ASSERT(rx_threadp != NULL);
 
-  Middleware &mw = Middleware::instance;
+  advertise(info_rpub, "R2P_INFO", Time::INFINITE, sizeof(InfoMsg));
+  subscribe(info_rsub, "R2P_INFO", info_msgbuf, INFO_BUFFER_LENGTH,
+            sizeof(InfoMsg));
 
-  mw.advertise(info_rpub, "R2P_INFO", Time::INFINITE, sizeof(InfoMsg));
-  publishers.link(info_rpub.by_transport);
-
-  mw.subscribe_remote(info_rsub, "R2P_INFO", info_msgbuf, INFO_BUFFER_LENGTH,
-                      sizeof(InfoMsg));
-  subscribers.link(info_rsub.by_transport.entry);
-
-  mw.add(*this);
+  Middleware::instance.add(*this);
 }
 
+
+RemotePublisher *DebugTransport::create_publisher() {
+
+  return new DebugPublisher();
+}
+
+
+RemoteSubscriber *DebugTransport::create_subscriber(
+  BaseTransport &transport,
+  TimestampedMsgPtrQueue::Entry queue_buf[],
+  size_t queue_length) {
+
+  return new DebugSubscriber(static_cast<DebugTransport &>(transport),
+                             queue_buf, queue_length);
+}
 
 bool DebugTransport::spin_tx() {
 
@@ -337,11 +393,11 @@ bool DebugTransport::spin_tx() {
 
     const Topic &topic = *sub.get_topic();
     send_lock.acquire();
-    if (!send_msg(channelp, *msgp, topic.get_msg_size(), topic.get_name(),
+    if (!send_msg(channelp, *msgp, topic.get_size(), topic.get_name(),
                   timestamp + topic.get_publish_timeout())) {
       send_char(channelp, '\r');
       while (!send_char(channelp, '\n')) {
-        chThdYield();
+        Thread::yield();
       }
       send_lock.release();
       sub.release(*msgp);
@@ -365,7 +421,7 @@ bool DebugTransport::spin_rx() {
   if (!expect_char(channelp, ':')) return false;
   uint8_t namelen;
   if (!recv_value(channelp, namelen)) return false;
-  if (namelen > R2P_TOPIC_MAXNAMELEN) return false;
+  if (namelen > NamingTraits<Topic>::MAX_LENGTH) return false;
   if (!recv_string(channelp, namebufp, namelen)) return false;
   namebufp[namelen] = 0;
   if (!expect_char(channelp, ':')) return false;
@@ -375,20 +431,19 @@ bool DebugTransport::spin_rx() {
     // Check if the topic is known
     Topic *topicp = Middleware::instance.find_topic(namebufp);
     if (topicp == NULL) return false;
+    const StaticList<RemotePublisher>::Link *linkp =
+      publishers.find_first(BasePublisher::has_topic, topicp->get_name());
+    if (linkp == NULL) return false;
 
     // Get the payload length
     BaseMessage::LengthType datalen;
     if (!recv_value(channelp, datalen)) return false;
-    if (datalen + sizeof(BaseMessage::RefcountType) !=
-        topicp->get_msg_size()) {
+    if (datalen + sizeof(BaseMessage::RefcountType) != topicp->get_size()) {
       return false;
     }
     R2P_ASSERT(datalen + sizeof(BaseMessage::RefcountType) <= namebuflen);
 
     // Allocate a new message
-    const StaticList<DebugPublisher>::Link *linkp =
-      publishers.find_first(DebugPublisher::has_topic, topicp->get_name());
-    if (linkp == NULL) return false;
     BaseMessage *msgp;
     if (!linkp->datap->alloc(msgp)) return false;
 
@@ -412,73 +467,30 @@ bool DebugTransport::spin_rx() {
     case 's': case 'S': {
       // Read the module name
       if (!recv_value(channelp, namelen)) return false;
-      if (namelen < 1 || namelen > R2P_TOPIC_MAXNAMELEN) return false;
+      if (namelen < 1 || namelen > NamingTraits<Middleware>::MAX_LENGTH) {
+        return false;
+      }
       if (!recv_string(channelp, namebufp, namelen)) return false;
       namebufp[namelen] = 0;
 
       // Read the topic name
       if (!expect_char(channelp, ':')) return false;
       if (!recv_value(channelp, namelen)) return false;
-      if (namelen < 1 || namelen > R2P_TOPIC_MAXNAMELEN) return false;
+      if (namelen < 1 || namelen > NamingTraits<Topic>::MAX_LENGTH) {
+        return false;
+      }
       if (!recv_string(channelp, namebufp, namelen)) return false;
       namebufp[namelen] = 0;
-      Topic *topicp = Middleware::instance.find_topic(namebufp);
 
       if (typechar == 'p' || typechar == 'P') {
-        // Process only if there are local publishers
-        if (topicp == NULL) return true;
-
-        // Check if the remote publisher already exists
-        const StaticList<DebugPublisher>::Link *linkp;
-        linkp = publishers.find_first(DebugPublisher::has_topic, namebufp);
-        if (linkp == NULL) {
-          // Create a new remote publisher
-          DebugPublisher *pubp = new DebugPublisher();
-          if (pubp == NULL) return false;
-          pubp->advertise_cb(*topicp);
-          topicp->advertise_cb(*pubp, Time::INFINITE);
-          publishers.link(pubp->by_transport);
-        }
-        return true;
+        return advertise(namebufp);
       } else if (typechar == 's' || typechar == 'S') {
         // Get the queue length
         uint8_t queue_length;
         if (!recv_value(channelp, queue_length)) return false;
         if (queue_length == 0) return false;
 
-        // Process only if there are local subscribers
-        if (topicp == NULL) return true;
-
-        // Check if the remote subscriber already exists
-        const StaticList<DebugSubscriber>::Link *linkp;
-        linkp = subscribers.find_first(DebugSubscriber::has_topic, namebufp);
-        if (linkp == NULL) {
-          // Create a new remote subscriber
-          BaseMessage *msgpool_bufp = NULL;
-          TimestampedMsgPtrQueue::Entry *queue_bufp = NULL;
-          DebugSubscriber *subp = NULL;
-
-          msgpool_bufp = reinterpret_cast<BaseMessage *>(
-            new uint8_t[topicp->get_msg_size() * queue_length]
-          );
-          if (msgpool_bufp != NULL) {
-            queue_bufp = new TimestampedMsgPtrQueue::Entry[queue_length];
-            if (queue_bufp != NULL) {
-              subp = new DebugSubscriber(queue_bufp, queue_length, *this);
-              if (subp != NULL) {
-                subp->subscribe_cb(*topicp);
-                topicp->extend_pool(msgpool_bufp, queue_length);
-                topicp->subscribe_remote_cb(*subp);
-                subscribers.link(subp->by_transport.entry);
-              }
-            }
-          }
-          if (msgpool_bufp == NULL || queue_bufp == NULL || subp == NULL) {
-            delete subp;
-            delete [] queue_bufp;
-            delete [] msgpool_bufp;
-          }
-        }
+        return subscribe(namebufp, queue_length);
       }
       return true;
     }
@@ -493,40 +505,6 @@ bool DebugTransport::spin_rx() {
     default: return false;
     }
   }
-}
-
-
-void DebugTransport::notify_advertise(Topic &topic) {
-
-  send_lock.acquire();
-  send_pubsub_msg(channelp, topic);
-  send_lock.release();
-}
-
-
-void DebugTransport::notify_subscribe(Topic &topic, size_t queue_length) {
-
-  R2P_ASSERT(queue_length > 0);
-
-  send_lock.acquire();
-  send_pubsub_msg(channelp, topic, queue_length);
-  send_lock.release();
-}
-
-
-void DebugTransport::notify_stop() {
-
-  send_lock.acquire();
-  while (!send_stop_msg(channelp)) {}
-  send_lock.release();
-}
-
-
-void DebugTransport::notify_reboot() {
-
-  send_lock.acquire();
-  while (!send_reboot_msg(channelp)) {}
-  send_lock.release();
 }
 
 
@@ -562,7 +540,7 @@ DebugTransport::DebugTransport(
   channelp(channelp),
   namebufp(namebuf),
   namebuflen(namebuflen),
-  info_rsub(info_msgqueue_buf, INFO_BUFFER_LENGTH, *this),
+  info_rsub(*this, info_msgqueue_buf, INFO_BUFFER_LENGTH),
   info_rpub()
 {
   R2P_ASSERT(channelp != NULL);

@@ -3,7 +3,7 @@
 #define __R2P__PUBLISHER_HPP__
 
 #include <r2p/common.hpp>
-#include <r2p/impl/Publisher_.hpp>
+#include <r2p/LocalPublisher.hpp>
 
 namespace r2p {
 
@@ -11,7 +11,7 @@ class BaseMessage;
 
 
 template<typename Message>
-class Publisher : public Publisher_ {
+class Publisher : public LocalPublisher {
 public:
   bool alloc(Message *&msgp);
   bool publish(Message &msg);

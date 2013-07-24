@@ -2,11 +2,14 @@
 #include <r2p/Node.hpp>
 #include <r2p/Middleware.hpp>
 #include <r2p/Thread.hpp>
+#include <r2p/InfoMsg.hpp>
+#include <r2p/Publisher.hpp>
+#include <r2p/Subscriber.hpp>
 
 namespace r2p {
 
 
-bool Node::advertise(Publisher_ &pub, const char *namep,
+bool Node::advertise(LocalPublisher &pub, const char *namep,
                      const Time &publish_timeout, size_t msg_size) {
 
   R2P_ASSERT(namep != NULL);
@@ -20,18 +23,18 @@ bool Node::advertise(Publisher_ &pub, const char *namep,
 }
 
 
-bool Node::subscribe(Subscriber_ &sub, const char *namep,
+bool Node::subscribe(LocalSubscriber &sub, const char *namep,
                      BaseMessage msgpool_buf[], size_t msg_size) {
 
   R2P_ASSERT(namep != NULL);
   R2P_ASSERT(namep[0] != 0);
 
-  if (Middleware::instance.subscribe_local(sub, namep, msgpool_buf,
-                                           sub.get_queue_length(), msg_size)) {
+  if (Middleware::instance.subscribe(sub, namep, msgpool_buf,
+                                     sub.get_queue_length(), msg_size)) {
     sub.nodep = this;
     SysLock::acquire();
     int index = subscribers.get_count_unsafe();
-    subscribers.link_unsafe(sub.by_node.entry);
+    subscribers.link_unsafe(sub.by_node);
     SysLock::release();
     R2P_ASSERT(index >= 0);
     R2P_ASSERT(index < static_cast<int>(sizeof(eventmask_t) * 8));
@@ -46,7 +49,7 @@ void Node::publish_publishers(Publisher<InfoMsg> &info_pub) {
 
   InfoMsg *msgp;
 
-  for (StaticList<Publisher_>::Iterator i = publishers.begin();
+  for (StaticList<LocalPublisher>::Iterator i = publishers.begin();
        i != publishers.end(); ++i) {
     while (!info_pub.alloc(msgp)) {
       Thread::yield();
@@ -71,7 +74,7 @@ void Node::publish_subscribers(Publisher<InfoMsg> &info_pub) {
 
   InfoMsg *msgp;
 
-  for (StaticList<Subscriber_>::Iterator i = subscribers.begin();
+  for (StaticList<LocalSubscriber>::Iterator i = subscribers.begin();
        i != subscribers.end(); ++i) {
     while (!info_pub.alloc(msgp)) {
       Thread::yield();
@@ -100,15 +103,15 @@ bool Node::spin(const Time &timeout) {
 
   BaseMessage *msgp;
   Time dummy_timestamp;
-  for (StaticList<Subscriber_>::Iterator i = subscribers.begin();
+  for (StaticList<LocalSubscriber>::Iterator i = subscribers.begin();
        i != subscribers.end() && mask != 0; bit <<= 1, ++i) {
     if ((mask & bit) != 0) {
       mask &= ~bit;
-      Subscriber_ &sub = *i->datap;
-      Subscriber_::Callback callback = sub.get_callback();
+      LocalSubscriber &sub = *i->datap;
+      const LocalSubscriber::Callback *callback = sub.get_callback();
       if (callback != NULL) {
         while (sub.fetch(msgp, dummy_timestamp)) {
-          callback(*msgp);
+          (*callback)(*msgp);
           sub.release(*msgp);
         }
       }

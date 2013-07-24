@@ -6,7 +6,7 @@
 namespace r2p {
 
 
-void BaseSubscriber::subscribe_cb(Topic &topic) {
+void BaseSubscriber::notify_subscribed(Topic &topic) {
 
   R2P_ASSERT(topicp == NULL);
 
@@ -32,9 +32,17 @@ bool BaseSubscriber::release(BaseMessage &msg) {
 
 BaseSubscriber::BaseSubscriber()
 :
-  topicp(NULL),
-  by_topic(*this)
+  topicp(NULL)
 {}
+
+
+BaseSubscriber::~BaseSubscriber() {}
+
+
+bool BaseSubscriber::has_topic(const BaseSubscriber &sub, const char *namep) {
+
+  return Topic::has_name(*sub.topicp, namep);
+}
 
 
 }; // namespace r2p

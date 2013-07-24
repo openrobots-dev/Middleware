@@ -8,6 +8,7 @@
 namespace r2p {
 
 
+ // TODO: Replace predicates and matches with virtual functors
 template<typename T>
 class StaticList : private Uncopyable {
 public:
@@ -27,7 +28,7 @@ public:
   };
 
   class IteratorUnsafe {
-    friend class StaticList<T>;
+    friend class StaticList;
 
   private:
     const Link *curp;
@@ -71,7 +72,7 @@ public:
   };
 
   class ConstIteratorUnsafe {
-    friend class StaticList<T>;
+    friend class StaticList;
 
   private:
     const ConstLink *curp;
@@ -115,7 +116,7 @@ public:
   };
 
   class Iterator {
-    friend class StaticList<T>;
+    friend class StaticList;
 
   private:
     const Link *curp;
@@ -163,7 +164,7 @@ public:
   };
 
   class ConstIterator {
-    friend class StaticList<T>;
+    friend class StaticList;
 
   private:
     const ConstLink *curp;

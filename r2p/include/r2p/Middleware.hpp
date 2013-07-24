@@ -3,19 +3,20 @@
 #define __R2P__MIDDLEWARE_HPP__
 
 #include <r2p/common.hpp>
-#include <r2p/BaseMessage.hpp>
 #include <r2p/StaticList.hpp>
-#include <r2p/Node.hpp>
 #include <r2p/Topic.hpp>
-#include <r2p/Publisher.hpp>
-#include <r2p/Subscriber.hpp>
 #include <r2p/Thread.hpp>
-#include <r2p/Semaphore.hpp>
 
 namespace r2p {
 
+class Node;
 class BaseTransport;
 class Time;
+class Topic;
+class LocalPublisher;
+class LocalSubscriber;
+class RemotePublisher;
+class RemoteSubscriber;
 
 
 class Middleware : public Named, private Uncopyable {
@@ -50,14 +51,16 @@ public:
   void add(BaseTransport &transport);
   void add(Topic &topic);
 
-  bool advertise(BasePublisher &pub, const char *namep,
+  bool advertise(LocalPublisher &pub, const char *namep,
                  const Time &publish_timeout, size_t type_size);
-  bool subscribe_local(BaseSubscriber &sub, const char *namep,
-                       BaseMessage msgpool_buf[], size_t msgpool_buflen,
-                       size_t type_size);
-  bool subscribe_remote(BaseSubscriber &sub, const char *namep,
-                        BaseMessage msgpool_buf[], size_t msgpool_buflen,
-                        size_t type_size);
+  bool advertise(RemotePublisher &pub, const char *namep,
+                 const Time &publish_timeout, size_t type_size);
+  bool subscribe(LocalSubscriber &sub, const char *namep,
+                 BaseMessage msgpool_buf[], size_t msgpool_buflen,
+                 size_t type_size);
+  bool subscribe(RemoteSubscriber &sub, const char *namep,
+                 BaseMessage msgpool_buf[], size_t msgpool_buflen,
+                 size_t type_size);
 
   Topic *find_topic(const char *namep);
 

@@ -11,26 +11,23 @@
 namespace r2p {
 
 class Topic;
-class Publisher_;
-class Subscriber_;
+class LocalPublisher;
+class LocalSubscriber;
 template<typename Message> class Publisher;
 template<typename Message> class Subscriber;
 class BaseMessage;
 
 
 class Node : public Named, private Uncopyable {
+  friend class Middleware;
+
 private:
-  StaticList<Publisher_> publishers;
-  StaticList<Subscriber_> subscribers;
+  StaticList<LocalPublisher> publishers;
+  StaticList<LocalSubscriber> subscribers;
   SpinEvent event;
   Time timeout;
 
-public:
-  mutable class ListEntryByMiddleware : private r2p::Uncopyable {
-    friend class Node; friend class Middleware;
-    StaticList<Node>::Link entry;
-    ListEntryByMiddleware(Node &node) : entry(node) {}
-  } by_middleware;
+  StaticList<Node>::Link by_middleware;
 
 public:
   template<typename Message>
@@ -48,9 +45,9 @@ public:
   bool spin(const Time &timeout = Time::INFINITE);
 
 private:
-  bool advertise(Publisher_ &pub, const char *namep,
+  bool advertise(LocalPublisher &pub, const char *namep,
                  const Time &publish_timeout, size_t msg_size);
-  bool subscribe(Subscriber_ &sub, const char *namep,
+  bool subscribe(LocalSubscriber &sub, const char *namep,
                  BaseMessage msgpool_buf[], size_t msg_size);
 
 public:
@@ -62,7 +59,7 @@ template<typename Message> inline
 bool Node::advertise(Publisher<Message> &pub, const char *namep,
                      const Time &publish_timeout) {
 
-  return advertise(reinterpret_cast<Publisher_ &>(pub), namep,
+  return advertise(reinterpret_cast<LocalPublisher &>(pub), namep,
                    publish_timeout, sizeof(Message));
 }
 
@@ -71,7 +68,7 @@ template<typename Message> inline
 bool Node::subscribe(Subscriber<Message> &sub, const char *namep,
                      Message msgpool_buf[]) {
 
-  return subscribe(reinterpret_cast<Subscriber_ &>(sub), namep,
+  return subscribe(reinterpret_cast<LocalSubscriber &>(sub), namep,
                    reinterpret_cast<BaseMessage *>(msgpool_buf),
                    sizeof(Message));
 }

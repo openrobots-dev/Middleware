@@ -3,7 +3,7 @@
 #define __R2P__SUBSCRIBER_HPP__
 
 #include <r2p/common.hpp>
-#include "impl/Subscriber_.hpp"
+#include <r2p/LocalSubscriber.hpp>
 
 namespace r2p {
 
@@ -12,51 +12,63 @@ class BaseMessage;
 
 
 template<typename Message>
-class Subscriber : public Subscriber_ {
+class Subscriber : public LocalSubscriber {
 public:
-  typedef bool (*Callback)(const Message &msg);
+  class Callback : public LocalSubscriber::Callback {
+  public:
+    virtual bool action (const Message &msg) const = 0;
+
+  private:
+    bool action(const BaseMessage &msg) const {
+      return action(static_cast<const Message &>(msg));
+    }
+
+  protected:
+    Callback() : LocalSubscriber::Callback() {}
+    virtual ~Callback() {}
+  };
 
 public:
-  Callback get_callback() const;
+  const Callback &get_callback() const;
   bool fetch(Message *&msgp, Time &timestamp);
   bool release(Message &msg);
 
 public:
   Subscriber(Message *queue_buf[], size_t queue_length,
-             Callback callback = NULL);
+             const Callback *callbackp = NULL);
 };
 
 
 template<typename Message> inline
 bool Subscriber<Message>::fetch(Message *&msgp, Time &timestamp) {
 
-  return Subscriber_::fetch(
+  return LocalSubscriber::fetch(
     reinterpret_cast<BaseMessage *&>(msgp), timestamp
   );
 }
 
 
 template<typename Message> inline
-typename Subscriber<Message>::Callback Subscriber<Message>::get_callback()
-const {
+const typename Subscriber<Message>::Callback &
+Subscriber<Message>::get_callback() const {
 
-  return reinterpret_cast<Callback &>(Subscriber_::get_callback());
+  return reinterpret_cast<const Callback &>(LocalSubscriber::get_callback());
 }
 
 
 template<typename Message> inline
 bool Subscriber<Message>::release(Message &msg) {
 
-  return Subscriber_::release(reinterpret_cast<BaseMessage &>(msg));
+  return LocalSubscriber::release(reinterpret_cast<BaseMessage &>(msg));
 }
 
 
 template<typename Message> inline
 Subscriber<Message>::Subscriber(Message *queue_buf[], size_t queue_length,
-                                Callback callback) :
+                                const Callback *callbackp) :
 
-  Subscriber_(reinterpret_cast<BaseMessage **>(queue_buf), queue_length,
-              reinterpret_cast<Subscriber_::Callback>(callback))
+  LocalSubscriber(reinterpret_cast<BaseMessage **>(queue_buf), queue_length,
+                  callbackp)
 {}
 
 

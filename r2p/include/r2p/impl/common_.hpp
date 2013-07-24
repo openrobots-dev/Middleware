@@ -14,7 +14,7 @@
 namespace r2p {
 
 
-#define R2P_PACKED  __attribute__((__packed__))
+#define R2P_PACKED  __attribute__((packed))
 
 
 } // namespace r2p

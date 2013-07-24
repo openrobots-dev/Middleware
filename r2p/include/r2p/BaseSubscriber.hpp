@@ -15,14 +15,11 @@ class Time;
 
 
 class BaseSubscriber : private Uncopyable {
-protected:
+private:
   Topic *topicp;
 
 public:
-  StaticList<BaseSubscriber>::Link by_topic;
-
-public:
-  void subscribe_cb(Topic &topic);
+  void notify_subscribed(Topic &topic);
 
   Topic *get_topic() const;
 
@@ -34,9 +31,10 @@ public:
 
 protected:
   BaseSubscriber();
+  virtual ~BaseSubscriber();
 
 public:
-  virtual ~BaseSubscriber() {};
+  static bool has_topic(const BaseSubscriber &sub, const char *namep);
 };
 
 

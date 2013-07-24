@@ -16,6 +16,7 @@ namespace r2p {
 #endif
 
 
+// TODO: Add refcount as a decorator, user should only declare the contents type
 class BaseMessage {
 public:
   typedef R2P_BASEMESSAGE_REFCOUNT_TYPE RefcountType;

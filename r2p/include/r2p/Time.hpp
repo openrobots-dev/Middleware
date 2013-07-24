@@ -29,18 +29,6 @@ public:
   Type raw;
 
 public:
-  bool operator == (const Time &rhs) const;
-  bool operator != (const Time &rhs) const;
-  bool operator > (const Time &rhs) const;
-  bool operator >= (const Time &rhs) const;
-  bool operator < (const Time &rhs) const;
-  bool operator <= (const Time &rhs) const;
-
-  Time &operator += (const Time &rhs);
-  Time &operator -= (const Time &rhs);
-  const Time operator + (const Time &rhs) const;
-  const Time operator - (const Time &rhs) const;
-
   Type to_us_raw() const;
   Type to_ms_raw() const;
   Type to_s_raw() const;
@@ -50,6 +38,9 @@ public:
   double to_ms() const;
   double to_s() const;
   double to_m() const;
+
+  Time &operator += (const Time &rhs);
+  Time &operator -= (const Time &rhs);
 
 public:
   Time();
@@ -71,77 +62,14 @@ public:
   static const Time INFINITEN;
 };
 
-
-inline
-bool Time::operator == (const Time &rhs) const {
-
-  return raw == rhs.raw;
-}
-
-
-inline
-bool Time::operator != (const Time &rhs) const {
-
-  return raw != rhs.raw;
-}
-
-
-inline
-bool Time::operator > (const Time &rhs) const {
-
-  return raw > rhs.raw;
-}
-
-
-inline
-bool Time::operator >= (const Time &rhs) const {
-
-  return raw >= rhs.raw;
-}
-
-
-inline
-bool Time::operator < (const Time &rhs) const {
-
-  return raw < rhs.raw;
-}
-
-
-inline
-bool Time::operator <= (const Time &rhs) const {
-
-  return raw <= rhs.raw;
-}
-
-
-inline
-Time &Time::operator += (const Time &rhs) {
-
-  raw += rhs.raw;
-  return *this;
-}
-
-
-inline
-Time &Time::operator -= (const Time &rhs) {
-
-  raw += rhs.raw;
-  return *this;
-}
-
-
-inline
-const Time Time::operator + (const Time &rhs) const {
-
-  return Time(raw + rhs.raw);
-}
-
-
-inline
-const Time Time::operator - (const Time &rhs) const {
-
-  return Time(raw - rhs.raw);
-}
+bool operator == (const Time &lhs, const Time &rhs);
+bool operator != (const Time &lhs, const Time &rhs);
+bool operator >  (const Time &lhs, const Time &rhs);
+bool operator >= (const Time &lhs, const Time &rhs);
+bool operator <  (const Time &lhs, const Time &rhs);
+bool operator <= (const Time &lhs, const Time &rhs);
+const Time operator + (const Time &lhs, const Time &rhs);
+const Time operator - (const Time &lhs, const Time &rhs);
 
 
 inline
@@ -201,6 +129,22 @@ double Time::to_m() const {
 
 
 inline
+Time &Time::operator += (const Time &rhs) {
+
+  raw += rhs.raw;
+  return *this;
+}
+
+
+inline
+Time &Time::operator -= (const Time &rhs) {
+
+  raw += rhs.raw;
+  return *this;
+}
+
+
+inline
 Time::Time() : raw() {}
 
 
@@ -256,6 +200,62 @@ Time Time::hz(const double hertz) {
   if (hertz < 1.0 / MAX_US) return Time(MAX_US);
   else if (hertz > 1000000.0) return Time(1);
   else return Time(static_cast<Type>(1000000.0 / hertz));
+}
+
+
+inline
+bool operator == (const Time &lhs, const Time &rhs) {
+
+  return lhs.raw == rhs.raw;
+}
+
+
+inline
+bool operator != (const Time &lhs, const Time &rhs) {
+
+  return lhs.raw != rhs.raw;
+}
+
+
+inline
+bool operator > (const Time &lhs, const Time &rhs) {
+
+  return lhs.raw > rhs.raw;
+}
+
+
+inline
+bool operator >= (const Time &lhs, const Time &rhs) {
+
+  return lhs.raw >= rhs.raw;
+}
+
+
+inline
+bool operator < (const Time &lhs, const Time &rhs) {
+
+  return lhs.raw < rhs.raw;
+}
+
+
+inline
+bool operator <= (const Time &lhs, const Time &rhs) {
+
+  return lhs.raw <= rhs.raw;
+}
+
+
+inline
+const Time operator + (const Time &lhs, const Time &rhs) {
+
+  return Time(lhs.raw + rhs.raw);
+}
+
+
+inline
+const Time operator - (const Time &lhs, const Time &rhs) {
+
+  return Time(lhs.raw - rhs.raw);
 }
 
 

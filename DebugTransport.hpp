@@ -31,9 +31,6 @@ private:
   char *namebufp;
   size_t namebuflen;
 
-  StaticList<DebugPublisher> publishers;
-  StaticList<DebugSubscriber> subscribers;
-
   Semaphore subp_sem;
   BaseSubscriberQueue subp_queue;
 
@@ -46,6 +43,11 @@ private:
   DebugPublisher info_rpub;
 
 public:
+  bool send_advertisement(const Topic &topic);
+  bool send_subscription(const Topic &topic, size_t queue_length);
+  bool send_stop();
+  bool send_reboot();
+
   void initialize(void *rx_stackp, size_t rx_stacklen,
                   Thread::Priority rx_priority,
                   void *tx_stackp, size_t tx_stacklen,
@@ -53,29 +55,31 @@ public:
 
   void notify_first_sub_unsafe(DebugSubscriber &sub);
 
-  void notify_advertise(Topic &topic);
-  void notify_subscribe(Topic &topic, size_t queue_length);
-  void notify_stop();
-  void notify_reboot();
-
 private:
+  RemotePublisher *create_publisher();
+  RemoteSubscriber *create_subscriber(
+    BaseTransport &transport,
+    TimestampedMsgPtrQueue::Entry queue_buf[],
+    size_t queue_length
+  );
+
   bool spin_tx();
   bool spin_rx();
-
-private:
-  static Thread::ReturnType rx_threadf(Thread::ArgumentType arg);
-  static Thread::ReturnType tx_threadf(Thread::ArgumentType arg);
 
 public:
   DebugTransport(const char *namep, BaseChannel *channelp,
                  char namebuf[], size_t namebuflen);
+
+private:
+  static Thread::ReturnType rx_threadf(Thread::ArgumentType arg);
+  static Thread::ReturnType tx_threadf(Thread::ArgumentType arg);
 };
 
 
 inline
 void DebugTransport::notify_first_sub_unsafe(DebugSubscriber &sub) {
 
-  subp_queue.post_unsafe(sub.by_transport_notify.entry);
+  subp_queue.post_unsafe(sub.by_transport_notify);
   subp_sem.signal_unsafe();
 }
 

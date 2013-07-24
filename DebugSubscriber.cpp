@@ -24,7 +24,8 @@ bool DebugSubscriber::notify(BaseMessage &msg, const Time &timestamp) {
   SysLock::acquire();
   if (tmsgp_queue.post_unsafe(entry)) {
     if (tmsgp_queue.get_count_unsafe() == 1) {
-      transportp->notify_first_sub_unsafe(*this);
+      static_cast<DebugTransport *>(get_transport())
+        ->notify_first_sub_unsafe(*this);
     }
     SysLock::release();
     return true;
@@ -46,22 +47,17 @@ bool DebugSubscriber::fetch(BaseMessage *&msgp, Time &timestamp) {
 }
 
 
-DebugSubscriber::DebugSubscriber(TimestampedMsgPtrQueue::Entry queue_buf[],
-                                 size_t queue_length,
-                                 DebugTransport &transport)
+DebugSubscriber::DebugSubscriber(DebugTransport &transport,
+                                 TimestampedMsgPtrQueue::Entry queue_buf[],
+                                 size_t queue_length)
 :
-  transportp(&transport),
+  RemoteSubscriber(transport),
   tmsgp_queue(queue_buf, queue_length),
-  by_transport(*this),
   by_transport_notify(*this)
 {}
 
 
-bool DebugSubscriber::has_topic(const DebugSubscriber &sub,
-                                const char *namep) {
-
-  return Topic::has_name(*sub.get_topic(), namep);
-}
+DebugSubscriber::~DebugSubscriber() {}
 
 
 } // namespace r2p

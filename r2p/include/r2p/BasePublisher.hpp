@@ -3,8 +3,6 @@
 #define __R2P__BASEPUBLISHER_HPP__
 
 #include <r2p/common.hpp>
-#include <r2p/StaticList.hpp>
-#include <r2p/Topic.hpp>
 
 namespace r2p {
 
@@ -13,13 +11,13 @@ class Topic;
 
 
 class BasePublisher : private Uncopyable {
-protected:
+private:
   Topic *topicp;
 
 public:
   Topic *get_topic() const;
 
-  void advertise_cb(Topic &topic);
+  void notify_advertised(Topic &topic);
 
   bool alloc(BaseMessage *&msgp);
   bool publish(BaseMessage &msg);
@@ -28,8 +26,10 @@ public:
 
 protected:
   BasePublisher();
+  virtual ~BasePublisher();
+
 public:
-  virtual ~BasePublisher() {};
+  static bool has_topic(const BasePublisher &pub, const char *namep);
 };
 
 

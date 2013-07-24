@@ -11,23 +11,50 @@ namespace r2p {
 class BaseMessage;
 class Time;
 class Topic;
-class BasePublisher;
-class BaseSubscriber;
+class RemotePublisher;
+class RemoteSubscriber;
 
 
-class BaseTransport : public Named, private r2p::Uncopyable {
+class BaseTransport : public Named, private Uncopyable {
+  friend class Middleware;
+
+protected:
+  StaticList<RemotePublisher> publishers;
+  StaticList<RemoteSubscriber> subscribers;
+
+private:
+  StaticList<BaseTransport>::Link by_middleware;
+
 public:
-  mutable class ListEntryByMiddleware : private Uncopyable {
-    friend class BaseTransport; friend class Middleware;
-    StaticList<BaseTransport>::Link entry;
-    ListEntryByMiddleware(BaseTransport &transport) : entry(transport) {}
-  } by_middleware;
+  bool notify_advertisement(Topic &topic);
+  bool notify_subscription(Topic &topic, size_t queue_length);
+  bool notify_stop();
+  bool notify_reboot();
 
-public:
-  virtual void notify_advertise(Topic &topic) = 0;
-  virtual void notify_subscribe(Topic &topic, size_t queue_length) = 0;
-  virtual void notify_stop() = 0;
-  virtual void notify_reboot() = 0;
+protected:
+  bool touch_publisher(Topic &topic);
+  bool touch_subscriber(Topic &topic, size_t queue_length);
+
+  bool advertise(const char *namep);
+  bool subscribe(const char *namep, size_t queue_length);
+
+  bool advertise(RemotePublisher &pub, const char *namep,
+                 const Time &publish_timeout, size_t type_size);
+  bool subscribe(RemoteSubscriber &sub, const char *namep,
+                 BaseMessage msgpool_buf[], size_t msgpool_buflen,
+                 size_t type_size);
+
+  virtual bool send_advertisement(const Topic &topic) = 0;
+  virtual bool send_subscription(const Topic &topic, size_t queue_length) = 0;
+  virtual bool send_stop() = 0;
+  virtual bool send_reboot() = 0;
+
+  virtual RemotePublisher *create_publisher() = 0;
+  virtual RemoteSubscriber *create_subscriber(
+    BaseTransport &transport,
+    TimestampedMsgPtrQueue::Entry queue_buf[],
+    size_t queue_length
+  ) = 0;
 
 protected:
   BaseTransport(const char *namep);

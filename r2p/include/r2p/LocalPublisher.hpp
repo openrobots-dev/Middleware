@@ -9,17 +9,17 @@
 namespace r2p {
 
 
-class Publisher_ : public BasePublisher {
+class LocalPublisher : public BasePublisher {
 public:
   mutable class ListEntryByNode : private r2p::Uncopyable {
-    friend class Publisher_; friend class Node;
-    StaticList<Publisher_>::Link entry;
-    ListEntryByNode(Publisher_ &pub) : entry(pub) {}
+    friend class LocalPublisher; friend class Node;
+    StaticList<LocalPublisher>::Link entry;
+    ListEntryByNode(LocalPublisher &pub) : entry(pub) {}
   } by_node;
 
 protected:
-  Publisher_();
-  ~Publisher_();
+  LocalPublisher();
+  virtual ~LocalPublisher();
 };
 
 

@@ -11,7 +11,7 @@ namespace r2p {
 
 class InfoMsg : public BaseMessage {
 public:
-  enum Type {
+  enum TypeEnum {
     RAW                 = 0x00,
 
     ADVERTISEMENT       = 0x10,
