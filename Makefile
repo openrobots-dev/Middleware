@@ -58,9 +58,9 @@ endif
 PROJECT = ch
 
 # Imported source files and paths
-CHIBIOS = /opt/ChibiStudio/chibios
+CHIBIOS = /opt/ChibiStudio/ChibiOS_2.6.0
 RTCAN = ../RTCAN
-R2P = ../MiddlewareV2-dev/r2p
+R2P = ./r2p
 
 include ./board.mk
 include $(CHIBIOS)/os/hal/platforms/STM32F1xx/platform.mk
@@ -93,9 +93,25 @@ CSRC = $(PORTSRC) \
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
-CPPSRC = $(R2PSRC) \
-         DebugTransport.cpp DebugPublisher.cpp DebugSubscriber.cpp \
-         chnew.cpp main.cpp
+CPPSRC = $(R2PSRC)
+
+ifeq ($(TEST),debug_test)
+  CPPSRC += DebugTransport.cpp DebugPublisher.cpp DebugSubscriber.cpp \
+         chnew.cpp main_debug_test.cpp
+endif
+
+ifeq ($(TEST),rtcan_pub_test)
+  CPPSRC += DebugTransport.cpp DebugPublisher.cpp DebugSubscriber.cpp \
+         RTCANTransport.cpp RTCANPublisher.cpp RTCANSubscriber.cpp \
+         chnew.cpp main_rtcan_pub_test.cpp
+  UDEFS = -DRTCAN_ISMASTER
+endif
+
+ifeq ($(TEST),rtcan_sub_test)
+  CPPSRC += DebugTransport.cpp DebugPublisher.cpp DebugSubscriber.cpp \
+         RTCANTransport.cpp RTCANPublisher.cpp RTCANSubscriber.cpp \
+         chnew.cpp main_rtcan_sub_test.cpp
+endif
 
 # C sources to be compiled in ARM mode regardless of the global setting.
 # NOTE: Mixing ARM and THUMB mode enables the -mthumb-interwork compiler
@@ -195,19 +211,19 @@ DLIBS = -lm
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS = -DR2MW_TEST
+UDEFS += -DR2MW_TEST
 
 # Define ASM defines here
-UADEFS =
+UADEFS +=
 
 # List all user directories here
-UINCDIR =
+UINCDIR +=
 
 # List the user directory to look for the libraries here
-ULIBDIR =
+ULIBDIR +=
 
 # List all user libraries here
-ULIBS = 
+ULIBS += 
 
 #
 # End of user defines

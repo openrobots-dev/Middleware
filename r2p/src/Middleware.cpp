@@ -170,6 +170,7 @@ bool Middleware::subscribe(RemoteSubscriber &sub, const char *namep,
 
 Topic *Middleware::find_topic(const char *namep) {
 
+  // TODO topic.has_name()
   const StaticList<Topic>::Link *linkp =
     topics.find_first(Named::has_name, namep);
   return (linkp != NULL) ? linkp->datap : NULL;

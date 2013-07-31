@@ -24,7 +24,6 @@ public:
   Topic *get_topic() const;
 
 public:
-  virtual size_t get_queue_length() const = 0;
   virtual bool notify(BaseMessage &msg, const Time &timestamp) = 0;
   virtual bool fetch(BaseMessage *&msgp, Time &timestamp) = 0;
   bool release(BaseMessage &msg);

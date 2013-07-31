@@ -61,7 +61,7 @@ BasePublisher::~BasePublisher() {}
 
 bool BasePublisher::has_topic(const BasePublisher &pub, const char *namep) {
 
-  return Topic::has_name(*pub.topicp, namep);
+	return Topic::has_name(*pub.get_topic(), namep);
 }
 
 
