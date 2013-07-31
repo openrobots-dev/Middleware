@@ -17,7 +17,28 @@ size_t LocalSubscriber::get_queue_length() const {
 }
 
 
-bool LocalSubscriber::fetch(BaseMessage *&msgp, Time &timestamp) {
+bool LocalSubscriber::fetch_unsafe(Message *&msgp, Time &timestamp) {
+
+  if (msgp_queue.fetch_unsafe(msgp)) {
+    timestamp = Time::now();
+    return true;
+  }
+  return false;
+}
+
+
+bool LocalSubscriber::notify_unsafe(Message &msg, const Time &timestamp) {
+
+  (void)timestamp;
+  if (msgp_queue.post_unsafe(&msg)) {
+    nodep->notify_unsafe(event_index);
+    return true;
+  }
+  return false;
+}
+
+
+bool LocalSubscriber::fetch(Message *&msgp, Time &timestamp) {
 
   if (msgp_queue.fetch(msgp)) {
     timestamp = Time::now();
@@ -27,7 +48,7 @@ bool LocalSubscriber::fetch(BaseMessage *&msgp, Time &timestamp) {
 }
 
 
-bool LocalSubscriber::notify(BaseMessage &msg, const Time &timestamp) {
+bool LocalSubscriber::notify(Message &msg, const Time &timestamp) {
 
   (void)timestamp;
   if (msgp_queue.post(&msg)) {
@@ -38,7 +59,7 @@ bool LocalSubscriber::notify(BaseMessage &msg, const Time &timestamp) {
 }
 
 
-LocalSubscriber::LocalSubscriber(BaseMessage *queue_buf[], size_t queue_length,
+LocalSubscriber::LocalSubscriber(Message *queue_buf[], size_t queue_length,
                                  const Callback *callbackp)
 :
   BaseSubscriber(),

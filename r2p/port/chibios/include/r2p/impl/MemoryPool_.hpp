@@ -1,6 +1,4 @@
-
-#ifndef __R2P__MEMORYPOOL__HPP__
-#define __R2P__MEMORYPOOL__HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 #include <ch.h>
@@ -13,58 +11,64 @@ public:
   typedef ::memgetfunc_t Allocator;
 
 private:
-  ::MemoryPool pool;
+  ::MemoryPool impl;
 
 public:
-  operator ::MemoryPool * ();
-
-  size_t get_block_length() const;
+  size_t get_item_size() const;
   Allocator get_allocator() const;
+
+  void *alloc_unsafe();
+  void free_unsafe(void *objp);
 
   void *alloc();
   void free(void *objp);
-  void grow(void *arrayp, size_t arraylen);
+  void extend(void *arrayp, size_t arraylen);
+
+  ::MemoryPool &get_impl();
 
 public:
   MemoryPool_(size_t blocklen);
-  MemoryPool_(void *arrayp, size_t arraylen, size_t blocklen);
+  MemoryPool_(void *arrayp, size_t length, size_t blocklen);
   MemoryPool_(size_t blocklen, Allocator allocator);
-  MemoryPool_(void *arrayp, size_t arraylen,
+  MemoryPool_(void *arrayp, size_t length,
               size_t blocklen, Allocator allocator);
 };
 
 
 inline
-MemoryPool_::operator ::MemoryPool * () {
+size_t MemoryPool_::get_item_size() const {
 
-  return &pool;
-}
-
-
-inline
-size_t MemoryPool_::get_block_length() const {
-
-  chSysLock();
-  size_t blocklen = pool.mp_object_size;
-  chSysUnlock();
-  return blocklen;
+  return impl.mp_object_size;
 }
 
 
 inline
 MemoryPool_::Allocator MemoryPool_::get_allocator() const {
 
-  chSysLock();
-  Allocator allocator = pool.mp_provider;
-  chSysUnlock();
-  return allocator;
+  return impl.mp_provider;
+}
+
+
+inline
+void *MemoryPool_::alloc_unsafe() {
+
+  return chPoolAllocI(&impl);
+}
+
+
+inline
+void MemoryPool_::free_unsafe(void *objp) {
+
+  if (objp != NULL) {
+    chPoolFreeI(&impl, objp);
+  }
 }
 
 
 inline
 void *MemoryPool_::alloc() {
 
-  return chPoolAlloc(&pool);
+  return chPoolAlloc(&impl);
 }
 
 
@@ -72,48 +76,54 @@ inline
 void MemoryPool_::free(void *objp) {
 
   if (objp != NULL) {
-    chPoolFree(&pool, objp);
+    chPoolFree(&impl, objp);
   }
 }
 
 
 inline
-void MemoryPool_::grow(void *arrayp, size_t arraylen) {
+void MemoryPool_::extend(void *arrayp, size_t length) {
 
-  chPoolLoadArray(&pool, arrayp, arraylen);
+  chPoolLoadArray(&impl, arrayp, length);
+}
+
+
+inline
+::MemoryPool &MemoryPool_::get_impl() {
+
+  return impl;
 }
 
 
 inline
 MemoryPool_::MemoryPool_(size_t blocklen) {
 
-  chPoolInit(&pool, blocklen, reinterpret_cast<Allocator>(NULL));
+  chPoolInit(&impl, blocklen, reinterpret_cast<Allocator>(NULL));
 }
 
 
 inline
-MemoryPool_::MemoryPool_(void *arrayp, size_t arraylen, size_t blocklen) {
+MemoryPool_::MemoryPool_(void *arrayp, size_t length, size_t blocklen) {
 
-  chPoolInit(&pool, blocklen, reinterpret_cast<Allocator>(NULL));
-  grow(arrayp, arraylen);
+  chPoolInit(&impl, blocklen, reinterpret_cast<Allocator>(NULL));
+  extend(arrayp, length);
 }
 
 
 inline
 MemoryPool_::MemoryPool_(size_t blocklen, Allocator allocator) {
 
-  chPoolInit(&pool, blocklen, reinterpret_cast<Allocator>(allocator));
+  chPoolInit(&impl, blocklen, reinterpret_cast<Allocator>(allocator));
 }
 
 
 inline
-MemoryPool_::MemoryPool_(void *arrayp, size_t arraylen, size_t blocklen,
+MemoryPool_::MemoryPool_(void *arrayp, size_t length, size_t blocklen,
                          Allocator allocator) {
 
-  chPoolInit(&pool, blocklen, reinterpret_cast<Allocator>(allocator));
-  grow(arrayp, arraylen);
+  chPoolInit(&impl, blocklen, reinterpret_cast<Allocator>(allocator));
+  extend(arrayp, length);
 }
 
 
 } // namespace r2p
-#endif // __R2P__MEMORYPOOL__HPP__

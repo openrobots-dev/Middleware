@@ -1,6 +1,4 @@
-
-#ifndef __R2P__SYSLOCK__HPP__
-#define __R2P__SYSLOCK__HPP__
+#pragma once
 
 namespace r2p {
 
@@ -35,4 +33,3 @@ void SysLock_::release() {
 
 
 } // namespace r2p
-#endif  // __R2P__SYSLOCK__HPP__

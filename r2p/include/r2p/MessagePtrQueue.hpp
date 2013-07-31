@@ -1,20 +1,17 @@
-
-#ifndef __R2P__MESSAGEQUEUE_HPP__
-#define __R2P__MESSAGEQUEUE_HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 #include <r2p/ArrayQueue.hpp>
 
 namespace r2p {
 
-class BaseMessage;
+class Message;
 
 
-class MessagePtrQueue : public ArrayQueue<BaseMessage *> {
+class MessagePtrQueue : public ArrayQueue<Message *> {
 public:
-  MessagePtrQueue(BaseMessage *arrayp[], size_t length);
+  MessagePtrQueue(Message *arrayp[], size_t length);
 };
 
 
 } // namespace r2p
-#endif // __R2P__MESSAGEQUEUE_HPP__

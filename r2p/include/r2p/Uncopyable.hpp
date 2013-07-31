@@ -1,6 +1,4 @@
-
-#ifndef __R2P__UNCOPYABLE_HPP__
-#define __R2P__UNCOPYABLE_HPP__
+#pragma once
 
 namespace r2p {
 
@@ -20,4 +18,3 @@ protected:
 
 
 } // namespace r2p
-#endif // __R2P__UNCOPYABLE_HPP__

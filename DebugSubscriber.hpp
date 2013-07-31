@@ -1,6 +1,4 @@
-
-#ifndef __R2P__DEBUGSUBSCRIBER_HPP__
-#define __R2P__DEBUGSUBSCRIBER_HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 #include <r2p/RemoteSubscriber.hpp>
@@ -11,7 +9,7 @@
 
 namespace r2p {
 
-class BaseMessage;
+class Message;
 class DebugTransport;
 
 
@@ -26,9 +24,13 @@ private:
 
 public:
   size_t get_queue_length() const;
-  size_t get_queue_count_unsafe() const;
-  bool fetch(BaseMessage *&msgp, Time &timestamp);
-  bool notify(BaseMessage &msg, const Time &timestamp);
+  size_t get_queue_count() const;
+
+  bool fetch_unsafe(Message *&msgp, Time &timestamp);
+  bool notify_unsafe(Message &msg, const Time &timestamp);
+
+  bool fetch(Message *&msgp, Time &timestamp);
+  bool notify(Message &msg, const Time &timestamp);
 
 public:
   DebugSubscriber(DebugTransport &transport,
@@ -38,5 +40,24 @@ public:
 };
 
 
+inline
+bool DebugSubscriber::notify(Message &msg, const Time &timestamp) {
+
+  SysLock::acquire();
+  bool success = notify_unsafe(msg, timestamp);
+  SysLock::release();
+  return success;
+}
+
+
+inline
+bool DebugSubscriber::fetch(Message *&msgp, Time &timestamp) {
+
+  SysLock::acquire();
+  bool success = fetch_unsafe(msgp, timestamp);
+  SysLock::release();
+  return success;
+}
+
+
 } // namespace r2p
-#endif // __R2P__DEBUGSUBSCRIBER_HPP__

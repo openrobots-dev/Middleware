@@ -1,36 +1,33 @@
-
-#ifndef __R2P__PUBLISHER_HPP__
-#define __R2P__PUBLISHER_HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 #include <r2p/LocalPublisher.hpp>
 
 namespace r2p {
 
-class BaseMessage;
+class Message;
 
 
-template<typename Message>
+template<typename MessageType>
 class Publisher : public LocalPublisher {
 public:
-  bool alloc(Message *&msgp);
-  bool publish(Message &msg);
+  bool alloc(MessageType *&msgp);
+  bool publish(MessageType &msg);
 };
 
 
-template<typename Message> inline
-bool Publisher<Message>::alloc(Message *&msgp) {
+template<typename MessageType> inline
+bool Publisher<MessageType>::alloc(MessageType *&msgp) {
 
-  return BasePublisher::alloc(reinterpret_cast<BaseMessage *&>(msgp));
+  return BasePublisher::alloc(reinterpret_cast<Message *&>(msgp));
 }
 
 
-template<typename Message> inline
-bool Publisher<Message>::publish(Message &msg) {
+template<typename MessageType> inline
+bool Publisher<MessageType>::publish(MessageType &msg) {
 
-  return BasePublisher::publish(reinterpret_cast<BaseMessage &>(msg));
+  return BasePublisher::publish(reinterpret_cast<Message &>(msg));
 }
 
 
 } // namespace r2p
-#endif // __R2P__PUBLISHER_HPP__

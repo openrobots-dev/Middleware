@@ -1,9 +1,7 @@
-
-#ifndef __R2P__BOOTLOADERMSG_HPP__
-#define __R2P__BOOTLOADERMSG_HPP__
+#pragma once
 
 #include <r2p/common.hpp>
-#include <r2p/BaseMessage.hpp>
+#include <r2p/Message.hpp>
 #include <r2p/NamingTraits.hpp>
 #include <r2p/Flasher.hpp>
 
@@ -30,7 +28,8 @@ struct IhexRecord {
 } R2P_PACKED;
 
 
-struct BootloaderMsg : public BaseMessage {
+class BootloaderMsg : public Message {
+public:
   enum TypeEnum {
     NACK = 0,
     ACK,
@@ -39,31 +38,34 @@ struct BootloaderMsg : public BaseMessage {
     IHEX_RECORD,
   };
 
+  typedef Flasher::Address Address;
+  typedef Flasher::Length Length;
+
   struct SetupRequest {
-    Flasher::Length     pgmlen;
-    Flasher::Length     bsslen;
-    Flasher::Length     datalen;
-    Flasher::Length     stacklen;
-    char                name[NamingTraits<Node>::MAX_LENGTH];
-    uint8_t             namelen;
-    uint8_t             checksum;
+    Length  pgmlen;
+    Length  bsslen;
+    Length  datalen;
+    Length  stacklen;
+    char    name[NamingTraits<Node>::MAX_LENGTH];
+    uint8_t namelen;
+    uint8_t checksum;
   } R2P_PACKED;
 
   struct SetupResponse {
-    Flasher::Address    pgmadr;
-    Flasher::Address    bssadr;
-    Flasher::Address    dataadr;
-    Flasher::Address    datapgmadr;
+    Address pgmadr;
+    Address bssadr;
+    Address dataadr;
+    Address datapgmadr;
   } R2P_PACKED;
 
+public:
   union {
-    SetupRequest        setup_request;
-    SetupResponse       setup_response;
-    IhexRecord          ihex_record;
+    SetupRequest    setup_request;
+    SetupResponse   setup_response;
+    IhexRecord      ihex_record;
   };
   uint8_t type;
 } R2P_PACKED;
 
 
 } // namespace r2p
-#endif // __R2P__BOOTLOADERMSG_HPP__

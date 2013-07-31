@@ -1,9 +1,7 @@
-
-#ifndef __R2P__DEBUGTRANSPORT_HPP__
-#define __R2P__DEBUGTRANSPORT_HPP__
+#pragma once
 
 #include <r2p/common.hpp>
-#include <r2p/BaseTransport.hpp>
+#include <r2p/Transport.hpp>
 #include <r2p/BaseSubscriberQueue.hpp>
 #include <r2p/TimestampedMsgPtrQueue.hpp>
 #include <r2p/Mutex.hpp>
@@ -19,17 +17,16 @@
 
 namespace r2p {
 
-class BaseMessage;
+class Message;
 
 
-class DebugTransport : public BaseTransport {
+class DebugTransport : public Transport {
 private:
   Thread *rx_threadp;
   Thread *tx_threadp;
 
   BaseChannel *channelp;
   char *namebufp;
-  size_t namebuflen;
 
   Semaphore subp_sem;
   BaseSubscriberQueue subp_queue;
@@ -58,7 +55,7 @@ public:
 private:
   RemotePublisher *create_publisher();
   RemoteSubscriber *create_subscriber(
-    BaseTransport &transport,
+    Transport &transport,
     TimestampedMsgPtrQueue::Entry queue_buf[],
     size_t queue_length
   );
@@ -67,12 +64,11 @@ private:
   bool spin_rx();
 
 public:
-  DebugTransport(const char *namep, BaseChannel *channelp,
-                 char namebuf[], size_t namebuflen);
+  DebugTransport(BaseChannel *channelp, char namebuf[]);
 
 private:
-  static Thread::ReturnType rx_threadf(Thread::ArgumentType arg);
-  static Thread::ReturnType tx_threadf(Thread::ArgumentType arg);
+  static Thread::Return rx_threadf(Thread::Argument arg);
+  static Thread::Return tx_threadf(Thread::Argument arg);
 };
 
 
@@ -85,4 +81,3 @@ void DebugTransport::notify_first_sub_unsafe(DebugSubscriber &sub) {
 
 
 } // namespace r2p
-#endif // __R2P__DEBUGTRANSPORT_HPP__

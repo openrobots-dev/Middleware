@@ -1,6 +1,4 @@
-
-#ifndef __R2P__STATICQUEUE_HPP__
-#define __R2P__STATICQUEUE_HPP__
+#pragma once
 
 #include <r2p/impl/StaticQueue_.hpp>
 
@@ -12,10 +10,10 @@ class StaticQueue : private Uncopyable {
 public:
   struct Link {
     Link *nextp;
-    T *const datap;
+    T *const itemp;
 
-    Link() : nextp(NULL), datap(NULL) {}
-    Link(T &data) : nextp(NULL), datap(&data) {}
+    Link() : nextp(NULL), itemp(NULL) {}
+    Link(T &item) : nextp(NULL), itemp(&item) {}
   };
 
   class IteratorUnsafe {
@@ -178,4 +176,3 @@ public:
 
 
 } // namespace r2p
-#endif // __R2P__STATICQUEUE_HPP__

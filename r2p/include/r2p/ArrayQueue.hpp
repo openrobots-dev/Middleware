@@ -1,54 +1,52 @@
-
-#ifndef __R2P__ARRAYQUEUE_HPP__
-#define __R2P__ARRAYQUEUE_HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 
 namespace r2p {
 
 
-template<typename T>
+template<typename Item>
 class ArrayQueue : private Uncopyable {
 private:
-  T *arrayp;
+  Item *arrayp;
   size_t length;
   size_t count;
-  T *headp;
-  T *tailp;
+  Item *headp;
+  Item *tailp;
 
 public:
   size_t get_count_unsafe() const;
-  bool post_unsafe(T entry);
-  bool fetch_unsafe(T &entry);
+  bool post_unsafe(Item item);
+  bool fetch_unsafe(Item &item);
   bool skip_unsafe();
 
   size_t get_length() const;
   size_t get_count() const;
-  bool post(T entry);
-  bool fetch(T &entry);
+  bool post(Item item);
+  bool fetch(Item &item);
   bool skip();
 
 public:
-  ArrayQueue(T array[], size_t length);
+  ArrayQueue(Item array[], size_t length);
 };
 
 
 // TODO: Low-level implementation
 
 
-template<typename T> inline
-size_t ArrayQueue<T>::get_count_unsafe() const {
+template<typename Item> inline
+size_t ArrayQueue<Item>::get_count_unsafe() const {
 
   return count;
 }
 
 
-template<typename T> inline
-bool ArrayQueue<T>::post_unsafe(T entry) {
+template<typename Item> inline
+bool ArrayQueue<Item>::post_unsafe(Item item) {
 
   if (count < length) {
     ++count;
-    *tailp = entry;
+    *tailp = item;
     if (++tailp >= &arrayp[length]) {
       tailp = &arrayp[0];
     }
@@ -58,12 +56,12 @@ bool ArrayQueue<T>::post_unsafe(T entry) {
 }
 
 
-template<typename T> inline
-bool ArrayQueue<T>::fetch_unsafe(T &entry) {
+template<typename Item> inline
+bool ArrayQueue<Item>::fetch_unsafe(Item &item) {
 
   if (count > 0) {
     --count;
-    entry = *headp;
+    item = *headp;
     if (++headp >= &arrayp[length]) {
       headp = &arrayp[0];
     }
@@ -73,8 +71,8 @@ bool ArrayQueue<T>::fetch_unsafe(T &entry) {
 }
 
 
-template<typename T> inline
-bool ArrayQueue<T>::skip_unsafe() {
+template<typename Item> inline
+bool ArrayQueue<Item>::skip_unsafe() {
 
   if (count > 0) {
     --count;
@@ -87,15 +85,15 @@ bool ArrayQueue<T>::skip_unsafe() {
 }
 
 
-template<typename T> inline
-size_t ArrayQueue<T>::get_length() const {
+template<typename Item> inline
+size_t ArrayQueue<Item>::get_length() const {
 
   return length;
 }
 
 
-template<typename T> inline
-size_t ArrayQueue<T>::get_count() const {
+template<typename Item> inline
+size_t ArrayQueue<Item>::get_count() const {
 
   SysLock::acquire();
   size_t n = count;
@@ -104,28 +102,28 @@ size_t ArrayQueue<T>::get_count() const {
 }
 
 
-template<typename T> inline
-bool ArrayQueue<T>::post(T entry) {
+template<typename Item> inline
+bool ArrayQueue<Item>::post(Item item) {
 
   SysLock::acquire();
-  bool success = post_unsafe(entry);
+  bool success = post_unsafe(item);
   SysLock::release();
   return success;
 }
 
 
-template<typename T> inline
-bool ArrayQueue<T>::fetch(T &entry) {
+template<typename Item> inline
+bool ArrayQueue<Item>::fetch(Item &item) {
 
   SysLock::acquire();
-  bool success = fetch_unsafe(entry);
+  bool success = fetch_unsafe(item);
   SysLock::release();
   return success;
 }
 
 
-template<typename T> inline
-bool ArrayQueue<T>::skip() {
+template<typename Item> inline
+bool ArrayQueue<Item>::skip() {
 
   SysLock::acquire();
   bool success = skip_unsafe();
@@ -134,8 +132,8 @@ bool ArrayQueue<T>::skip() {
 }
 
 
-template<typename T> inline
-ArrayQueue<T>::ArrayQueue(T array[], size_t length)
+template<typename Item> inline
+ArrayQueue<Item>::ArrayQueue(Item array[], size_t length)
 :
   arrayp(array),
   length(length),
@@ -149,4 +147,3 @@ ArrayQueue<T>::ArrayQueue(T array[], size_t length)
 
 
 } // namespace r2p
-#endif // __R2P__ARRAYQUEUE_HPP__

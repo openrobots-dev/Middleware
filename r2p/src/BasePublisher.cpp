@@ -1,26 +1,12 @@
 
 #include <r2p/BasePublisher.hpp>
 #include <r2p/Topic.hpp>
-#include <r2p/BaseMessage.hpp>
+#include <r2p/Message.hpp>
 
 namespace r2p {
 
 
-Topic *BasePublisher::get_topic() const {
-
-  return topicp;
-}
-
-
-void BasePublisher::notify_advertised(Topic &topic) {
-
-  R2P_ASSERT(topicp == NULL);
-
-  topicp = &topic;
-}
-
-
-bool BasePublisher::alloc(BaseMessage *&msgp) {
+bool BasePublisher::alloc(Message *&msgp) {
 
   msgp = topicp->alloc();
   if (msgp != NULL) {
@@ -28,25 +14,6 @@ bool BasePublisher::alloc(BaseMessage *&msgp) {
     return true;
   }
   return false;
-}
-
-
-bool BasePublisher::publish(BaseMessage &msg) {
-
-  return topicp->notify_local(msg, Time::now());
-  return topicp->notify_remote(msg, Time::now());
-}
-
-
-bool BasePublisher::publish_locally(BaseMessage &msg) {
-
-  return topicp->notify_local(msg, Time::now());
-}
-
-
-bool BasePublisher::publish_remotely(BaseMessage &msg) {
-
-  return topicp->notify_remote(msg, Time::now());
 }
 
 
@@ -59,10 +26,13 @@ BasePublisher::BasePublisher()
 BasePublisher::~BasePublisher() {}
 
 
+<<<<<<< HEAD
 bool BasePublisher::has_topic(const BasePublisher &pub, const char *namep) {
 
 	return Topic::has_name(*pub.get_topic(), namep);
 }
 
 
+=======
+>>>>>>> origin/v2
 }; // namespace r2p

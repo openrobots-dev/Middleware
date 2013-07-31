@@ -1,6 +1,4 @@
-
-#ifndef __R2P__SUBSCRIBER__HPP__
-#define __R2P__SUBSCRIBER__HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 #include <r2p/BaseSubscriber.hpp>
@@ -11,7 +9,7 @@
 namespace r2p {
 
 class Node;
-class BaseMessage;
+class Message;
 
 
 class LocalSubscriber : public BaseSubscriber {
@@ -21,14 +19,14 @@ class LocalSubscriber : public BaseSubscriber {
 public:
   class Callback {
   private:
-    virtual bool action(const BaseMessage &msg) const = 0;
+    virtual bool action(const Message &msg) const = 0;
 
   public:
-    bool operator () (const BaseMessage &msg) const {
+    bool operator () (const Message &msg) const {
       return action(msg);
     }
 
-    bool operator () (const BaseMessage &msg) {
+    bool operator () (const Message &msg) {
       return operator () (msg);
     }
 
@@ -45,23 +43,25 @@ private:
   MessagePtrQueue msgp_queue;
   uint_least8_t event_index;
 
-  StaticList<LocalSubscriber>::Link by_node;
-  StaticList<LocalSubscriber>::Link by_topic;
+  mutable StaticList<LocalSubscriber>::Link by_node;
+  mutable StaticList<LocalSubscriber>::Link by_topic;
 
 public:
   const Callback *get_callback() const;
   size_t get_queue_length() const;
 
 public:
-  bool fetch(BaseMessage *&msgp, Time &timestamp);
-  bool notify(BaseMessage &msg, const Time &timestamp);
+  bool fetch_unsafe(Message *&msgp, Time &timestamp);
+  bool notify_unsafe(Message &msg, const Time &timestamp);
+
+  bool fetch(Message *&msgp, Time &timestamp);
+  bool notify(Message &msg, const Time &timestamp);
 
 protected:
-  LocalSubscriber(BaseMessage *queue_buf[], size_t queue_length,
+  LocalSubscriber(Message *queue_buf[], size_t queue_length,
                   const Callback *callbackp = NULL);
   virtual ~LocalSubscriber();
 };
 
 
 } // namespace r2p
-#endif // __R2P__SUBSCRIBER__HPP__

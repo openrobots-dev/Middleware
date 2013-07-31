@@ -1,6 +1,4 @@
-
-#ifndef __R2P__THREAD__HPP__
-#define __R2P__THREAD__HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 #include <ch.h>
@@ -13,7 +11,7 @@ class Time;
 
 class Thread_ {
 private:
-  ::Thread thread;
+  ::Thread impl;
 
 public:
   enum PriorityEnum {
@@ -27,13 +25,13 @@ public:
 
   typedef tprio_t Priority;
   typedef ::tfunc_t Function;
-  typedef msg_t ReturnType;
-  typedef void *ArgumentType;
+  typedef msg_t Return;
+  typedef void *Argument;
 
 public:
-  operator ::Thread * ();
-
   const char *get_name() const;
+
+  ::Thread &get_impl();
 
 private:
   Thread_();
@@ -41,17 +39,15 @@ private:
 public:
   static size_t compute_stack_size(size_t userlen);
   static Thread_ *create_static(void *stackp, size_t stacklen,
-                                    Priority priority,
-                                    Function threadf, void *argp,
-                                    const char *namep = NULL);
-  static Thread_ *create_heap(void *heapp, size_t stacklen,
-                                  Priority priority,
-                                  Function threadf, void *argp,
-                                  const char *namep = NULL);
-  static Thread_ *create_pool(MemoryPool_ &mempool,
-                                  Priority priority,
-                                  Function threadf, void *argp,
-                                  const char *namep = NULL);
+                                Priority priority,
+                                Function threadf, void *argp,
+                                const char *namep = NULL);
+  static Thread_ *create_heap(void *heapp, size_t stacklen, Priority priority,
+                              Function threadf, void *argp,
+                              const char *namep = NULL);
+  static Thread_ *create_pool(MemoryPool_ &mempool, Priority priority,
+                              Function threadf, void *argp,
+                              const char *namep = NULL);
   static Thread_ &self();
   static Priority get_priority();
   static void set_priority(Priority priority);
@@ -70,20 +66,20 @@ namespace r2p {
 
 
 inline
-Thread_::operator ::Thread * () {
+const char *Thread_::get_name() const {
 
-  return &thread;
+#if CH_USE_REGISTRY
+  return chRegGetThreadName(&impl);
+#else
+  return NULL;
+#endif
 }
 
 
 inline
-const char *Thread_::get_name() const {
+::Thread &Thread_::get_impl() {
 
-#if CH_USE_REGISTRY
-  return chRegGetThreadName(&thread);
-#else
-  return NULL;
-#endif
+  return impl;
 }
 
 
@@ -96,9 +92,9 @@ size_t Thread_::compute_stack_size(size_t userlen) {
 
 inline
 Thread_ *Thread_::create_static(void *stackp, size_t stacklen,
-                                        Priority priority,
-                                        Function threadf, void *argp,
-                                        const char *namep) {
+                                Priority priority,
+                                Function threadf, void *argp,
+                                const char *namep) {
 
   Thread_ *threadp = reinterpret_cast<Thread_ *>(
     chThdCreateStatic(stackp, stacklen, static_cast<tprio_t>(priority),
@@ -106,7 +102,7 @@ Thread_ *Thread_::create_static(void *stackp, size_t stacklen,
   );
 #if CH_USE_REGISTRY
   if (threadp != NULL) {
-    threadp->thread.p_name = namep;
+    threadp->impl.p_name = namep;
   }
 #else
   (void)namep;
@@ -116,10 +112,9 @@ Thread_ *Thread_::create_static(void *stackp, size_t stacklen,
 
 
 inline
-Thread_ *Thread_::create_heap(void *heapp, size_t stacklen,
-                                      Priority priority,
-                                      Function threadf, void *argp,
-                                      const char *namep) {
+Thread_ *Thread_::create_heap(void *heapp, size_t stacklen, Priority priority,
+                              Function threadf, void *argp,
+                              const char *namep) {
 
   Thread_ *threadp = reinterpret_cast<Thread_ *>(
     chThdCreateFromHeap(reinterpret_cast<MemoryHeap *>(heapp), stacklen,
@@ -127,7 +122,7 @@ Thread_ *Thread_::create_heap(void *heapp, size_t stacklen,
   );
 #if CH_USE_REGISTRY
   if (threadp != NULL) {
-    threadp->thread.p_name = namep;
+    threadp->impl.p_name = namep;
   }
 #else
   (void)namep;
@@ -137,17 +132,16 @@ Thread_ *Thread_::create_heap(void *heapp, size_t stacklen,
 
 
 inline
-Thread_ *Thread_::create_pool(MemoryPool_ &mempool,
-                                      Priority priority,
-                                      Function threadf, void *argp,
-                                      const char *namep) {
+Thread_ *Thread_::create_pool(MemoryPool_ &mempool, Priority priority,
+                              Function threadf, void *argp,
+                              const char *namep) {
 
   Thread_ *threadp = reinterpret_cast<Thread_ *>(
-    chThdCreateFromMemoryPool(mempool, priority, threadf, argp)
+    chThdCreateFromMemoryPool(&mempool.get_impl(), priority, threadf, argp)
   );
 #if CH_USE_REGISTRY
   if (threadp != NULL) {
-    threadp->thread.p_name = namep;
+    threadp->impl.p_name = namep;
   }
 #else
   (void)namep;
@@ -202,9 +196,8 @@ void Thread_::sleep(const Time &delay) {
 inline
 bool Thread_::join(Thread_ &thread) {
 
-  return chThdWait(&thread.thread) == CH_SUCCESS;
+  return chThdWait(&thread.impl) == CH_SUCCESS;
 }
 
 
 } // namespace r2p
-#endif // __R2P__THREAD__HPP__

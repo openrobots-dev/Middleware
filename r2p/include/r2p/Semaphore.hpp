@@ -1,6 +1,4 @@
-
-#ifndef __R2P__SEMAPHORE_HPP__
-#define __R2P__SEMAPHORE_HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 #include <r2p/impl/Semaphore_.hpp>
@@ -95,4 +93,3 @@ Semaphore::Semaphore(Count value)
 
 
 } // namespace r2p
-#endif // __R2P__SEMAPHORE_HPP__

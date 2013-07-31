@@ -4,7 +4,7 @@
 namespace r2p {
 
 
-RemoteSubscriber::RemoteSubscriber(BaseTransport &transport)
+RemoteSubscriber::RemoteSubscriber(Transport &transport)
 :
   BaseSubscriber(),
   transportp(&transport),

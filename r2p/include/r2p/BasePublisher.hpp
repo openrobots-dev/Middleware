@@ -1,12 +1,10 @@
-
-#ifndef __R2P__BASEPUBLISHER_HPP__
-#define __R2P__BASEPUBLISHER_HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 
 namespace r2p {
 
-class BaseMessage;
+class Message;
 class Topic;
 
 
@@ -19,10 +17,10 @@ public:
 
   void notify_advertised(Topic &topic);
 
-  bool alloc(BaseMessage *&msgp);
-  bool publish(BaseMessage &msg);
-  bool publish_locally(BaseMessage &msg);
-  bool publish_remotely(BaseMessage &msg);
+  bool alloc(Message *&msgp);
+  bool publish(Message &msg);
+  bool publish_locally(Message &msg);
+  bool publish_remotely(Message &msg);
 
 protected:
   BasePublisher();
@@ -34,4 +32,55 @@ public:
 
 
 } // namespace r2p
-#endif // __R2P__BASEPUBLISHER_HPP__
+
+#include <r2p/Topic.hpp>
+
+namespace r2p {
+
+
+inline
+Topic *BasePublisher::get_topic() const {
+
+  return topicp;
+}
+
+
+inline
+void BasePublisher::notify_advertised(Topic &topic) {
+
+  R2P_ASSERT(topicp == NULL);
+
+  topicp = &topic;
+}
+
+
+inline
+bool BasePublisher::publish(Message &msg) {
+
+  return topicp->notify_locals(msg, Time::now()) &&
+         topicp->notify_remotes(msg, Time::now());
+}
+
+
+inline
+bool BasePublisher::publish_locally(Message &msg) {
+
+  return topicp->notify_locals(msg, Time::now());
+}
+
+
+inline
+bool BasePublisher::publish_remotely(Message &msg) {
+
+  return topicp->notify_remotes(msg, Time::now());
+}
+
+
+inline
+bool BasePublisher::has_topic(const BasePublisher &pub, const char *namep) {
+
+  return Topic::has_name(*pub.topicp, namep);
+}
+
+
+} // namespace r2p

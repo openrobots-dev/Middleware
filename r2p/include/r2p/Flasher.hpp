@@ -1,6 +1,4 @@
-
-#ifndef __R2P__FLASHER_HPP__
-#define __R2P__FLASHER_HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 #include <r2p/impl/Flasher_.hpp>
@@ -205,4 +203,3 @@ void Flasher::jump_to(Address address) {
 
 
 } // namespace r2p
-#endif // __R2P__FLASHER_HPP__

@@ -1,6 +1,6 @@
 
 #include <r2p/BaseSubscriber.hpp>
-#include <r2p/BaseMessage.hpp>
+#include <r2p/Message.hpp>
 #include <r2p/Topic.hpp>
 
 namespace r2p {
@@ -20,7 +20,17 @@ Topic *BaseSubscriber::get_topic() const {
 }
 
 
-bool BaseSubscriber::release(BaseMessage &msg) {
+bool BaseSubscriber::release_unsafe(Message &msg) {
+
+  if (!msg.release_unsafe()) {
+    topicp->free_unsafe(msg);
+    return false;
+  }
+  return true;
+}
+
+
+bool BaseSubscriber::release(Message &msg) {
 
   if (!msg.release()) {
     topicp->free(msg);

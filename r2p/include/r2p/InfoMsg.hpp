@@ -1,15 +1,13 @@
-
-#ifndef __R2P__INFOMSG_HPP__
-#define __R2P__INFOMSG_HPP__
+#pragma once
 
 #include <r2p/common.hpp>
-#include <r2p/BaseMessage.hpp>
+#include <r2p/Message.hpp>
 #include <r2p/NamingTraits.hpp>
 
 namespace r2p {
 
 
-class InfoMsg : public BaseMessage {
+class InfoMsg : public Message {
 public:
   enum TypeEnum {
     RAW                 = 0x00,
@@ -35,4 +33,3 @@ public:
 
 
 }// namespace r2p
-#endif // __R2P__INFOMSG_HPP__

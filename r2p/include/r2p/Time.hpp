@@ -1,6 +1,4 @@
-
-#ifndef __R2P__TIME_HPP__
-#define __R2P__TIME_HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 
@@ -260,4 +258,3 @@ const Time operator - (const Time &lhs, const Time &rhs) {
 
 
 }; // namespace r2p
-#endif // __R2P__TIME_HPP__

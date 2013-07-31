@@ -69,14 +69,14 @@ bool Bootloader::process_ihex(const IhexRecord &record) {
 
   switch (record.type) {
   case IhexRecord::DATA: {
-    Flasher::Address start = baseadr + record.offset;
-    Flasher::Address endx = start + record.count;
+    Address start = baseadr + record.offset;
+    Address endx = start + record.count;
 
     if (endx <= tempinfo.pgmadr + tempinfo.pgmlen &&
         start >= tempinfo.pgmadr) {
       // ".text" segment
       return flasher.flash(
-        baseadr + static_cast<Flasher::Address>(record.offset),
+        baseadr + static_cast<Address>(record.offset),
         reinterpret_cast<const Flasher::Data *>(record.data),
         record.count
       );
@@ -85,7 +85,7 @@ bool Bootloader::process_ihex(const IhexRecord &record) {
              start >= tempinfo.datapgmadr) {
       // ".data" segment
       return flasher.flash(
-        baseadr + static_cast<Flasher::Address>(record.offset),
+        baseadr + static_cast<Address>(record.offset),
         reinterpret_cast<const Flasher::Data *>(record.data),
         record.count
       );
@@ -110,8 +110,8 @@ bool Bootloader::process_ihex(const IhexRecord &record) {
   case IhexRecord::EXTENDED_SEGMENT_ADDRESS: {
     if (record.count  != 2) return false;
     if (record.offset != 0) return false;
-    baseadr = (static_cast<uint32_t>(record.data[0]) << 12) |
-              (static_cast<uint32_t>(record.data[1]) <<  4);
+    baseadr = (static_cast<Address>(record.data[0]) << 12) |
+              (static_cast<Address>(record.data[1]) <<  4);
     return true;
   }
   case IhexRecord::START_SEGMENT_ADDRESS: {
@@ -122,17 +122,17 @@ bool Bootloader::process_ihex(const IhexRecord &record) {
   case IhexRecord::EXTENDED_LINEAR_ADDRESS: {
     if (record.count  != 2) return false;
     if (record.offset != 0) return false;
-    baseadr = (static_cast<uint32_t>(record.data[0]) << 24) |
-              (static_cast<uint32_t>(record.data[1]) << 16);
+    baseadr = (static_cast<Address>(record.data[0]) << 24) |
+              (static_cast<Address>(record.data[1]) << 16);
     return true;
   }
   case IhexRecord::START_LINEAR_ADDRESS: {
     if (record.count  != 4) return false;
     if (record.offset != 0) return false;
-    tempinfo.threadadr = (static_cast<uint32_t>(record.data[0]) << 24) |
-                         (static_cast<uint32_t>(record.data[1]) << 16) |
-                         (static_cast<uint32_t>(record.data[2]) <<  8) |
-                          static_cast<uint32_t>(record.data[3]);
+    tempinfo.threadadr = (static_cast<Address>(record.data[0]) << 24) |
+                         (static_cast<Address>(record.data[1]) << 16) |
+                         (static_cast<Address>(record.data[2]) <<  8) |
+                          static_cast<Address>(record.data[3]);
     return true;
   }
   default: return false;
@@ -185,7 +185,7 @@ bool Bootloader::update_layout(const AppInfo *last_infop) {
 
   // Number of stored applications
   if (!flasher.flash(
-    reinterpret_cast<Flasher::Address>(&flash_layout.numapps),
+    reinterpret_cast<Address>(&flash_layout.numapps),
     reinterpret_cast<const Flasher::Data *>(&numapps),
     sizeof(numapps)
   )) {
@@ -195,7 +195,7 @@ bool Bootloader::update_layout(const AppInfo *last_infop) {
 
   // Free app program memory address
   if (!flasher.flash(
-    reinterpret_cast<Flasher::Address>(&flash_layout.freeadr),
+    reinterpret_cast<Address>(&flash_layout.freeadr),
     reinterpret_cast<const Flasher::Data *>(&freeadr),
     sizeof(freeadr)
   )) {
@@ -206,7 +206,7 @@ bool Bootloader::update_layout(const AppInfo *last_infop) {
   // Last application information
   if (numapps > 0 && last_infop != NULL) {
     if (!flasher.flash(
-      reinterpret_cast<Flasher::Address>(&flash_layout.infos[numapps - 1]),
+      reinterpret_cast<Address>(&flash_layout.infos[numapps - 1]),
       reinterpret_cast<const Flasher::Data *>(last_infop),
       sizeof(AppInfo)
     )) {

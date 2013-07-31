@@ -1,6 +1,4 @@
-
-#ifndef __R2P__TIMESTAMPEDMSGPTRQUEUE_HPP__
-#define __R2P__TIMESTAMPEDMSGPTRQUEUE_HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 #include <r2p/ArrayQueue.hpp>
@@ -8,19 +6,19 @@
 
 namespace r2p {
 
-class BaseMessage;
+class Message;
 
 
 class TimestampedMsgPtrQueue {
 public:
   struct Entry {
-    BaseMessage *msgp;
+    Message *msgp;
     Time timestamp;
 
     Entry &operator = (const Entry &other);
 
     Entry();
-    Entry(BaseMessage *msgp, const Time &timestamp);
+    Entry(Message *msgp, const Time &timestamp);
   };
 
 private:
@@ -52,7 +50,7 @@ TimestampedMsgPtrQueue::Entry::operator = (const Entry &other) {
 
 
 inline
-TimestampedMsgPtrQueue::Entry::Entry(BaseMessage *msgp,
+TimestampedMsgPtrQueue::Entry::Entry(Message *msgp,
                                      const Time &timestamp)
 :
   msgp(msgp),
@@ -119,4 +117,3 @@ TimestampedMsgPtrQueue::Entry::Entry()
 
 
 } // namespace r2p
-#endif // __R2P__TIMESTAMPEDMSGPTRQUEUE_HPP__
