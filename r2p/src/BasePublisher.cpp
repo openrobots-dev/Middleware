@@ -26,13 +26,4 @@ BasePublisher::BasePublisher()
 BasePublisher::~BasePublisher() {}
 
 
-<<<<<<< HEAD
-bool BasePublisher::has_topic(const BasePublisher &pub, const char *namep) {
-
-	return Topic::has_name(*pub.get_topic(), namep);
-}
-
-
-=======
->>>>>>> origin/v2
 }; // namespace r2p

@@ -111,6 +111,11 @@ ifeq ($(TEST),rtcan_sub_test)
          chnew.cpp main_rtcan_sub_test.cpp
 endif
 
+ifeq ($(TEST),)
+  CPPSRC += DebugTransport.cpp DebugPublisher.cpp DebugSubscriber.cpp \
+            main.cpp chnew.cpp
+endif
+
 # C sources to be compiled in ARM mode regardless of the global setting.
 # NOTE: Mixing ARM and THUMB mode enables the -mthumb-interwork compiler
 #       option that results in lower performance and larger code size.
