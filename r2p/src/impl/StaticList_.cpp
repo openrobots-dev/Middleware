@@ -7,7 +7,7 @@ namespace r2p {
 size_t StaticList_::get_count_unsafe() const {
 
   size_t count = 0;
-  for (const Link *ep = headp; ep != NULL; ep = ep->nextp) {
+  for (const Link *linkp = headp; linkp != NULL; linkp = linkp->nextp) {
     ++count;
   }
   return count;
@@ -43,8 +43,8 @@ bool StaticList_::unlink_unsafe(Link &link) {
 int StaticList_::index_of_unsafe(const Link &link) const {
 
   int i = 0;
-  for (Link *ep = headp; ep != NULL; ++i, ep = ep->nextp) {
-    if (ep == &link) {
+  for (Link *linkp = headp; linkp != NULL; ++i, linkp = linkp->nextp) {
+    if (linkp == &link) {
       return i;
     }
   }
@@ -55,9 +55,9 @@ int StaticList_::index_of_unsafe(const Link &link) const {
 const StaticList_::Link *StaticList_::find_first_unsafe(
   Predicate pred_func) const {
 
-  for (const Link *ep = headp; ep != NULL; ep = ep->nextp) {
-    if (pred_func(ep->datap)) {
-      return ep;
+  for (const Link *linkp = headp; linkp != NULL; linkp = linkp->nextp) {
+    if (pred_func(linkp->itemp)) {
+      return linkp;
     }
   }
   return NULL;
@@ -69,9 +69,9 @@ const StaticList_::Link *StaticList_::find_first_unsafe(
 
   R2P_ASSERT(featuresp != NULL);
 
-  for (Link *ep = headp; ep != NULL; ep = ep->nextp) {
-    if (match_func(ep->datap, featuresp)) {
-      return ep;
+  for (Link *linkp = headp; linkp != NULL; linkp = linkp->nextp) {
+    if (match_func(linkp->itemp, featuresp)) {
+      return linkp;
     }
   }
   return NULL;
@@ -81,9 +81,9 @@ const StaticList_::Link *StaticList_::find_first_unsafe(
 const StaticList_::Link *StaticList_::get_head() const {
 
   SysLock::acquire();
-  const Link *entryp = get_head_unsafe();
+  const Link *linkp = get_head_unsafe();
   SysLock::release();
-  return entryp;
+  return linkp;
 }
 
 
@@ -100,7 +100,7 @@ size_t StaticList_::get_count() const {
 
   size_t count = 0;
   SysLock::acquire();
-  for (const Link *ep = headp; ep != NULL; ep = ep->nextp) {
+  for (const Link *linkp = headp; linkp != NULL; linkp = linkp->nextp) {
     SysLock::release();
     ++count;
     SysLock::acquire();
@@ -149,7 +149,7 @@ const StaticList_::Link *StaticList_::find_first(Predicate pred_func)
   SysLock::acquire();
   for (const Link *linkp = headp; linkp != NULL; linkp = linkp->nextp) {
     SysLock::release();
-    if (pred_func(linkp->datap)) {
+    if (pred_func(linkp->itemp)) {
       return linkp;
     }
     SysLock::acquire();
@@ -167,7 +167,7 @@ const StaticList_::Link *StaticList_::find_first(
   SysLock::acquire();
   for (Link *linkp = headp; linkp != NULL; linkp = linkp->nextp) {
     SysLock::release();
-    if (match_func(linkp->datap, featuresp)) {
+    if (match_func(linkp->itemp, featuresp)) {
       return linkp;
     }
     SysLock::acquire();

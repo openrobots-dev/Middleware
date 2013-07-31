@@ -1,56 +1,69 @@
-
-#ifndef __R2P__TOPIC_HPP__
-#define __R2P__TOPIC_HPP__
+#pragma once
 
 #include <r2p/common.hpp>
+#include <r2p/NamingTraits.hpp>
 #include <r2p/impl/MemoryPool_.hpp>
 #include <r2p/StaticList.hpp>
 #include <r2p/Time.hpp>
 
 namespace r2p {
 
-
-class BaseMessage;
+class Message;
 class LocalPublisher;
 class LocalSubscriber;
 class RemotePublisher;
 class RemoteSubscriber;
 
 
-class Topic : public Named, private Uncopyable {
+class Topic : private Uncopyable {
   friend class Middleware;
 
 private:
+  const char *const namep;
   Time publish_timeout;
   MemoryPool_ msg_pool;
   size_t num_local_publishers;
   size_t num_remote_publishers;
   StaticList<LocalSubscriber> local_subscribers;
   StaticList<RemoteSubscriber> remote_subscribers;
+  size_t max_queue_length;
 
   StaticList<Topic>::Link by_middleware;
 
 public:
+  const char *get_name() const;
   const Time &get_publish_timeout() const;
   size_t get_size() const;
-  void extend_pool(BaseMessage array[], size_t arraylen);
+  size_t get_max_queue_length() const;
+
   bool has_local_publishers() const;
   bool has_remote_publishers() const;
   bool has_local_subscribers() const;
   bool has_remote_subscribers() const;
+  bool is_awaiting_advertisements() const;
+  bool is_awaiting_subscriptions() const;
 
-  BaseMessage *alloc();
-  void free(BaseMessage &msg);
-  bool notify_local(BaseMessage &msg, const Time &timestamp);
-  bool notify_remote(BaseMessage &msg, const Time &timestamp);
+  Message *alloc_unsafe();
+  void free_unsafe(Message &msg);
+  bool notify_locals_unsafe(Message &msg, const Time &timestamp);
+  bool notify_remotes_unsafe(Message &msg, const Time &timestamp);
+
+  Message *alloc();
+  void free(Message &msg);
+  bool notify_locals(Message &msg, const Time &timestamp);
+  bool notify_remotes(Message &msg, const Time &timestamp);
+  void extend_pool(Message array[], size_t arraylen);
 
   void advertise(LocalPublisher &pub, const Time &publish_timeout);
   void advertise(RemotePublisher &pub, const Time &publish_timeout);
-  void subscribe(LocalSubscriber &sub);
-  void subscribe(RemoteSubscriber &sub);
+  void subscribe(LocalSubscriber &sub, size_t queue_length);
+  void subscribe(RemoteSubscriber &sub, size_t queue_length);
 
 public:
   Topic(const char *namep, size_t type_size);
+
+public:
+  static bool has_name(const Topic &topic, const char *namep);
 };
 
 
@@ -65,6 +78,13 @@ namespace r2p {
 
 
 inline
+const char *Topic::get_name() const {
+
+  return namep;
+}
+
+
+inline
 const Time &Topic::get_publish_timeout() const {
 
   return publish_timeout;
@@ -74,58 +94,122 @@ const Time &Topic::get_publish_timeout() const {
 inline
 size_t Topic::get_size() const {
 
-  return msg_pool.get_block_length();
+  return msg_pool.get_item_size();
 }
 
 
 inline
-void Topic::extend_pool(BaseMessage array[], size_t arraylen) {
+size_t Topic::get_max_queue_length() const {
 
-  msg_pool.grow(array, arraylen);
+  return max_queue_length;
 }
 
 
 inline
 bool Topic::has_local_subscribers() const {
 
-  return !local_subscribers.is_empty();
+  return !local_subscribers.is_empty_unsafe();
 }
 
 
 inline
 bool Topic::has_remote_subscribers() const {
 
-  return !remote_subscribers.is_empty();
+  return !remote_subscribers.is_empty_unsafe();
 }
 
 
 inline
-BaseMessage *Topic::alloc() {
+bool Topic::has_local_publishers() const {
 
-  return reinterpret_cast<BaseMessage *>(msg_pool.alloc());
+  return num_local_publishers > 0;
 }
 
 
 inline
-void Topic::free(BaseMessage &msg) {
+bool Topic::has_remote_publishers() const {
+
+  return num_remote_publishers > 0;
+}
+
+
+inline
+bool Topic::is_awaiting_advertisements() const {
+
+  return !has_local_publishers() && !has_remote_publishers() &&
+         has_local_subscribers();
+}
+
+
+inline
+bool Topic::is_awaiting_subscriptions() const {
+
+  return !has_local_subscribers() && !has_remote_subscribers() &&
+         has_local_publishers();
+}
+
+
+inline
+Message *Topic::alloc_unsafe() {
+
+  return reinterpret_cast<Message *>(msg_pool.alloc_unsafe());
+}
+
+
+inline
+void Topic::free_unsafe(Message &msg) {
+
+  msg_pool.free_unsafe(reinterpret_cast<void *>(&msg));
+}
+
+
+inline
+Message *Topic::alloc() {
+
+  return reinterpret_cast<Message *>(msg_pool.alloc());
+}
+
+
+inline
+void Topic::free(Message &msg) {
 
   msg_pool.free(reinterpret_cast<void *>(&msg));
 }
 
 
 inline
-void Topic::subscribe(LocalSubscriber &sub) {
+bool Topic::notify_locals(Message &msg, const Time &timestamp) {
 
-  local_subscribers.link(sub.by_topic);
+  SysLock::acquire();
+  bool success = notify_locals_unsafe(msg, timestamp);
+  SysLock::release();
+  return success;
 }
 
 
 inline
-void Topic::subscribe(RemoteSubscriber &sub) {
+bool Topic::notify_remotes(Message &msg, const Time &timestamp) {
 
-  remote_subscribers.link(sub.by_topic);
+  SysLock::acquire();
+  bool success = notify_remotes_unsafe(msg, timestamp);
+  SysLock::release();
+  return success;
+}
+
+
+inline
+void Topic::extend_pool(Message array[], size_t arraylen) {
+
+  msg_pool.extend(array, arraylen);
+}
+
+
+inline
+bool Topic::has_name(const Topic &topic, const char *namep) {
+
+  return namep != NULL &&
+         ::strncmp(topic.get_name(), namep, NamingTraits<Topic>::MAX_LENGTH);
 }
 
 
 } // namespace r2p
-#endif // __R2P__TOPIC_HPP__

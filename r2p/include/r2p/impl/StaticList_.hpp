@@ -1,6 +1,4 @@
-
-#ifndef __R2P__STATICLIST__HPP__
-#define __R2P__STATICLIST__HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 
@@ -11,16 +9,16 @@ class StaticList_ : private Uncopyable {
 public:
   struct Link {
     Link *nextp;
-    void *datap;
+    void *itemp;
 
-    Link(void *datap) :
+    Link(void *itemp) :
       nextp(NULL),
-      datap(datap)
+      itemp(itemp)
     {}
   };
 
-  typedef bool (*Predicate)(const void *datap);
-  typedef bool (*Matches)(const void *datap, const void *featuresp);
+  typedef bool (*Predicate)(const void *itemp);
+  typedef bool (*Matches)(const void *itemp, const void *featuresp);
 
 private:
   Link *headp;
@@ -64,4 +62,3 @@ bool StaticList_::is_empty_unsafe() const {
 
 
 } // namespace r2p
-#endif // __R2P__STATICLIST__HPP__

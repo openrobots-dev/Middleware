@@ -1,6 +1,4 @@
-
-#ifndef __R2P__FLASHER__HPP__
-#define __R2P__FLASHER__HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 
@@ -147,4 +145,3 @@ Flasher_::Flasher_(Data *page_bufp)
 
 
 } // namespace r2p
-#endif // __R2P__FLASHER__HPP__

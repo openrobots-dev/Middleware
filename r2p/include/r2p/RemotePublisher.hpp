@@ -1,6 +1,4 @@
-
-#ifndef __R2P__REMOTEPUBLISHER_HPP__
-#define __R2P__REMOTEPUBLISHER_HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 #include <r2p/BasePublisher.hpp>
@@ -10,10 +8,10 @@ namespace r2p {
 
 
 class RemotePublisher : public BasePublisher {
-  friend class BaseTransport;
+  friend class Transport;
 
 private:
-  StaticList<RemotePublisher>::Link by_transport;
+  mutable StaticList<RemotePublisher>::Link by_transport;
 
 protected:
   RemotePublisher();
@@ -23,4 +21,3 @@ protected:
 
 
 } // namespace r2p
-#endif // __R2P__REMOTEPUBLISHER_HPP__

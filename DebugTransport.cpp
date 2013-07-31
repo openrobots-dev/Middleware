@@ -84,8 +84,8 @@ static bool recv_byte(BaseChannel *channelp, uint8_t &byte,
 
 
 static bool send_chunk(BaseChannel *channelp,
-                          const void *chunkp, size_t length,
-                          systime_t timeout = TIME_INFINITE) {
+                       const void *chunkp, size_t length,
+                       systime_t timeout = TIME_INFINITE) {
 
   const uint8_t *p = reinterpret_cast<const uint8_t *>(chunkp);
   while (length-- > 0) {
@@ -96,8 +96,8 @@ static bool send_chunk(BaseChannel *channelp,
 
 
 static bool recv_chunk(BaseChannel *channelp,
-                          void *chunkp, size_t length,
-                          systime_t timeout = TIME_INFINITE) {
+                       void *chunkp, size_t length,
+                       systime_t timeout = TIME_INFINITE) {
 
   uint8_t *p = reinterpret_cast<uint8_t *>(chunkp);
   while (length-- > 0) {
@@ -108,8 +108,8 @@ static bool recv_chunk(BaseChannel *channelp,
 
 
 static bool send_chunk_rev(BaseChannel *channelp,
-                          const void *chunkp, size_t length,
-                          systime_t timeout = TIME_INFINITE) {
+                           const void *chunkp, size_t length,
+                           systime_t timeout = TIME_INFINITE) {
 
   const uint8_t *p = reinterpret_cast<const uint8_t *>(chunkp) + length - 1;
   while (length-- > 0) {
@@ -120,8 +120,8 @@ static bool send_chunk_rev(BaseChannel *channelp,
 
 
 static bool recv_chunk_rev(BaseChannel *channelp,
-                          void *chunkp, size_t length,
-                          systime_t timeout = TIME_INFINITE) {
+                           void *chunkp, size_t length,
+                           systime_t timeout = TIME_INFINITE) {
 
   uint8_t *p = reinterpret_cast<uint8_t *>(chunkp) + length - 1;
   while (length-- > 0) {
@@ -172,7 +172,7 @@ static bool recv_value(BaseChannel *channelp, T &value,
 
 
 static bool skip_after_char(BaseChannel *channelp, char c,
-                         systime_t timeout = TIME_INFINITE) {
+                            systime_t timeout = TIME_INFINITE) {
 
   register msg_t value;
   do {
@@ -183,25 +183,25 @@ static bool skip_after_char(BaseChannel *channelp, char c,
 }
 
 
-static bool send_msg(BaseChannel *channelp, const BaseMessage &msg,
+static bool send_msg(BaseChannel *channelp, const Message &msg,
                      size_t msg_size, const char *topicp,
                      const Time &deadline) {
 
   // Send the deadline
   if (!send_char(channelp, '@')) return false;
   if (!send_value(channelp, deadline.raw)) return false;
+  if (!send_char(channelp, ':')) return false;
 
   // Send the topic name
-  if (!send_char(channelp, ':')) return false;
   uint8_t namelen = ::strlen(topicp);
   if (!send_value(channelp, namelen)) return false;
   if (!send_string(channelp, topicp, namelen)) return false;
 
   // Send the payload length and data
   if (!send_char(channelp, ':')) return false;
-  msg_size -= sizeof(BaseMessage::RefcountType);
-  BaseMessage::LengthType msg_length =
-    static_cast<BaseMessage::LengthType>(msg_size);
+  msg_size -= sizeof(Message::RefcountType);
+  Message::LengthType msg_length =
+    static_cast<Message::LengthType>(msg_size);
   if (!send_value(channelp, msg_length)) return false;
   if (!send_chunk(channelp, msg.get_raw_data(), msg_size)) return false;
 
@@ -219,9 +219,9 @@ static bool send_pubsub_msg(BaseChannel *channelp, const Topic &topic,
   // Send the deadline
   if (!send_char(channelp, '@')) return false;
   if (!send_value(channelp, static_cast<Time::Type>(0))) return false;
+  if (!send_char(channelp, ':')) return false;
 
   // Send the management topic name (null string)
-  if (!send_char(channelp, ':')) return false;
   if (!send_value(channelp, static_cast<uint8_t>(0))) return false;
   if (!send_char(channelp, ':')) return false;
 
@@ -233,9 +233,10 @@ static bool send_pubsub_msg(BaseChannel *channelp, const Topic &topic,
     uint8_t length = static_cast<uint8_t>(queue_length);
     if (!send_value(channelp, length)) return false;
   }
+  if (!send_char(channelp, ':')) return false;
 
   // Send the module and topic names
-  const char *namep = Middleware::instance.get_name();
+  const char *namep = Middleware::instance.get_module_name();
   uint8_t namelen = static_cast<uint8_t>(::strlen(namep));
   if (!send_value(channelp, namelen)) return false;
   if (!send_string(channelp, namep, namelen)) return false;
@@ -257,9 +258,9 @@ static bool send_stop_msg(BaseChannel *channelp) {
   // Send the deadline
   if (!send_char(channelp, '@')) return false;
   if (!send_value(channelp, static_cast<Time::Type>(0))) return false;
+  if (!send_char(channelp, ':')) return false;
 
   // Send the management topic name (null string)
-  if (!send_char(channelp, ':')) return false;
   if (!send_value(channelp, static_cast<uint8_t>(0))) return false;
   if (!send_char(channelp, ':')) return false;
 
@@ -277,9 +278,9 @@ static bool send_reboot_msg(BaseChannel *channelp) {
   // Send the deadline
   if (!send_char(channelp, '@')) return false;
   if (!send_value(channelp, static_cast<Time::Type>(0))) return false;
+  if (!send_char(channelp, ':')) return false;
 
   // Send the management topic name (null string)
-  if (!send_char(channelp, ':')) return false;
   if (!send_value(channelp, static_cast<uint8_t>(0))) return false;
   if (!send_char(channelp, ':')) return false;
 
@@ -357,7 +358,7 @@ RemotePublisher *DebugTransport::create_publisher() {
 
 
 RemoteSubscriber *DebugTransport::create_subscriber(
-  BaseTransport &transport,
+  Transport &transport,
   TimestampedMsgPtrQueue::Entry queue_buf[],
   size_t queue_length) {
 
@@ -367,16 +368,16 @@ RemoteSubscriber *DebugTransport::create_subscriber(
 
 bool DebugTransport::spin_tx() {
 
-  BaseMessage *msgp;
+  Message *msgp;
   Time timestamp;
   const BaseSubscriberQueue::Link *subp_linkp;
 
   SysLock::acquire();
   subp_sem.wait_unsafe();
   subp_queue.peek_unsafe(subp_linkp);
-  R2P_ASSERT(subp_linkp->datap != NULL);
-  DebugSubscriber &sub = static_cast<DebugSubscriber &>(*subp_linkp->datap);
-  size_t queue_length = sub.get_queue_count_unsafe();
+  R2P_ASSERT(subp_linkp->itemp != NULL);
+  DebugSubscriber &sub = static_cast<DebugSubscriber &>(*subp_linkp->itemp);
+  size_t queue_length = sub.get_queue_count();
   R2P_ASSERT(queue_length > 0);
   SysLock::release();
 
@@ -385,7 +386,7 @@ bool DebugTransport::spin_tx() {
     sub.fetch(msgp, timestamp);
     if (queue_length == 0) {
       subp_queue.skip_unsafe();
-      if (sub.get_queue_count_unsafe() > 0) {
+      if (sub.get_queue_count() > 0) {
         notify_first_sub_unsafe(sub);
       }
     }
@@ -427,7 +428,7 @@ bool DebugTransport::spin_rx() {
   if (!expect_char(channelp, ':')) return false;
 
   // Check if it is a management message
-  if (namelen > 0) {
+  if (namelen > 0) { // Normal message
     // Check if the topic is known
     Topic *topicp = Middleware::instance.find_topic(namebufp);
     if (topicp == NULL) return false;
@@ -436,16 +437,15 @@ bool DebugTransport::spin_rx() {
     if (linkp == NULL) return false;
 
     // Get the payload length
-    BaseMessage::LengthType datalen;
+    Message::LengthType datalen;
     if (!recv_value(channelp, datalen)) return false;
-    if (datalen + sizeof(BaseMessage::RefcountType) != topicp->get_size()) {
+    if (datalen + sizeof(Message::RefcountType) != topicp->get_size()) {
       return false;
     }
-    R2P_ASSERT(datalen + sizeof(BaseMessage::RefcountType) <= namebuflen);
 
     // Allocate a new message
-    BaseMessage *msgp;
-    if (!linkp->datap->alloc(msgp)) return false;
+    Message *msgp;
+    if (!linkp->itemp->alloc(msgp)) return false;
 
     // Get the payload data
     if (!recv_chunk(channelp, const_cast<uint8_t *>(msgp->get_raw_data()),
@@ -455,17 +455,16 @@ bool DebugTransport::spin_rx() {
     }
 
     // Forward the message locally
-    return linkp->datap->publish_locally(*msgp);
-  } else {
-    // Management message
-
+    return linkp->itemp->publish_locally(*msgp);
+  }
+  else { // Management message
     // Read the management message type character
     char typechar;
     if (!recv_char(channelp, typechar)) return false;
     switch (typechar) {
     case 'p': case 'P':
     case 's': case 'S': {
-      // Read the module name
+      // Ignore the module name
       if (!recv_value(channelp, namelen)) return false;
       if (namelen < 1 || namelen > NamingTraits<Middleware>::MAX_LENGTH) {
         return false;
@@ -473,7 +472,7 @@ bool DebugTransport::spin_rx() {
       if (!recv_string(channelp, namebufp, namelen)) return false;
       namebufp[namelen] = 0;
 
-      // Read the topic name
+      // Get the topic
       if (!expect_char(channelp, ':')) return false;
       if (!recv_value(channelp, namelen)) return false;
       if (namelen < 1 || namelen > NamingTraits<Topic>::MAX_LENGTH) {
@@ -481,16 +480,22 @@ bool DebugTransport::spin_rx() {
       }
       if (!recv_string(channelp, namebufp, namelen)) return false;
       namebufp[namelen] = 0;
+      Topic *topicp = Middleware::instance.find_topic(namebufp);
 
       if (typechar == 'p' || typechar == 'P') {
-        return advertise(namebufp);
-      } else if (typechar == 's' || typechar == 'S') {
+        if (!expect_char(channelp, ':')) return false;
+        if (topicp != NULL) {
+          return advertise(*topicp);
+        }
+      } else {
         // Get the queue length
         uint8_t queue_length;
         if (!recv_value(channelp, queue_length)) return false;
         if (queue_length == 0) return false;
-
-        return subscribe(namebufp, queue_length);
+        if (!expect_char(channelp, ':')) return false;
+        if (topicp != NULL) {
+          return subscribe(*topicp, queue_length);
+        }
       }
       return true;
     }
@@ -508,9 +513,9 @@ bool DebugTransport::spin_rx() {
 }
 
 
-Thread::ReturnType DebugTransport::rx_threadf(Thread::ArgumentType arg) {
+Thread::Return DebugTransport::rx_threadf(Thread::Argument arg) {
 
-  R2P_ASSERT(arg != static_cast<Thread::ArgumentType>(0));
+  R2P_ASSERT(arg != static_cast<Thread::Argument>(0));
 
   for (;;) {
     reinterpret_cast<DebugTransport *>(arg)->spin_rx();
@@ -519,9 +524,9 @@ Thread::ReturnType DebugTransport::rx_threadf(Thread::ArgumentType arg) {
 }
 
 
-Thread::ReturnType DebugTransport::tx_threadf(Thread::ArgumentType arg) {
+Thread::Return DebugTransport::tx_threadf(Thread::Argument arg) {
 
-  R2P_ASSERT(arg != static_cast<Thread::ArgumentType>(0));
+  R2P_ASSERT(arg != static_cast<Thread::Argument>(0));
 
   for (;;) {
     reinterpret_cast<DebugTransport *>(arg)->spin_tx();
@@ -530,22 +535,18 @@ Thread::ReturnType DebugTransport::tx_threadf(Thread::ArgumentType arg) {
 }
 
 
-DebugTransport::DebugTransport(
-  const char *namep, BaseChannel *channelp,
-  char namebuf[], size_t namebuflen)
+DebugTransport::DebugTransport(BaseChannel *channelp, char namebuf[])
 :
-  BaseTransport(namep),
+  Transport(),
   rx_threadp(NULL),
   tx_threadp(NULL),
   channelp(channelp),
   namebufp(namebuf),
-  namebuflen(namebuflen),
   info_rsub(*this, info_msgqueue_buf, INFO_BUFFER_LENGTH),
   info_rpub()
 {
   R2P_ASSERT(channelp != NULL);
   R2P_ASSERT(namebuf != NULL);
-  R2P_ASSERT(namebuflen >= sizeof(BaseMessage));
 }
 
 

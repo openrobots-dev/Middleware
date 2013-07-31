@@ -1,6 +1,4 @@
-
-#ifndef __R2P__THREAD_HPP__
-#define __R2P__THREAD_HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 #include <r2p/impl/Thread_.hpp>
@@ -24,8 +22,8 @@ public:
 
   typedef Thread_::Priority Priority;
   typedef Thread_::Function Function;
-  typedef Thread_::ReturnType ReturnType;
-  typedef Thread_::ArgumentType ArgumentType;
+  typedef Thread_::Return Return;
+  typedef Thread_::Argument Argument;
 
 private:
   Thread_ impl;
@@ -40,17 +38,14 @@ private:
 public:
   static size_t compute_stack_size(size_t userlen);
   static Thread *create_static(void *stackp, size_t stacklen,
-                               Priority priority,
-                               Function threadf, void *argp,
+                               Priority priority, Function threadf, void *argp,
                                const char *namep = NULL);
-  static Thread *create_heap(void *heapp, size_t stacklen,
-                             Priority priority,
+  static Thread *create_heap(void *heapp, size_t stacklen, Priority priority,
                              Function threadf, void *argp,
                              const char *namep = NULL);
 
   template<typename T>
-  static Thread *create_pool(MemoryPool<T> &mempool,
-                             Priority priority,
+  static Thread *create_pool(MemoryPool<T> &mempool, Priority priority,
                              Function threadf, void *argp,
                              const char *namep = NULL);
 
@@ -155,4 +150,3 @@ bool Thread::join(Thread &thread) {
 
 
 } // namespace r2p
-#endif // __R2P__THREAD_HPP__

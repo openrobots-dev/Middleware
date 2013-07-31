@@ -1,6 +1,4 @@
-
-#ifndef __R2P__MUTEX_HPP__
-#define __R2P__MUTEX_HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 #include <r2p/impl/Mutex_.hpp>
@@ -45,5 +43,4 @@ void Mutex::release() {
 }
 
 
-} //
-#endif // __R2P__MUTEX_HPP__
+} // namespace r2p

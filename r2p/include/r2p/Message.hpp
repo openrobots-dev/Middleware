@@ -1,6 +1,4 @@
-
-#ifndef __R2P__BASEMESSAGE_HPP__
-#define __R2P__BASEMESSAGE_HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 
@@ -17,7 +15,7 @@ namespace r2p {
 
 
 // TODO: Add refcount as a decorator, user should only declare the contents type
-class BaseMessage {
+class Message {
 public:
   typedef R2P_BASEMESSAGE_REFCOUNT_TYPE RefcountType;
   typedef R2P_BASEMESSAGE_LENGTH_TYPE LengthType;
@@ -26,23 +24,59 @@ private:
   RefcountType refcount;
 
 public:
+  void acquire_unsafe();
+  bool release_unsafe();
+  void reset_unsafe();
+
   void acquire();
   bool release();
   void reset();
 
   const uint8_t *get_raw_data() const;
 
+protected:
+  Message();
+
 public:
-  static void copy(BaseMessage &to, const BaseMessage &from, size_t msg_size);
+  static void copy(Message &to, const Message &from, size_t msg_size);
 } R2P_PACKED;
 
 
 inline
-const uint8_t *BaseMessage::get_raw_data() const {
+const uint8_t *Message::get_raw_data() const {
 
   return reinterpret_cast<const uint8_t *>(&refcount + 1);
 }
 
 
+inline
+void Message::acquire_unsafe() {
+
+  R2P_ASSERT(refcount < ((1 << (8 * sizeof(refcount) - 1)) - 1));
+  ++refcount;
+}
+
+
+inline
+bool Message::release_unsafe() {
+
+  R2P_ASSERT(refcount > 0);
+  return --refcount > 0;
+}
+
+
+inline
+void Message::reset_unsafe() {
+
+  refcount = 0;
+}
+
+
+inline
+Message::Message()
+:
+  refcount(0)
+{}
+
+
 } // namespace r2p
-#endif // __R2P__BASEMESSAGE_HPP__

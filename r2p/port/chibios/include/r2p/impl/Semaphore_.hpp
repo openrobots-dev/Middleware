@@ -1,6 +1,4 @@
-
-#ifndef __R2P__SEMAPHORE__HPP__
-#define __R2P__SEMAPHORE__HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 #include <r2p/Time.hpp>
@@ -26,6 +24,8 @@ public:
   void signal();
   void wait();
   bool wait(const Time &timeout);
+
+  ::Semaphore &get_impl();
 
 public:
   Semaphore_(Count value = 0);
@@ -89,6 +89,13 @@ bool Semaphore_::wait(const Time &timeout) {
 
 
 inline
+::Semaphore &Semaphore_::get_impl() {
+
+  return impl;
+}
+
+
+inline
 Semaphore_::Semaphore_(Count value) {
 
   chSemInit(&impl, value);
@@ -96,4 +103,3 @@ Semaphore_::Semaphore_(Count value) {
 
 
 } // namespace r2p
-#endif // __R2P__SEMAPHORE__HPP__

@@ -1,6 +1,6 @@
 
-#include <r2p/BaseTransport.hpp>
-#include <r2p/BaseMessage.hpp>
+#include <r2p/Transport.hpp>
+#include <r2p/Message.hpp>
 #include <r2p/Middleware.hpp>
 #include <r2p/RemotePublisher.hpp>
 #include <r2p/RemoteSubscriber.hpp>
@@ -9,36 +9,34 @@
 namespace r2p {
 
 
-bool BaseTransport::notify_advertisement(Topic &topic) {
+bool Transport::notify_advertisement(Topic &topic) {
 
-  if (!touch_publisher(topic)) return false;
   if (!send_advertisement(topic)) return false;
   return true;
 }
 
 
-bool BaseTransport::notify_subscription(Topic &topic, size_t queue_length) {
+bool Transport::notify_subscription(Topic &topic) {
 
-  if (!touch_subscriber(topic, queue_length)) return false;
-  if (!send_subscription(topic, queue_length)) return false;
+  // FIXME: Get the queue length by the topic itself
+  if (!send_subscription(topic, topic.get_max_queue_length())) return false;
   return true;
 }
 
 
-bool BaseTransport::notify_stop() {
+bool Transport::notify_stop() {
 
   return send_stop();
 }
 
 
-bool BaseTransport::notify_reboot() {
+bool Transport::notify_reboot() {
 
   return send_reboot();
 }
 
 
-
-bool BaseTransport::touch_publisher(Topic &topic) {
+bool Transport::touch_publisher(Topic &topic) {
 
   // Check if the remote publisher already exists
   const StaticList<RemotePublisher>::Link *linkp;
@@ -55,7 +53,7 @@ bool BaseTransport::touch_publisher(Topic &topic) {
 }
 
 
-bool BaseTransport::touch_subscriber(Topic &topic, size_t queue_length) {
+bool Transport::touch_subscriber(Topic &topic, size_t queue_length) {
 
   // Check if the remote subscriber already exists
   const StaticList<RemoteSubscriber>::Link *linkp;
@@ -63,11 +61,11 @@ bool BaseTransport::touch_subscriber(Topic &topic, size_t queue_length) {
   if (linkp != NULL) return true;
 
   // Create a new remote subscriber
-  BaseMessage *msgpool_bufp = NULL;
+  Message *msgpool_bufp = NULL;
   TimestampedMsgPtrQueue::Entry *queue_bufp = NULL;
   RemoteSubscriber *subp = NULL;
 
-  msgpool_bufp = reinterpret_cast<BaseMessage *>(
+  msgpool_bufp = reinterpret_cast<Message *>(
     new uint8_t[topic.get_size() * queue_length]
   );
   if (msgpool_bufp != NULL) {
@@ -77,14 +75,13 @@ bool BaseTransport::touch_subscriber(Topic &topic, size_t queue_length) {
       if (subp != NULL) {
         subp->notify_subscribed(topic);
         topic.extend_pool(msgpool_bufp, queue_length);
-        topic.subscribe(*subp);
+        topic.subscribe(*subp, queue_length);
         subscribers.link(subp->by_transport);
         return true;
       }
     }
   }
   if (msgpool_bufp == NULL || queue_bufp == NULL || subp == NULL) {
-    delete subp;
     delete [] queue_bufp;
     delete [] msgpool_bufp;
   }
@@ -92,26 +89,24 @@ bool BaseTransport::touch_subscriber(Topic &topic, size_t queue_length) {
 }
 
 
-bool BaseTransport::advertise(const char *namep) {
+bool Transport::advertise(Topic &topic) {
 
   // Process only if there are local subscribers
-  Topic *topicp = Middleware::instance.find_topic(namep);
-  if (topicp == NULL || !topicp->has_local_subscribers()) return true;
-  return touch_publisher(*topicp);
+  if (!topic.has_local_subscribers()) return true;
+  return touch_publisher(topic);
 }
 
 
-bool BaseTransport::subscribe(const char *namep, size_t queue_length) {
+bool Transport::subscribe(Topic &topic, size_t queue_length) {
 
   // Process only if there are local publishers
-  Topic *topicp = Middleware::instance.find_topic(namep);
-  if (topicp == NULL || !topicp->has_local_publishers()) return true;
-  return touch_subscriber(*topicp, queue_length);
+  if (!topic.has_local_publishers()) return true;
+  return touch_subscriber(topic, queue_length);
 }
 
 
-bool BaseTransport::advertise(RemotePublisher &pub, const char *namep,
-                              const Time &publish_timeout, size_t type_size) {
+bool Transport::advertise(RemotePublisher &pub, const char *namep,
+                          const Time &publish_timeout, size_t type_size) {
 
   if (Middleware::instance.advertise(pub, namep, publish_timeout, type_size)) {
     publishers.link(pub.by_transport);
@@ -121,9 +116,9 @@ bool BaseTransport::advertise(RemotePublisher &pub, const char *namep,
 }
 
 
-bool BaseTransport::subscribe(RemoteSubscriber &sub, const char *namep,
-                              BaseMessage msgpool_buf[], size_t msgpool_buflen,
-                              size_t type_size) {
+bool Transport::subscribe(RemoteSubscriber &sub, const char *namep,
+                          Message msgpool_buf[], size_t msgpool_buflen,
+                          size_t type_size) {
 
   if (Middleware::instance.subscribe(sub, namep, msgpool_buf, msgpool_buflen,
                                      type_size)) {
@@ -134,14 +129,13 @@ bool BaseTransport::subscribe(RemoteSubscriber &sub, const char *namep,
 }
 
 
-BaseTransport::BaseTransport(const char *namep)
+Transport::Transport()
 :
-  Named(namep),
   by_middleware(*this)
 {}
 
 
-BaseTransport::~BaseTransport() {}
+Transport::~Transport() {}
 
 
 } // namespace r2p

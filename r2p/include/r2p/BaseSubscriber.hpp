@@ -1,6 +1,4 @@
-
-#ifndef __R2P__BASESUBSCRIBER_HPP__
-#define __R2P__BASESUBSCRIBER_HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 #include <r2p/MessagePtrQueue.hpp>
@@ -10,7 +8,7 @@
 namespace r2p {
 
 class Topic;
-class BaseMessage;
+class Message;
 class Time;
 
 
@@ -25,9 +23,14 @@ public:
 
 public:
   virtual size_t get_queue_length() const = 0;
-  virtual bool notify(BaseMessage &msg, const Time &timestamp) = 0;
-  virtual bool fetch(BaseMessage *&msgp, Time &timestamp) = 0;
-  bool release(BaseMessage &msg);
+
+virtual bool notify_unsafe(Message &msg, const Time &timestamp) = 0;
+virtual bool fetch_unsafe(Message *&msgp, Time &timestamp) = 0;
+bool release_unsafe(Message &msg);
+
+virtual bool notify(Message &msg, const Time &timestamp) = 0;
+virtual bool fetch(Message *&msgp, Time &timestamp) = 0;
+bool release(Message &msg);
 
 protected:
   BaseSubscriber();
@@ -39,4 +42,3 @@ public:
 
 
 } // namespace r2p
-#endif // __R2P__BASESUBSCRIBER_HPP__

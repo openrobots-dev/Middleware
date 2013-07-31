@@ -1,6 +1,4 @@
-
-#ifndef __R2P__BASESUBSCRIBERQUEUE_HPP__
-#define __R2P__BASESUBSCRIBERQUEUE_HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 #include <r2p/StaticQueue.hpp>
@@ -17,4 +15,3 @@ public:
 
 
 } // namespace r2p
-#endif // __R2P__BASESUBSCRIBERQUEUE_HPP__

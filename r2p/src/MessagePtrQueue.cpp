@@ -4,9 +4,9 @@
 namespace r2p {
 
 
-MessagePtrQueue::MessagePtrQueue(BaseMessage *arrayp[], size_t length)
+MessagePtrQueue::MessagePtrQueue(Message *arrayp[], size_t length)
 :
-  ArrayQueue<BaseMessage *>(arrayp, length)
+  ArrayQueue<Message *>(arrayp, length)
 {}
 
 

@@ -1,6 +1,4 @@
-
-#ifndef __R2P__STATICLIST_HPP__
-#define __R2P__STATICLIST_HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 #include <r2p/impl/StaticList_.hpp>
@@ -8,23 +6,22 @@
 namespace r2p {
 
 
- // TODO: Replace predicates and matches with virtual functors
-template<typename T>
+template<typename Item>
 class StaticList : private Uncopyable {
 public:
   struct Link {
     Link *nextp;
-    T *const datap;
+    Item *const itemp;
 
-    Link(T &data) : nextp(NULL), datap(&data) {}
+    Link(Item &item) : nextp(NULL), itemp(&item) {}
   };
 
   struct ConstLink {
     ConstLink *nextp;
-    const T *const datap;
+    const Item *const itemp;
 
-    ConstLink(const T &data) : nextp(NULL), datap(&data) {}
-    ConstLink(const Link &link) : nextp(link.nextp), datap(link.datap) {}
+    ConstLink(const Item &item) : nextp(NULL), itemp(&item) {}
+    ConstLink(const Link &link) : nextp(link.nextp), itemp(link.itemp) {}
   };
 
   class IteratorUnsafe {
@@ -40,7 +37,10 @@ public:
     IteratorUnsafe(const Link *beginp) : curp(beginp) {}
 
   private:
-    IteratorUnsafe &operator = (const IteratorUnsafe &rhs);
+    IteratorUnsafe &operator = (const IteratorUnsafe &rhs) {
+      curp = rhs.curp;
+      return *this;
+    }
 
   public:
     const Link *operator -> () const {
@@ -84,7 +84,10 @@ public:
     ConstIteratorUnsafe(const ConstLink *beginp) : curp(beginp) {}
 
   private:
-    ConstIteratorUnsafe &operator = (const ConstIteratorUnsafe &rhs);
+    ConstIteratorUnsafe &operator = (const ConstIteratorUnsafe &rhs) {
+      curp = rhs.curp;
+      return *this;
+    }
 
   public:
     const ConstLink *operator -> () const {
@@ -128,7 +131,10 @@ public:
     Iterator(const Link *beginp) : curp(beginp) {}
 
   private:
-    Iterator &operator = (const Iterator &rhs);
+    Iterator &operator = (const Iterator &rhs) {
+      curp = rhs.curp;
+      return *this;
+    }
 
   public:
     const Link *operator -> () const {
@@ -176,7 +182,10 @@ public:
     ConstIterator(const ConstLink *beginp) : curp(beginp) {}
 
   private:
-    ConstIterator &operator = (const ConstIterator &rhs);
+    ConstIterator &operator = (const ConstIterator &rhs) {
+      curp = rhs.curp;
+      return *this;
+    }
 
   public:
     const ConstLink *operator -> () const {
@@ -265,6 +274,10 @@ public:
     return IteratorUnsafe(NULL);
   }
 
+  void restart_unsafe(IteratorUnsafe &iterator) {
+    iterator = begin_unsafe();
+  }
+
   const ConstIteratorUnsafe begin_unsafe() const {
     return ConstIteratorUnsafe(
       reinterpret_cast<const ConstLink *>(impl.get_head_unsafe())
@@ -273,6 +286,10 @@ public:
 
   const ConstIteratorUnsafe end_unsafe() const {
     return ConstIteratorUnsafe(NULL);
+  }
+
+  void restart_unsafe(ConstIteratorUnsafe &iterator) const {
+    iterator = begin_unsafe();
   }
 
   bool is_empty() const {
@@ -338,6 +355,10 @@ public:
     return Iterator(NULL);
   }
 
+  void restart(Iterator &iterator) {
+    iterator = begin();
+  }
+
   const ConstIterator begin() const {
     return ConstIterator(reinterpret_cast<const ConstLink *>(impl.get_head()));
   }
@@ -345,9 +366,12 @@ public:
   const ConstIterator end() const {
     return ConstIterator(NULL);
   }
+
+  void restart(ConstIterator &iterator) const {
+    iterator = begin();
+  }
 };
 
 
 } // namespace r2p
-#endif // __R2P__STATICLIST_HPP__
 

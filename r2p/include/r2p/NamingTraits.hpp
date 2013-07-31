@@ -1,6 +1,4 @@
-
-#ifndef __R2P__NAMING_TRAITS_HPP__
-#define __R2P__NAMING_TRAITS_HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 
@@ -34,4 +32,3 @@ struct NamingTraits<Topic> {
 
 
 } // namespace r2p
-#endif // __R2P__NAMING_TRAITS_HPP__

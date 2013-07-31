@@ -1,6 +1,4 @@
-
-#ifndef __R2P__MUTEX__HPP__
-#define __R2P__MUTEX__HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 #include <ch.h>
@@ -18,6 +16,8 @@ public:
 
   void acquire();
   void release();
+
+  ::Mutex &get_impl();
 
 public:
   Mutex_();
@@ -53,6 +53,13 @@ void Mutex_::release() {
 
 
 inline
+::Mutex &Mutex_::get_impl() {
+
+  return impl;
+}
+
+
+inline
 Mutex_::Mutex_() {
 
   chMtxInit(&impl);
@@ -60,4 +67,3 @@ Mutex_::Mutex_() {
 
 
 } // namespace r2p
-#endif // __R2P__MUTEX__HPP__

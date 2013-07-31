@@ -1,6 +1,4 @@
-
-#ifndef __R2P__SUBSCRIBER_HPP__
-#define __R2P__SUBSCRIBER_HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 #include <r2p/LocalSubscriber.hpp>
@@ -8,19 +6,19 @@
 namespace r2p {
 
 class Time;
-class BaseMessage;
+class Message;
 
 
-template<typename Message>
+template<typename MessageType>
 class Subscriber : public LocalSubscriber {
 public:
   class Callback : public LocalSubscriber::Callback {
   public:
-    virtual bool action (const Message &msg) const = 0;
+    virtual bool action (const MessageType &msg) const = 0;
 
   private:
-    bool action(const BaseMessage &msg) const {
-      return action(static_cast<const Message &>(msg));
+    bool action(const Message &msg) const {
+      return action(static_cast<const MessageType &>(msg));
     }
 
   protected:
@@ -30,47 +28,47 @@ public:
 
 public:
   const Callback &get_callback() const;
-  bool fetch(Message *&msgp, Time &timestamp);
-  bool release(Message &msg);
+  bool fetch(MessageType *&msgp, Time &timestamp);
+  bool release(MessageType &msg);
 
 public:
-  Subscriber(Message *queue_buf[], size_t queue_length,
+  Subscriber(MessageType *queue_buf[], size_t queue_length,
              const Callback *callbackp = NULL);
 };
 
 
-template<typename Message> inline
-bool Subscriber<Message>::fetch(Message *&msgp, Time &timestamp) {
+template<typename MessageType> inline
+bool Subscriber<MessageType>::fetch(MessageType *&msgp, Time &timestamp) {
 
   return LocalSubscriber::fetch(
-    reinterpret_cast<BaseMessage *&>(msgp), timestamp
+    reinterpret_cast<Message *&>(msgp), timestamp
   );
 }
 
 
-template<typename Message> inline
-const typename Subscriber<Message>::Callback &
-Subscriber<Message>::get_callback() const {
+template<typename MessageType> inline
+const typename Subscriber<MessageType>::Callback &
+Subscriber<MessageType>::get_callback() const {
 
   return reinterpret_cast<const Callback &>(LocalSubscriber::get_callback());
 }
 
 
-template<typename Message> inline
-bool Subscriber<Message>::release(Message &msg) {
+template<typename MessageType> inline
+bool Subscriber<MessageType>::release(MessageType &msg) {
 
-  return LocalSubscriber::release(reinterpret_cast<BaseMessage &>(msg));
+  return LocalSubscriber::release(reinterpret_cast<Message &>(msg));
 }
 
 
-template<typename Message> inline
-Subscriber<Message>::Subscriber(Message *queue_buf[], size_t queue_length,
-                                const Callback *callbackp) :
+template<typename MessageType> inline
+Subscriber<MessageType>::Subscriber(MessageType *queue_buf[],
+                                    size_t queue_length,
+                                    const Callback *callbackp) :
 
-  LocalSubscriber(reinterpret_cast<BaseMessage **>(queue_buf), queue_length,
+  LocalSubscriber(reinterpret_cast<Message **>(queue_buf), queue_length,
                   callbackp)
 {}
 
 
 } // namespace r2p
-#endif // __R2P__SUBSCRIBER_HPP__

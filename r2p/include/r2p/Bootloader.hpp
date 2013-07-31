@@ -1,6 +1,4 @@
-
-#ifndef __R2P__BOOTLOADER_HPP__
-#define __R2P__BOOTLOADER_HPP__
+#pragma once
 
 #include <r2p/common.hpp>
 #include <r2p/BootloaderMsg.hpp>
@@ -15,7 +13,7 @@ namespace r2p {
 
 
 class Bootloader : private Uncopyable {
-public:
+private:
   enum { MAX_APPS = R2P_MAX_APPS };
 
   enum State {
@@ -24,32 +22,35 @@ public:
     RECEIVING_IHEX
   };
 
+  typedef Flasher::Address Address;
+  typedef Flasher::Length Length;
+
   struct AppInfo {
-    Flasher::Length   pgmlen;
-    Flasher::Address  pgmadr;
-    Flasher::Length   bsslen;
-    Flasher::Address  bssadr;
-    Flasher::Length   datalen;
-    Flasher::Address  dataadr;
-    Flasher::Address  datapgmadr;
-    Flasher::Length   stacklen;
-    Flasher::Address  threadadr;
-    char              name[NamingTraits<Node>::MAX_LENGTH] R2P_FLASH_ALIGNED;
-    uint8_t           namelen;
+    Length  pgmlen;
+    Address pgmadr;
+    Length  bsslen;
+    Address bssadr;
+    Length  datalen;
+    Address dataadr;
+    Address datapgmadr;
+    Length  stacklen;
+    Address threadadr;
+    char    name[NamingTraits<Node>::MAX_LENGTH] R2P_FLASH_ALIGNED;
+    uint8_t namelen;
   } R2P_FLASH_ALIGNED;
 
   struct FlashLayout {
-    uint32_t          numapps R2P_FLASH_ALIGNED;
-    Flasher::Address  freeadr R2P_FLASH_ALIGNED;
-    AppInfo           infos[MAX_APPS] R2P_FLASH_ALIGNED;
+    Length  numapps R2P_FLASH_ALIGNED;
+    Address freeadr R2P_FLASH_ALIGNED;
+    AppInfo infos[MAX_APPS] R2P_FLASH_ALIGNED;
   } R2P_FLASH_ALIGNED;
 
 private:
   State state;
   Flasher flasher;
-  uint32_t numapps;
-  Flasher::Address baseadr;
-  Flasher::Address freeadr;
+  Length numapps;
+  Address baseadr;
+  Address freeadr;
   AppInfo tempinfo;
 
 public:
@@ -70,4 +71,3 @@ public:
 
 
 } // namespace r2p
-#endif // __R2P__BOOTLOADER_HPP__

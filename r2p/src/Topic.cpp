@@ -2,60 +2,42 @@
 #include <r2p/Topic.hpp>
 #include <r2p/Middleware.hpp>
 #include <r2p/NamingTraits.hpp>
-#include <r2p/BaseMessage.hpp>
+#include <r2p/Message.hpp>
 
 namespace r2p {
 
 
-bool Topic::has_local_publishers() const {
+bool Topic::notify_locals_unsafe(Message &msg, const Time &timestamp) {
 
-  SysLock::acquire();
-  bool condition = num_local_publishers > 0;
-  SysLock::release();
-  return condition;
-}
+  msg.acquire_unsafe();
 
-
-bool Topic::has_remote_publishers() const {
-
-  SysLock::acquire();
-  bool condition = num_remote_publishers > 0;
-  SysLock::release();
-  return condition;
-}
-
-
-bool Topic::notify_local(BaseMessage &msg, const Time &timestamp) {
-
-  msg.acquire();
-
-  for (StaticList<LocalSubscriber>::Iterator i = local_subscribers.begin();
-       i != local_subscribers.end(); ++i) {
-    LocalSubscriber &sub = *i->datap;
-    msg.acquire();
-    sub.notify(msg, timestamp);
+  for (StaticList<LocalSubscriber>::IteratorUnsafe i =
+       local_subscribers.begin_unsafe();
+       i != local_subscribers.end_unsafe(); ++i) {
+    msg.acquire_unsafe();
+    i->itemp->notify_unsafe(msg, timestamp);
   }
 
-  if (!msg.release()) {
-    free(msg);
+  if (!msg.release_unsafe()) {
+    free_unsafe(msg);
   }
   return true;
 }
 
 
-bool Topic::notify_remote(BaseMessage &msg, const Time &timestamp) {
+bool Topic::notify_remotes_unsafe(Message &msg, const Time &timestamp) {
 
-  msg.acquire();
+  msg.acquire_unsafe();
 
-  for (StaticList<RemoteSubscriber>::Iterator i = remote_subscribers.begin();
-       i != remote_subscribers.end(); ++i) {
-    RemoteSubscriber &sub = *i->datap;
-    msg.acquire();
-    sub.notify(msg, timestamp);
+  for (StaticList<RemoteSubscriber>::IteratorUnsafe i =
+       remote_subscribers.begin_unsafe();
+       i != remote_subscribers.end_unsafe(); ++i) {
+    msg.acquire_unsafe();
+    i->itemp->notify_unsafe(msg, timestamp);
   }
 
-  if (!msg.release()) {
-    free(msg);
+  if (!msg.release_unsafe()) {
+    free_unsafe(msg);
   }
   return true;
 }
@@ -85,15 +67,41 @@ void Topic::advertise(RemotePublisher &pub, const Time &publish_timeout) {
 }
 
 
+void Topic::subscribe(LocalSubscriber &sub, size_t queue_length) {
+
+  SysLock::acquire();
+  if (max_queue_length < queue_length) {
+    max_queue_length = queue_length;
+  }
+  local_subscribers.link_unsafe(sub.by_topic);
+  SysLock::release();
+}
+
+
+void Topic::subscribe(RemoteSubscriber &sub, size_t queue_length) {
+
+  SysLock::acquire();
+  if (max_queue_length < queue_length) {
+    max_queue_length = queue_length;
+  }
+  remote_subscribers.link_unsafe(sub.by_topic);
+  SysLock::release();
+}
+
+
 Topic::Topic(const char *namep, size_t type_size)
 :
-  Named(namep),
+  namep(namep),
   publish_timeout(Time::INFINITE),
   msg_pool(type_size),
   num_local_publishers(0),
   num_remote_publishers(0),
+  max_queue_length(0),
   by_middleware(*this)
-{}
+{
+  R2P_ASSERT(is_identifier(namep));
+  R2P_ASSERT(::strlen(namep) <= NamingTraits<Topic>::MAX_LENGTH);
+}
 
 
 }; // namespace r2p
