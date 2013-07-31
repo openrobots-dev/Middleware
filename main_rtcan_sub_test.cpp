@@ -23,12 +23,12 @@
 #define WA_SIZE_2K        THD_WA_SIZE(2048)
 
 
-struct Uint32Msg : public r2p::BaseMessage {
+struct Uint32Msg : public r2p::Message {
   uint32_t value;
 };
 
 
-struct FloatMsg : public r2p::BaseMessage {
+struct FloatMsg : public r2p::Message {
   float value;
 };
 
@@ -48,16 +48,14 @@ static r2p::Topic test_topic("test", sizeof(Uint32Msg));
 static char dbgtra_namebuf[64];
 
 // Debug transport
-static r2p::DebugTransport dbgtra(
-  "debug", reinterpret_cast<BaseChannel *>(&SD2),
-  dbgtra_namebuf, sizeof(dbgtra_namebuf)
-);
+static r2p::DebugTransport dbgtra(reinterpret_cast<BaseChannel *>(&SD2),
+  dbgtra_namebuf);
 
 static WORKING_AREA(wa_rx_dbgtra, 1024);
 static WORKING_AREA(wa_tx_dbgtra, 1024);
 
 // RTCAN transport
-static r2p::RTCANTransport rtcantra("rtcan", RTCAND1);
+static r2p::RTCANTransport rtcantra(RTCAND1);
 
 size_t num_msgs = 0;
 systime_t start_time, cur_time;

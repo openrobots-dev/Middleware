@@ -20,13 +20,6 @@ void Middleware::initialize(void *info_stackp, size_t info_stacklen,
                                        info_priority, info_threadf, NULL,
                                        "R2P_INFO");
   R2P_ASSERT(info_threadp != NULL);
-
-  Thread::Priority oldprio = Thread::get_priority();
-  Thread::set_priority(Thread::IDLE);
-  while (nodes.index_of(info_node.by_middleware) < 0) {
-    Thread::yield();
-  }
-  Thread::set_priority(oldprio);
 }
 
 
@@ -179,15 +172,15 @@ Topic *Middleware::touch_topic(const char *namep, size_t type_size) {
 }
 
 
-void Middleware::initialize_info() {
+void Middleware::initialize_info(Node & info_node) {
 
+  add(info_node);
   info_node.advertise(info_pub, "R2P_INFO", Time::INFINITE);
   info_node.subscribe(info_sub, "R2P_INFO", info_msgbuf);
-  add(info_node);
 }
 
 
-void Middleware::spin_info() {
+void Middleware::spin_info(Node & info_node) {
 
   if (info_node.spin(Time::ms(INFO_TIMEOUT_MS))) {
     if (is_stopped()) return;
@@ -214,7 +207,7 @@ void Middleware::spin_info() {
       }
     }
   }
-
+#if 0
   // Check for the next unadvertised topic
   Time now = Time::now();
   if (now >= topic_lastiter_time + TOPIC_CHECK_TIMEOUT_MS) {
@@ -229,14 +222,16 @@ void Middleware::spin_info() {
       topics.restart(topic_iter);
     }
   }
+#endif
 }
 
 
 Thread::Return Middleware::info_threadf(Thread::Argument) {
+  Node info_node("R2P_INFO");
 
-  instance.initialize_info();
+  instance.initialize_info(info_node);
   do {
-    instance.spin_info();
+    instance.spin_info(info_node);
     Thread::yield();
   } while (!instance.is_stopped());
 
@@ -250,7 +245,6 @@ Middleware::Middleware(const char *module_namep, const char *bootloader_namep)
   info_topic("R2P_INFO", sizeof(InfoMsg)),
   info_threadp(NULL),
   info_sub(info_msgqueue_buf, INFO_BUFFER_LENGTH),
-  info_node("R2P_INFO"),
   boot_topic(bootloader_namep, sizeof(BootloaderMsg)),
   topic_iter(topics.end()),
   stopped(false)

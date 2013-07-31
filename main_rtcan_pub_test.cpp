@@ -23,12 +23,12 @@
 #define WA_SIZE_2K        THD_WA_SIZE(2048)
 
 
-struct Uint32Msg : public r2p::BaseMessage {
+struct Uint32Msg : public r2p::Message {
   uint32_t value;
 };
 
 
-struct FloatMsg : public r2p::BaseMessage {
+struct FloatMsg : public r2p::Message {
   float value;
 };
 
@@ -52,16 +52,14 @@ static r2p::Topic test_topic("test", sizeof(Uint32Msg));
 static char dbgtra_namebuf[64];
 
 // Debug transport
-static r2p::DebugTransport dbgtra(
-  "debug", reinterpret_cast<BaseChannel *>(&SD2),
-  dbgtra_namebuf, sizeof(dbgtra_namebuf)
-);
+static r2p::DebugTransport dbgtra(reinterpret_cast<BaseChannel *>(&SD2),
+  dbgtra_namebuf);
 
 static WORKING_AREA(wa_rx_dbgtra, 1024);
 static WORKING_AREA(wa_tx_dbgtra, 1024);
 
 // RTCAN transport
-static r2p::RTCANTransport rtcantra("rtcan", RTCAND1);
+static r2p::RTCANTransport rtcantra(RTCAND1);
 
 size_t num_msgs = 0;
 systime_t start_time, cur_time;
@@ -137,16 +135,61 @@ msg_t SubThd(void *) {
   return CH_SUCCESS;
 }
 
+/*
+ * LED blinker thread, times are in milliseconds.
+ */
+static WORKING_AREA(wa_blinker_thread, 128);
+static msg_t blinker_thread(void *arg) {
+
+	(void) arg;
+	chRegSetThreadName("blinker");
+
+	while (TRUE) {
+		switch (RTCAND1.state) {
+		case RTCAN_MASTER:
+			palClearPad(LED_GPIO, LED1);
+			chThdSleepMilliseconds(200);
+			palSetPad(LED_GPIO, LED1);
+			chThdSleepMilliseconds(100);
+			palClearPad(LED_GPIO, LED1);
+			chThdSleepMilliseconds(200);
+			palSetPad(LED_GPIO, LED1);
+			chThdSleepMilliseconds(500);
+			break;
+		case RTCAN_SYNCING:
+			palTogglePad(LED_GPIO, LED1);
+			chThdSleepMilliseconds(100);
+			break;
+		case RTCAN_SLAVE:
+			palTogglePad(LED_GPIO, LED1);
+			chThdSleepMilliseconds(500);
+			break;
+		case RTCAN_ERROR:
+			palTogglePad(LED_GPIO, LED4);
+			chThdSleepMilliseconds(200);
+			break;
+		default:
+			chThdSleepMilliseconds(100);
+			break;
+		}
+	}
+
+	return 0;
+}
+
 extern "C" {
 int main(void) {
-
-  Thread *tp1, *tp2, *tp3; (void)tp1, (void)tp2, (void)tp3;
   static const RTCANConfig rtcan_config = {1000000, 100, 60};
 
   halInit();
   chSysInit();
 
   sdStart(&SD2, NULL);
+
+  /*
+   * Creates the blinker thread.
+   */
+  chThdCreateStatic(wa_blinker_thread, sizeof(wa_blinker_thread), NORMALPRIO, blinker_thread, NULL);
 
   char n = sizeof(r2p::RTCANTransport::adv_msg_t);
 

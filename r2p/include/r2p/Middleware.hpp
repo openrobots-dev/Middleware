@@ -35,7 +35,6 @@ private:
   InfoMsg *info_msgqueue_buf[INFO_BUFFER_LENGTH];
   Subscriber<InfoMsg> info_sub;
   Publisher<InfoMsg> info_pub;
-  Node info_node;
   enum { INFO_TIMEOUT_MS = 50 };
 
   Topic boot_topic;
@@ -82,8 +81,8 @@ public:
 private:
   Topic *touch_topic(const char *namep, size_t type_size);
 
-  void initialize_info();
-  void spin_info();
+  void initialize_info(Node &info_node);
+  void spin_info(Node &info_node);
 
 private:
   static Thread::Return info_threadf(Thread::Argument);

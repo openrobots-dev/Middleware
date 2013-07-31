@@ -11,7 +11,7 @@
 
 namespace r2p {
 
-class BaseMessage;
+class Message;
 class RTCANTransport;
 
 
@@ -22,8 +22,11 @@ private:
   size_t queue_free;
 
 public:
-  bool fetch(BaseMessage *&msgp, Time &timestamp);
-  bool notify(BaseMessage &msg, const Time &timestamp);
+  bool fetch_unsafe(Message *&msgp, Time &timestamp);
+  bool fetch(Message *&msgp, Time &timestamp);
+  bool notify_unsafe(Message &msg, const Time &timestamp);
+  bool notify(Message &msg, const Time &timestamp);
+  size_t get_queue_length() const;
 
 public:
   RTCANSubscriber(RTCANTransport &transport, size_t queue_length);

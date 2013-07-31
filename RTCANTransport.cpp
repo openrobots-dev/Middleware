@@ -26,10 +26,10 @@ void RTCANTransport::recv_adv_msg(const adv_msg_t &adv_msg) {
 
   switch (adv_msg.type) {
   case 'S':
-	  advertise(adv_msg.topic);
+//	  advertise(adv_msg.topic);
 	  break;
   case 'P':
-	  subscribe(adv_msg.topic, static_cast<size_t>(adv_msg.queue_length));
+//	  subscribe(adv_msg.topic, static_cast<size_t>(adv_msg.queue_length));
 	  break;
   default:
 	  R2P_ASSERT(false && "Should never happen");
@@ -120,7 +120,7 @@ RemotePublisher *RTCANTransport::create_publisher() {
 
 
 RemoteSubscriber *RTCANTransport::create_subscriber(
-  BaseTransport &transport,
+  Transport &transport,
   TimestampedMsgPtrQueue::Entry queue_buf[],
   size_t queue_length) {
 
@@ -273,10 +273,9 @@ bool DebugTransport::spin_rx() {
 }
 */
 
-RTCANTransport::RTCANTransport(
-  const char *namep, RTCANDriver &rtcan)
+RTCANTransport::RTCANTransport(RTCANDriver &rtcan)
 :
-  BaseTransport(namep),
+  Transport(),
   rtcan(rtcan),
   header_pool(header_buffer, 10),
   info_rsub(*this, 10),

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <r2p/common.hpp>
-#include <r2p/BaseTransport.hpp>
+#include <r2p/Transport.hpp>
 #include <r2p/BaseSubscriberQueue.hpp>
 #include <r2p/TimestampedMsgPtrQueue.hpp>
 #include <r2p/Mutex.hpp>
@@ -17,9 +17,9 @@
 
 namespace r2p {
 
-class BaseMessage;
+class Message;
 
-class RTCANTransport : public BaseTransport {
+class RTCANTransport : public Transport {
 public:
 
 public:
@@ -61,13 +61,13 @@ private:
   void recv_adv_msg(const adv_msg_t &adv_msg);
   RemotePublisher *create_publisher();
   RemoteSubscriber *create_subscriber(
-    BaseTransport &transport,
+    Transport &transport,
     TimestampedMsgPtrQueue::Entry queue_buf[], // TODO: remove
     size_t queue_length
   );
 
 public:
-  RTCANTransport(const char *namep, RTCANDriver &rtcan);
+  RTCANTransport(RTCANDriver &rtcan);
 
 private:
   static void adv_rx_cb(rtcan_msg_t &rtcan_msg);

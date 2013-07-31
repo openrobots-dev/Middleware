@@ -30,7 +30,7 @@ endif
 
 # Enable this if you want to see the full log while compiling.
 ifeq ($(USE_VERBOSE_COMPILE),)
-  USE_VERBOSE_COMPILE = no
+  USE_VERBOSE_COMPILE = yes
 endif
 
 #
@@ -102,7 +102,7 @@ ifeq ($(TEST),rtcan_pub_test)
   CPPSRC += DebugTransport.cpp DebugPublisher.cpp DebugSubscriber.cpp \
          RTCANTransport.cpp RTCANPublisher.cpp RTCANSubscriber.cpp \
          chnew.cpp main_rtcan_pub_test.cpp
-  UDEFS = -DRTCAN_ISMASTER
+#  UDEFS = -DRTCAN_ISMASTER
 endif
 
 ifeq ($(TEST),rtcan_sub_test)
@@ -191,7 +191,7 @@ CPPWARN = -Wall -Wextra
 #
 
 # List all default C defines here, like -D_DEBUG=1
-DDEFS = -DPORT_INT_REQUIRED_STACK=64
+DDEFS = -DPORT_INT_REQUIRED_STACK=128
 
 # List all default ASM defines here, like -D_DEBUG=1
 DADEFS =
