@@ -57,12 +57,9 @@ systime_t start_time, cur_time;
 
 msg_t Thread1(void *) {
 
-  chRegSetThreadName("Thread1");
-
   r2p::Node node("Node1");
   r2p::Publisher<Uint32Msg> pub1;
 
-  r2p::Middleware::instance.add(node);
   node.advertise(pub1, "test");
 
   chThdSleepMilliseconds(1000);
@@ -107,14 +104,11 @@ class BlinkLed3 : public r2p::Subscriber<Uint32Msg>::Callback {
 
 msg_t Thread2(void *) {
 
-  chRegSetThreadName("Thread2");
-
   Uint32Msg sub2_msgbuf[5], *sub2_queue[5];
   r2p::Node node("Node2");
   BlinkLed2 blinker;
   r2p::Subscriber<Uint32Msg> sub2(sub2_queue, 5, &blinker);
 
-  r2p::Middleware::instance.add(node);
   node.subscribe(sub2, "test", sub2_msgbuf);
 
   for (;;) {
@@ -128,14 +122,11 @@ msg_t Thread2(void *) {
 
 msg_t Thread3(void *) {
 
-  chRegSetThreadName("Thread3");
-
   Uint32Msg sub3_msgbuf[5], *sub3_queue[5];
   r2p::Node node("Node3");
   BlinkLed3 blinker;
   r2p::Subscriber<Uint32Msg> sub3(sub3_queue, 5, &blinker);
 
-  r2p::Middleware::instance.add(node);
   node.subscribe(sub3, "asdf", sub3_msgbuf);
 
   for (;;) {
@@ -150,14 +141,12 @@ msg_t Thread3(void *) {
 extern "C" {
 int main(void) {
 
-  Thread *tp1, *tp2, *tp3; (void)tp1, (void)tp2, (void)tp3;
-
   halInit();
   chSysInit();
 
   sdStart(&SD2, NULL);
 
-  chThdSetPriority(HIGHPRIO);
+  r2p::Thread::set_priority(r2p::Thread::HIGHEST);
   r2p::Middleware::instance.initialize(wa_info, sizeof(wa_info),
                                        r2p::Thread::IDLE);
   r2p::Middleware::instance.add(test_topic);
@@ -165,13 +154,13 @@ int main(void) {
   dbgtra.initialize(wa_rx_dbgtra, sizeof(wa_rx_dbgtra), r2p::Thread::LOWEST + 11,
                     wa_tx_dbgtra, sizeof(wa_tx_dbgtra), r2p::Thread::LOWEST + 10);
 
-  tp1 = chThdCreateStatic(wa1, sizeof(wa1), NORMALPRIO + 0, Thread1, NULL);
-  tp2 = chThdCreateStatic(wa2, sizeof(wa2), NORMALPRIO + 1, Thread2, NULL);
-  tp3 = chThdCreateStatic(wa3, sizeof(wa3), NORMALPRIO + 2, Thread3, NULL);
+  r2p::Thread::create_static(wa3, sizeof(wa3), r2p::Thread::NORMAL + 2, Thread3, NULL, "Thread3");
+  r2p::Thread::create_static(wa2, sizeof(wa2), r2p::Thread::NORMAL + 1, Thread2, NULL, "Thread2");
+  r2p::Thread::create_static(wa1, sizeof(wa1), r2p::Thread::NORMAL + 0, Thread1, NULL, "Thread1");
 
-  chThdSetPriority(IDLEPRIO);
+  r2p::Thread::set_priority(r2p::Thread::IDLE);
   for (;;) {
-    chThdYield();
+    r2p::Thread::yield();
   }
   return CH_SUCCESS;
 }

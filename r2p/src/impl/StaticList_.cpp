@@ -183,4 +183,22 @@ StaticList_::StaticList_()
 {}
 
 
+bool StaticList_::is(const Link &link, const Link &reference) {
+
+  return &link == &reference;
+}
+
+
+bool StaticList_::has_next(const Link &link, const Link &reference) {
+
+  return link.nextp == &reference;
+}
+
+
+bool StaticList_::has_item(const Link &link, const void *itemp) {
+
+  return link.itemp == itemp;
+}
+
+
 } // namespace r2p

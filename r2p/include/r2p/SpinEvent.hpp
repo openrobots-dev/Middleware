@@ -17,24 +17,24 @@ private:
   SpinEvent_ impl;
 
 public:
-  bool signal_unsafe(unsigned event_index);
+  void signal_unsafe(unsigned event_index);
 
-  bool signal(unsigned event_index);
+  void signal(unsigned event_index);
   Mask wait(const Time &timeout);
 };
 
 
 inline
-bool SpinEvent::signal_unsafe(unsigned event_index) {
+void SpinEvent::signal_unsafe(unsigned event_index) {
 
-  return impl.signal_unsafe(event_index);
+  impl.signal_unsafe(event_index);
 }
 
 
 inline
-bool SpinEvent::signal(unsigned event_index) {
+void SpinEvent::signal(unsigned event_index) {
 
-  return impl.signal(event_index);
+  impl.signal(event_index);
 }
 
 

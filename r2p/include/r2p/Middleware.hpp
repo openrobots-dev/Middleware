@@ -31,17 +31,13 @@ private:
   enum { INFO_BUFFER_LENGTH = 5 };
   Topic info_topic;
   Thread *info_threadp;
-  InfoMsg info_msgbuf[INFO_BUFFER_LENGTH];
-  InfoMsg *info_msgqueue_buf[INFO_BUFFER_LENGTH];
-  Subscriber<InfoMsg> info_sub;
-  Publisher<InfoMsg> info_pub;
-  enum { INFO_TIMEOUT_MS = 50 };
+  enum { INFO_TIMEOUT_MS = 20 };
 
   Topic boot_topic;
 
   StaticList<Topic>::Iterator topic_iter;
   Time topic_lastiter_time;
-  enum { TOPIC_CHECK_TIMEOUT_MS = 50 };
+  enum { TOPIC_CHECK_TIMEOUT_MS = 100 };
 
   bool stopped;
 
@@ -81,11 +77,9 @@ public:
 private:
   Topic *touch_topic(const char *namep, size_t type_size);
 
-  void initialize_info(Node &info_node);
-  void spin_info(Node &info_node);
-
 private:
   static Thread::Return info_threadf(Thread::Argument);
+  void do_info_thread();
 
 private:
   Middleware(const char *module_namep, const char *bootloader_namep);
@@ -123,10 +117,7 @@ const StaticList<Transport> &Middleware::get_transports() const {
 inline
 bool Middleware::is_stopped() const {
 
-  SysLock::acquire();
-  bool flag = stopped;
-  SysLock::release();
-  return flag;
+  return stopped;
 }
 
 

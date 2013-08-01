@@ -9,16 +9,20 @@ namespace r2p {
 
 bool Topic::notify_locals_unsafe(Message &msg, const Time &timestamp) {
 
-  msg.acquire_unsafe();
-
-  for (StaticList<LocalSubscriber>::IteratorUnsafe i =
-       local_subscribers.begin_unsafe();
-       i != local_subscribers.end_unsafe(); ++i) {
+  if (has_local_subscribers()) {
     msg.acquire_unsafe();
-    i->itemp->notify_unsafe(msg, timestamp);
-  }
 
-  if (!msg.release_unsafe()) {
+    for (StaticList<LocalSubscriber>::IteratorUnsafe i =
+         local_subscribers.begin_unsafe();
+         i != local_subscribers.end_unsafe(); ++i) {
+      msg.acquire_unsafe();
+      i->itemp->notify_unsafe(msg, timestamp);
+    }
+
+    if (!msg.release_unsafe()) {
+      free_unsafe(msg);
+    }
+  } else {
     free_unsafe(msg);
   }
   return true;
@@ -27,16 +31,20 @@ bool Topic::notify_locals_unsafe(Message &msg, const Time &timestamp) {
 
 bool Topic::notify_remotes_unsafe(Message &msg, const Time &timestamp) {
 
-  msg.acquire_unsafe();
-
-  for (StaticList<RemoteSubscriber>::IteratorUnsafe i =
-       remote_subscribers.begin_unsafe();
-       i != remote_subscribers.end_unsafe(); ++i) {
+  if (has_remote_subscribers()) {
     msg.acquire_unsafe();
-    i->itemp->notify_unsafe(msg, timestamp);
-  }
 
-  if (!msg.release_unsafe()) {
+    for (StaticList<RemoteSubscriber>::IteratorUnsafe i =
+         remote_subscribers.begin_unsafe();
+         i != remote_subscribers.end_unsafe(); ++i) {
+      msg.acquire_unsafe();
+      i->itemp->notify_unsafe(msg, timestamp);
+    }
+
+    if (!msg.release_unsafe()) {
+      free_unsafe(msg);
+    }
+  } else {
     free_unsafe(msg);
   }
   return true;

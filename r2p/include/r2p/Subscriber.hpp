@@ -57,7 +57,7 @@ Subscriber<MessageType>::get_callback() const {
 template<typename MessageType> inline
 bool Subscriber<MessageType>::release(MessageType &msg) {
 
-  return LocalSubscriber::release(reinterpret_cast<Message &>(msg));
+  return LocalSubscriber::release(static_cast<Message &>(msg));
 }
 
 

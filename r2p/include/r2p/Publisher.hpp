@@ -26,7 +26,7 @@ bool Publisher<MessageType>::alloc(MessageType *&msgp) {
 template<typename MessageType> inline
 bool Publisher<MessageType>::publish(MessageType &msg) {
 
-  return BasePublisher::publish(reinterpret_cast<Message &>(msg));
+  return BasePublisher::publish(static_cast<Message &>(msg));
 }
 
 

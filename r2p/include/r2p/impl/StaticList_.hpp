@@ -44,6 +44,11 @@ public:
 
 public:
   StaticList_();
+
+public:
+  bool is(const Link &link, const Link &reference);
+  bool has_next(const Link &link, const Link &reference);
+  bool has_item(const Link &link, const void *itemp);
 };
 
 

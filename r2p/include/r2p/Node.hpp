@@ -32,22 +32,22 @@ private:
 public:
   const char *get_name() const;
 
-  template<typename Message>
-  bool advertise(Publisher<Message> &pub, const char *namep,
+  template<typename MessageType>
+  bool advertise(Publisher<MessageType> &pub, const char *namep,
                  const Time &publish_timeout = Time::INFINITE);
 
-  template<typename Message>
-  bool subscribe(Subscriber<Message> &sub, const char *namep,
-                 Message msgpool_buf[]);
+  template<typename MessageType>
+  bool subscribe(Subscriber<MessageType> &sub, const char *namep,
+                 MessageType msgpool_buf[]);
 
   void publish_publishers(Publisher<InfoMsg> &info_pub);
   void publish_subscribers(Publisher<InfoMsg> &info_pub);
 
-  bool notify_unsafe(unsigned event_index);
-  bool notify_stop_unsafe();
+  void notify_unsafe(unsigned event_index);
+  void notify_stop_unsafe();
 
-  bool notify(unsigned event_index);
-  bool notify_stop();
+  void notify(unsigned event_index);
+  void notify_stop();
 
   bool spin(const Time &timeout = Time::INFINITE);
 
@@ -72,60 +72,57 @@ const char *Node::get_name() const {
 }
 
 
-template<typename Message> inline
-bool Node::advertise(Publisher<Message> &pub, const char *namep,
+template<typename MessageType> inline
+bool Node::advertise(Publisher<MessageType> &pub, const char *namep,
                      const Time &publish_timeout) {
 
-  return advertise(reinterpret_cast<LocalPublisher &>(pub), namep,
-                   publish_timeout, sizeof(Message));
+  return advertise(pub, namep, publish_timeout, sizeof(MessageType));
 }
 
 
-template<typename Message> inline
-bool Node::subscribe(Subscriber<Message> &sub, const char *namep,
-                     Message msgpool_buf[]) {
+template<typename MessageType> inline
+bool Node::subscribe(Subscriber<MessageType> &sub, const char *namep,
+                     MessageType msgpool_buf[]) {
 
-  return subscribe(reinterpret_cast<LocalSubscriber &>(sub), namep,
-                   reinterpret_cast<Message *>(msgpool_buf),
-                   sizeof(Message));
-}
-
-
-inline
-bool Node::notify_unsafe(unsigned event_index) {
-
-  return event.signal_unsafe(event_index);
+  return subscribe(sub, namep, msgpool_buf, sizeof(MessageType));
 }
 
 
 inline
-bool Node::notify_stop_unsafe() {
+void Node::notify_unsafe(unsigned event_index) {
+
+  event.signal_unsafe(event_index);
+}
+
+
+inline
+void Node::notify_stop_unsafe() {
 
   // Just signal a dummy unlikely event
-  return event.signal_unsafe(SpinEvent::MAX_INDEX);
+  event.signal_unsafe(SpinEvent::MAX_INDEX);
 }
 
 
 inline
-bool Node::notify(unsigned event_index) {
+void Node::notify(unsigned event_index) {
 
-  return event.signal(event_index);
+  event.signal(event_index);
 }
 
 
 inline
-bool Node::notify_stop() {
+void Node::notify_stop() {
 
   // Just signal a dummy unlikely event
-  return event.signal(SpinEvent::MAX_INDEX);
+  event.signal(SpinEvent::MAX_INDEX);
 }
 
 
 inline
 bool Node::has_name(const Node &node, const char *namep) {
 
-  return namep != NULL && ::strncmp(node.get_name(), namep,
-                                    NamingTraits<Node>::MAX_LENGTH);
+  return namep != NULL && 0 == ::strncmp(node.get_name(), namep,
+                                         NamingTraits<Node>::MAX_LENGTH);
 }
 
 

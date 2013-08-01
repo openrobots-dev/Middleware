@@ -123,6 +123,8 @@ Node::Node(const char *namep)
 {
   R2P_ASSERT(is_identifier(namep));
   R2P_ASSERT(::strlen(namep) <= NamingTraits<Node>::MAX_LENGTH);
+
+  Middleware::instance.add(*this);
 }
 
 

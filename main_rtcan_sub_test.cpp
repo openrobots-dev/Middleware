@@ -78,7 +78,6 @@ msg_t SubThd(void *) {
   BlinkLed2 blinker;
   r2p::Subscriber<Uint32Msg> sub2(sub2_queue, 5, &blinker);
 
-  r2p::Middleware::instance.add(node);
   node.subscribe(sub2, "test", sub2_msgbuf);
 
   for (;;) {

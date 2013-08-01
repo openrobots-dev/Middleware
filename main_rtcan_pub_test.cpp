@@ -72,7 +72,6 @@ msg_t PubThd(void *) {
   r2p::Node node("Pub");
   r2p::Publisher<Uint32Msg> pub1;
 
-  r2p::Middleware::instance.add(node);
   node.advertise(pub1, "test");
 
   chThdSleepMilliseconds(1000);
@@ -124,7 +123,6 @@ msg_t SubThd(void *) {
   BlinkLed2 blinker;
   r2p::Subscriber<Uint32Msg> sub2(sub2_queue, 5, &blinker);
 
-  r2p::Middleware::instance.add(node);
   node.subscribe(sub2, "test", sub2_msgbuf);
 
   for (;;) {
@@ -205,7 +203,7 @@ int main(void) {
   dbgtra.initialize(wa_rx_dbgtra, sizeof(wa_rx_dbgtra), r2p::Thread::LOWEST + 11,
                     wa_tx_dbgtra, sizeof(wa_tx_dbgtra), r2p::Thread::LOWEST + 10);
 
-  chThdCreateFromHeap(NULL, WA_SIZE_1K, NORMALPRIO + 1, PubThd, NULL);
+  chThdCreateFromHeap(NULL, WA_SIZE_1K, NORMALPRIO + 0, PubThd, NULL);
   chThdCreateFromHeap(NULL, WA_SIZE_1K, NORMALPRIO + 1, SubThd, NULL);
 
   chThdSetPriority(IDLEPRIO);

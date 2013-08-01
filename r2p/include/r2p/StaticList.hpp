@@ -370,6 +370,25 @@ public:
   void restart(ConstIterator &iterator) const {
     iterator = begin();
   }
+
+public:
+  bool is(const Link &link, const Link &reference) {
+    return StaticList_::is(
+      reinterpret_cast<const StaticList_::Link>(link), reference
+    );
+  }
+
+  bool has_next(const Link &link, const Link &reference) {
+    return StaticList_::has_next(
+      reinterpret_cast<const StaticList_::Link>(link), reference
+    );
+  }
+
+  bool has_item(const Link &link, const Item &item) {
+    return StaticList_::has_item(
+      reinterpret_cast<const StaticList_::Link>(link), &item
+    );
+  }
 };
 
 

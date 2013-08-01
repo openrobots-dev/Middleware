@@ -17,6 +17,11 @@ public:
 
   void notify_advertised(Topic &topic);
 
+  bool alloc_unsafe(Message *&msgp);
+  bool publish_unsafe(Message &msg);
+  bool publish_locally_unsafe(Message &msg);
+  bool publish_remotely_unsafe(Message &msg);
+
   bool alloc(Message *&msgp);
   bool publish(Message &msg);
   bool publish_locally(Message &msg);
@@ -51,6 +56,28 @@ void BasePublisher::notify_advertised(Topic &topic) {
   R2P_ASSERT(topicp == NULL);
 
   topicp = &topic;
+}
+
+
+inline
+bool BasePublisher::publish_unsafe(Message &msg) {
+
+  return topicp->notify_locals_unsafe(msg, Time::now()) &&
+         topicp->notify_remotes_unsafe(msg, Time::now());
+}
+
+
+inline
+bool BasePublisher::publish_locally_unsafe(Message &msg) {
+
+  return topicp->notify_locals_unsafe(msg, Time::now());
+}
+
+
+inline
+bool BasePublisher::publish_remotely_unsafe(Message &msg) {
+
+  return topicp->notify_remotes_unsafe(msg, Time::now());
 }
 
 

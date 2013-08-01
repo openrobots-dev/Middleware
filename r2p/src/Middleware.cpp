@@ -20,6 +20,18 @@ void Middleware::initialize(void *info_stackp, size_t info_stacklen,
                                        info_priority, info_threadf, NULL,
                                        "R2P_INFO");
   R2P_ASSERT(info_threadp != NULL);
+
+  Thread::Priority oldprio = Thread::get_priority();
+  Thread::set_priority(Thread::IDLE);
+  SysLock::acquire();
+  while (!info_topic.has_local_publishers() &&
+         !info_topic.has_local_subscribers()) {
+    SysLock::release();
+    Thread::yield();
+    SysLock::acquire();
+  }
+  SysLock::release();
+  Thread::set_priority(oldprio);
 }
 
 
@@ -75,6 +87,8 @@ void Middleware::add(Transport &transport) {
 
 
 void Middleware::add(Topic &topic) {
+
+  R2P_ASSERT(find_topic(topic.get_name()) == NULL);
 
   topics.link(topic.by_middleware);
 }
@@ -172,69 +186,73 @@ Topic *Middleware::touch_topic(const char *namep, size_t type_size) {
 }
 
 
-void Middleware::initialize_info(Node & info_node) {
+void Middleware::do_info_thread() {
 
-  add(info_node);
+  InfoMsg info_msgbuf[INFO_BUFFER_LENGTH];
+  InfoMsg *info_msgqueue_buf[INFO_BUFFER_LENGTH];
+  Subscriber<InfoMsg> info_sub(info_msgqueue_buf, INFO_BUFFER_LENGTH);
+  Publisher<InfoMsg> info_pub;
+  Node info_node("R2P_INFO");
+
   info_node.advertise(info_pub, "R2P_INFO", Time::INFINITE);
   info_node.subscribe(info_sub, "R2P_INFO", info_msgbuf);
-}
 
+  do {
+    if (info_node.spin(Time::ms(INFO_TIMEOUT_MS))) {
+      if (is_stopped()) break;
 
-void Middleware::spin_info(Node & info_node) {
+      InfoMsg *infomsgp;
+      Time time;
+      while (info_sub.fetch(infomsgp, time)) {
+        switch (infomsgp->type) {
+          case InfoMsg::GET_NETWORK_STATE: {
+            info_sub.release(*infomsgp);
 
-  if (info_node.spin(Time::ms(INFO_TIMEOUT_MS))) {
-    if (is_stopped()) return;
+            for (StaticList<Node>::Iterator i = nodes.begin();
+                 i != nodes.end(); ++i) {
+              i->itemp->publish_publishers(info_pub);
+              i->itemp->publish_subscribers(info_pub);
+            }
 
-    InfoMsg *infomsgp;
-    Time time;
-    while (info_sub.fetch(infomsgp, time)) {
-      switch (infomsgp->type) {
-        case InfoMsg::GET_NETWORK_STATE: {
-          info_sub.release(*infomsgp);
-
-          for (StaticList<Node>::Iterator i = nodes.begin();
-               i != nodes.end(); ++i) {
-            i->itemp->publish_publishers(info_pub);
-            i->itemp->publish_subscribers(info_pub);
+            break;
           }
+          default: {
+            info_sub.release(*infomsgp);
+            break;
+          }
+        }
+      }
+    }
 
-          break;
-        }
-        default: {
-          info_sub.release(*infomsgp);
-          break;
-        }
-      }
-    }
-  }
-#if 0
-  // Check for the next unadvertised topic
-  Time now = Time::now();
-  if (now >= topic_lastiter_time + TOPIC_CHECK_TIMEOUT_MS) {
-    topic_lastiter_time = now; // TODO: Add random time
-    if (topic_iter->itemp->is_awaiting_advertisements()) {
-      for (StaticList<Transport>::Iterator i = transports.begin();
-           i != transports.end(); ++i) {
-        i->itemp->notify_subscription(*topic_iter->itemp);
-      }
-    }
-    if (++topic_iter == topics.end()) {
+    // Check for the next unadvertised topic
+    if (topic_iter == topics.end()) {
       topics.restart(topic_iter);
     }
-  }
-#endif
+    if (topic_iter != topics.end()) {
+      Time now = Time::now();
+      if (now >= topic_lastiter_time + TOPIC_CHECK_TIMEOUT_MS) {
+        topic_lastiter_time = now; // TODO: Add random time
+        SysLock::acquire();
+        if (topic_iter->itemp->is_awaiting_advertisements()) {
+          SysLock::release();
+          for (StaticList<Transport>::Iterator i = transports.begin();
+               i != transports.end(); ++i) {
+            i->itemp->notify_subscription(*topic_iter->itemp);
+          }
+        } else {
+          SysLock::release();
+        }
+        ++topic_iter;
+      }
+    }
+    Thread::yield();
+  } while (!instance.is_stopped());
 }
 
 
 Thread::Return Middleware::info_threadf(Thread::Argument) {
-  Node info_node("R2P_INFO");
 
-  instance.initialize_info(info_node);
-  do {
-    instance.spin_info(info_node);
-    Thread::yield();
-  } while (!instance.is_stopped());
-
+  instance.do_info_thread();
   return static_cast<Thread::Return>(0);
 }
 
@@ -244,7 +262,6 @@ Middleware::Middleware(const char *module_namep, const char *bootloader_namep)
   module_namep(module_namep),
   info_topic("R2P_INFO", sizeof(InfoMsg)),
   info_threadp(NULL),
-  info_sub(info_msgqueue_buf, INFO_BUFFER_LENGTH),
   boot_topic(bootloader_namep, sizeof(BootloaderMsg)),
   topic_iter(topics.end()),
   stopped(false)

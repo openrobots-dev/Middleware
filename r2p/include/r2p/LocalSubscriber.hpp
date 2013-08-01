@@ -27,7 +27,7 @@ public:
     }
 
     bool operator () (const Message &msg) {
-      return operator () (msg);
+      return action(msg);
     }
 
   protected:

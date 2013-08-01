@@ -6,14 +6,23 @@
 namespace r2p {
 
 
-bool BasePublisher::alloc(Message *&msgp) {
+bool BasePublisher::alloc_unsafe(Message *&msgp) {
 
-  msgp = topicp->alloc();
+  msgp = topicp->alloc_unsafe();
   if (msgp != NULL) {
-    msgp->reset();
+    msgp->reset_unsafe();
     return true;
   }
   return false;
+}
+
+
+bool BasePublisher::alloc(Message *&msgp) {
+
+  SysLock::acquire();
+  bool success = alloc_unsafe(msgp);
+  SysLock::release();
+  return success;
 }
 
 
