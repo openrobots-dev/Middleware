@@ -2,6 +2,21 @@
 
 #include <r2p/common.hpp>
 
+extern "C" {
+
+
+extern const uint8_t __program_start__[];
+extern const uint8_t __program_end__[];
+
+extern const uint8_t __ram_start__[];
+extern const uint8_t __ram_end__[];
+
+extern const uint8_t __layout_start__[];
+extern const uint8_t __layout_end__[];
+
+
+}
+
 namespace r2p {
 
 #if !defined(FLASH_BASE_ADDRESS) || defined (__DOXYGEN__)
@@ -11,9 +26,10 @@ namespace r2p {
 
 class Flasher_ : private Uncopyable {
 public:
-  enum { BASE_ADDRESS = FLASH_BASE_ADDRESS };
-  enum { PAGE_SIZE = 1024 };
-  enum { PROGRAM_ALIGNMENT = 16 };
+  enum { BASE_ADDRESS       = FLASH_BASE_ADDRESS };
+  enum { PAGE_SIZE          = 1024 };
+  enum { PROGRAM_ALIGNMENT  = 16 };
+  enum { WORD_ALIGNMENT     = 2 };
 
   typedef uintptr_t Address;
   typedef uint16_t  Data;
@@ -26,12 +42,14 @@ private:
   PageID page;
 
 public:
+  void set_page_buffer(Data page_buf[]);
+
   void begin();
   bool end();
   bool flash(Address address, const Data *bufp, size_t buflen);
 
 public:
-  Flasher_(Data *page_bufp);
+  Flasher_(Data page_buf[]);
 
 public:
   static bool is_erased(PageID page);
@@ -88,7 +106,6 @@ Flasher_::Address Flasher_::align_next(Address address) {
 inline
 Flasher_::Address Flasher_::get_program_start() {
 
-  extern const uint8_t __program_start__[];
   return reinterpret_cast<Address>(__program_start__);
 }
 
@@ -96,7 +113,6 @@ Flasher_::Address Flasher_::get_program_start() {
 inline
 Flasher_::Address Flasher_::get_program_end() {
 
-  extern const uint8_t __program_end__[];
   return reinterpret_cast<Address>(__program_end__);
 }
 
@@ -104,7 +120,6 @@ Flasher_::Address Flasher_::get_program_end() {
 inline
 Flasher_::Address Flasher_::get_ram_start() {
 
-  extern const uint8_t __ram_start__[];
   return reinterpret_cast<Address>(__ram_start__);
 }
 
@@ -112,7 +127,6 @@ Flasher_::Address Flasher_::get_ram_start() {
 inline
 Flasher_::Address Flasher_::get_ram_end() {
 
-  extern const uint8_t __ram_end__[];
   return reinterpret_cast<Address>(__ram_end__);
 }
 
@@ -120,7 +134,6 @@ Flasher_::Address Flasher_::get_ram_end() {
 inline
 Flasher_::Address Flasher_::get_layout_start() {
 
-  extern const uint8_t __layout_start__[];
   return reinterpret_cast<Address>(__layout_start__);
 }
 
@@ -128,19 +141,7 @@ Flasher_::Address Flasher_::get_layout_start() {
 inline
 Flasher_::Address Flasher_::get_layout_end() {
 
-  extern const uint8_t __layout_end__[];
   return reinterpret_cast<Address>(__layout_end__);
-}
-
-
-inline
-Flasher_::Flasher_(Data *page_bufp)
-:
-  page_bufp(page_bufp),
-  page_modified(false),
-  page(0)
-{
-  R2P_ASSERT(page_bufp != NULL);
 }
 
 

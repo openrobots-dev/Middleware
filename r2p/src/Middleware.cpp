@@ -2,7 +2,7 @@
 #include <r2p/Middleware.hpp>
 #include <r2p/NamingTraits.hpp>
 #include <r2p/Thread.hpp>
-#include <r2p/InfoMsg.hpp>
+#include <r2p/MgmtMsg.hpp>
 #include <r2p/BootloaderMsg.hpp>
 #include <r2p/Topic.hpp>
 #include <r2p/Node.hpp>
@@ -16,16 +16,17 @@ namespace r2p {
 void Middleware::initialize(void *info_stackp, size_t info_stacklen,
                             Thread::Priority info_priority) {
 
-  info_threadp = Thread::create_static(info_stackp, info_stacklen,
-                                       info_priority, info_threadf, NULL,
+  mgmt_threadp = Thread::create_static(info_stackp, info_stacklen,
+                                       info_priority, mgmt_threadf, NULL,
                                        "R2P_INFO");
-  R2P_ASSERT(info_threadp != NULL);
+  R2P_ASSERT(mgmt_threadp != NULL);
 
+  // Wait until the info topic is fully initialized
   Thread::Priority oldprio = Thread::get_priority();
   Thread::set_priority(Thread::IDLE);
   SysLock::acquire();
-  while (!info_topic.has_local_publishers() &&
-         !info_topic.has_local_subscribers()) {
+  while (!mgmt_topic.has_local_publishers() &&
+         !mgmt_topic.has_local_subscribers()) {
     SysLock::release();
     Thread::yield();
     SysLock::acquire();
@@ -186,44 +187,69 @@ Topic *Middleware::touch_topic(const char *namep, size_t type_size) {
 }
 
 
-void Middleware::do_info_thread() {
+Thread::Return Middleware::mgmt_threadf(Thread::Argument) {
 
-  InfoMsg info_msgbuf[INFO_BUFFER_LENGTH];
-  InfoMsg *info_msgqueue_buf[INFO_BUFFER_LENGTH];
-  Subscriber<InfoMsg> info_sub(info_msgqueue_buf, INFO_BUFFER_LENGTH);
-  Publisher<InfoMsg> info_pub;
-  Node info_node("R2P_INFO");
+  instance.do_mgmt_thread();
+  return static_cast<Thread::Return>(0);
+}
 
-  info_node.advertise(info_pub, "R2P_INFO", Time::INFINITE);
-  info_node.subscribe(info_sub, "R2P_INFO", info_msgbuf);
+
+void Middleware::do_mgmt_thread() {
+
+  MgmtMsg mgmt_msgbuf[MGMT_BUFFER_LENGTH];
+  MgmtMsg *mgmt_msgqueue_buf[MGMT_BUFFER_LENGTH];
+  Subscriber<MgmtMsg> mgmt_sub(mgmt_msgqueue_buf, MGMT_BUFFER_LENGTH);
+  Publisher<MgmtMsg> mgmt_pub;
+  Node mgmt_node("R2P_MGMT");
+
+  mgmt_node.advertise(mgmt_pub, mgmt_topic.get_name(), Time::INFINITE);
+  mgmt_node.subscribe(mgmt_sub, mgmt_topic.get_name(), mgmt_msgbuf);
 
   do {
-    if (info_node.spin(Time::ms(INFO_TIMEOUT_MS))) {
+    if (mgmt_node.spin(Time::ms(MGMT_TIMEOUT_MS))) {
       if (is_stopped()) break;
 
-      InfoMsg *infomsgp;
-      Time time;
-      while (info_sub.fetch(infomsgp, time)) {
-        switch (infomsgp->type) {
-          case InfoMsg::GET_NETWORK_STATE: {
-            info_sub.release(*infomsgp);
+      MgmtMsg *msgp;
+      Time deadline;
+      while (mgmt_sub.fetch(msgp, deadline)) {
+        switch (msgp->type) {
+        case MgmtMsg::CMD_ADVERTISE: {
+          Transport *transportp = msgp->pubsub.transportp;
+          Topic *topicp = touch_topic(msgp->pubsub.topic, sizeof(MgmtMsg));
+          R2P_ASSERT(topicp != NULL);
+          mgmt_sub.release(*msgp);
+          transportp->advertise(*topicp);
+          break;
+        }
+        case MgmtMsg::CMD_SUBSCRIBE: {
+          Transport *transportp = msgp->pubsub.transportp;
+          size_t queue_length = msgp->pubsub.queue_length;
+          Topic *topicp = touch_topic(msgp->pubsub.topic, sizeof(MgmtMsg));
+          R2P_ASSERT(topicp != NULL);
+          mgmt_sub.release(*msgp);
+          transportp->subscribe(*topicp, queue_length);
+          break;
+        }
+        case MgmtMsg::CMD_GET_NETWORK_STATE: {
+          mgmt_sub.release(*msgp);
 
-            for (StaticList<Node>::Iterator i = nodes.begin();
-                 i != nodes.end(); ++i) {
-              i->itemp->publish_publishers(info_pub);
-              i->itemp->publish_subscribers(info_pub);
-            }
+          for (StaticList<Node>::Iterator i = nodes.begin();
+               i != nodes.end(); ++i) {
+            i->itemp->publish_publishers(mgmt_pub);
+            i->itemp->publish_subscribers(mgmt_pub);
+          }
 
-            break;
-          }
-          default: {
-            info_sub.release(*infomsgp);
-            break;
-          }
+          break;
+        }
+        default: {
+          mgmt_sub.release(*msgp);
+          break;
+        }
         }
       }
     }
 
+    // TODO: Fine grained iterations by saving iterators; maybe in another function
     // Check for the next unadvertised topic
     if (topic_iter == topics.end()) {
       topics.restart(topic_iter);
@@ -250,25 +276,57 @@ void Middleware::do_info_thread() {
 }
 
 
-Thread::Return Middleware::info_threadf(Thread::Argument) {
+Thread::Return Middleware::boot_threadf(Thread::Argument) {
 
-  instance.do_info_thread();
+  instance.do_boot_thread();
   return static_cast<Thread::Return>(0);
+}
+
+
+void Middleware::do_boot_thread() {
+
+  BootloaderMsg boot_msgbuf[BOOT_BUFFER_LENGTH];
+  BootloaderMsg *boot_msgqueue_buf[BOOT_BUFFER_LENGTH];
+  Subscriber<BootloaderMsg> boot_sub(boot_msgqueue_buf, BOOT_BUFFER_LENGTH);
+  Publisher<BootloaderMsg> boot_pub;
+  Node boot_node("R2P_BOOT");
+
+  Bootloader::instance.set_page_buffer(
+    new r2p::Flasher::Data[BOOT_PAGE_LENGTH]
+  );
+
+  boot_node.advertise(boot_pub, boot_topic.get_name(), Time::INFINITE);
+  boot_node.subscribe(boot_sub, boot_topic.get_name(), boot_msgbuf);
+
+  for (;;) {
+    if (boot_node.spin()) {
+      BootloaderMsg *requestp = NULL, *responsep = NULL;
+      Time deadline;
+      while (boot_sub.fetch(requestp, deadline)) {
+        if (boot_pub.alloc(responsep)) {
+          Bootloader::instance.process(*requestp, *responsep);
+          boot_pub.publish_remotely(*responsep);
+        }
+        boot_sub.release(*requestp);
+        Thread::yield();
+      }
+    }
+  }
 }
 
 
 Middleware::Middleware(const char *module_namep, const char *bootloader_namep)
 :
   module_namep(module_namep),
-  info_topic("R2P_INFO", sizeof(InfoMsg)),
-  info_threadp(NULL),
+  mgmt_topic("R2P", sizeof(MgmtMsg)),
+  mgmt_threadp(NULL),
   boot_topic(bootloader_namep, sizeof(BootloaderMsg)),
   topic_iter(topics.end()),
   stopped(false)
 {
   R2P_ASSERT(is_identifier(module_namep));
 
-  add(info_topic);
+  add(mgmt_topic);
 }
 
 

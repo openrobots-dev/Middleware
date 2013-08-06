@@ -5,14 +5,13 @@
 #include <r2p/BaseSubscriberQueue.hpp>
 #include <r2p/TimestampedMsgPtrQueue.hpp>
 #include <r2p/Mutex.hpp>
-#include <r2p/InfoMsg.hpp>
+#include <r2p/MgmtMsg.hpp>
 #include <r2p/Semaphore.hpp>
+#include <r2p/Thread.hpp>
 
 #include "rtcan.h"
-
 #include "RTCANPublisher.hpp"
 #include "RTCANSubscriber.hpp"
-#include <r2p/Thread.hpp>
 
 
 namespace r2p {
@@ -42,11 +41,11 @@ private:
 
   BaseSubscriberQueue subp_queue;
 
-  enum { INFO_BUFFER_LENGTH = 2 };
-  InfoMsg info_msgbuf[INFO_BUFFER_LENGTH];
-  TimestampedMsgPtrQueue::Entry info_msgqueue_buf[INFO_BUFFER_LENGTH];
-  RTCANSubscriber info_rsub;
-  RTCANPublisher info_rpub;
+  enum { MGMT_BUFFER_LENGTH = 2 };
+  MgmtMsg mgmt_msgbuf[MGMT_BUFFER_LENGTH];
+  TimestampedMsgPtrQueue::Entry mgmt_msgqueue_buf[MGMT_BUFFER_LENGTH];
+  RTCANSubscriber mgmt_rsub;
+  RTCANPublisher mgmt_rpub;
 
 public:
   bool send_advertisement(const Topic &topic);
@@ -59,12 +58,12 @@ public:
 private:
   bool send_adv_msg(const adv_msg_t &adv_msg);
   void recv_adv_msg(const adv_msg_t &adv_msg);
-  RemotePublisher *create_publisher();
+  RemotePublisher *create_publisher() const;
   RemoteSubscriber *create_subscriber(
     Transport &transport,
     TimestampedMsgPtrQueue::Entry queue_buf[], // TODO: remove
     size_t queue_length
-  );
+  ) const;
 
 public:
   RTCANTransport(RTCANDriver &rtcan);

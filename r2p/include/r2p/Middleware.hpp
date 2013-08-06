@@ -4,10 +4,11 @@
 #include <r2p/StaticList.hpp>
 #include <r2p/Topic.hpp>
 #include <r2p/Thread.hpp>
-#include <r2p/InfoMsg.hpp>
+#include <r2p/MgmtMsg.hpp>
 #include <r2p/Publisher.hpp>
 #include <r2p/Subscriber.hpp>
 #include <r2p/Node.hpp>
+#include <r2p/Bootloader.hpp>
 
 namespace r2p {
 
@@ -28,16 +29,18 @@ private:
   StaticList<Topic> topics;
   StaticList<Transport> transports;
 
-  enum { INFO_BUFFER_LENGTH = 5 };
-  Topic info_topic;
-  Thread *info_threadp;
-  enum { INFO_TIMEOUT_MS = 20 };
+  enum { MGMT_BUFFER_LENGTH = 5 };
+  enum { MGMT_TIMEOUT_MS = 20 };
+  Topic mgmt_topic;
+  Thread *mgmt_threadp;
 
+  enum { BOOT_PAGE_LENGTH = 1 << 10 };
+  enum { BOOT_BUFFER_LENGTH = 4 };
   Topic boot_topic;
 
+  enum { TOPIC_CHECK_TIMEOUT_MS = 100 };
   StaticList<Topic>::Iterator topic_iter;
   Time topic_lastiter_time;
-  enum { TOPIC_CHECK_TIMEOUT_MS = 100 };
 
   bool stopped;
 
@@ -78,8 +81,11 @@ private:
   Topic *touch_topic(const char *namep, size_t type_size);
 
 private:
-  static Thread::Return info_threadf(Thread::Argument);
-  void do_info_thread();
+  static Thread::Return mgmt_threadf(Thread::Argument);
+  void do_mgmt_thread();
+
+  static Thread::Return boot_threadf(Thread::Argument);
+  void do_boot_thread();
 
 private:
   Middleware(const char *module_namep, const char *bootloader_namep);

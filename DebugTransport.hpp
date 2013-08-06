@@ -5,7 +5,7 @@
 #include <r2p/BaseSubscriberQueue.hpp>
 #include <r2p/TimestampedMsgPtrQueue.hpp>
 #include <r2p/Mutex.hpp>
-#include <r2p/InfoMsg.hpp>
+#include <r2p/MgmtMsg.hpp>
 #include <r2p/Semaphore.hpp>
 
 #include <ch.h>
@@ -16,8 +16,6 @@
 #include <r2p/Thread.hpp>
 
 namespace r2p {
-
-class Message;
 
 
 class DebugTransport : public Transport {
@@ -33,11 +31,11 @@ private:
 
   Mutex send_lock;
 
-  enum { INFO_BUFFER_LENGTH = 2 };
-  InfoMsg info_msgbuf[INFO_BUFFER_LENGTH];
-  TimestampedMsgPtrQueue::Entry info_msgqueue_buf[INFO_BUFFER_LENGTH];
-  DebugSubscriber info_rsub;
-  DebugPublisher info_rpub;
+  enum { MGMT_BUFFER_LENGTH = 2 };
+  MgmtMsg mgmt_msgbuf[MGMT_BUFFER_LENGTH];
+  TimestampedMsgPtrQueue::Entry mgmt_msgqueue_buf[MGMT_BUFFER_LENGTH];
+  DebugSubscriber mgmt_rsub;
+  DebugPublisher mgmt_rpub;
 
 public:
   bool send_advertisement(const Topic &topic);
@@ -50,15 +48,15 @@ public:
                   void *tx_stackp, size_t tx_stacklen,
                   Thread::Priority tx_priority);
 
-  void notify_first_sub_unsafe(DebugSubscriber &sub);
+  void notify_first_sub_unsafe(const DebugSubscriber &sub);
 
 private:
-  RemotePublisher *create_publisher();
+  RemotePublisher *create_publisher() const;
   RemoteSubscriber *create_subscriber(
     Transport &transport,
     TimestampedMsgPtrQueue::Entry queue_buf[],
     size_t queue_length
-  );
+  ) const;
 
   bool spin_tx();
   bool spin_rx();
@@ -73,7 +71,7 @@ private:
 
 
 inline
-void DebugTransport::notify_first_sub_unsafe(DebugSubscriber &sub) {
+void DebugTransport::notify_first_sub_unsafe(const DebugSubscriber &sub) {
 
   subp_queue.post_unsafe(sub.by_transport_notify);
   subp_sem.signal_unsafe();

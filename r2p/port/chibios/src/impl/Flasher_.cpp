@@ -33,6 +33,14 @@ static void flash_busy_wait() {
 }
 
 
+void Flasher_::set_page_buffer(Data page_buf[]) {
+
+  R2P_ASSERT(page_buf != NULL);
+
+  page_bufp = page_buf;
+}
+
+
 bool Flasher_::is_erased(PageID page) {
 
   uint32_t *const startp = reinterpret_cast<uint32_t *>(address_of(page));
@@ -206,6 +214,14 @@ bool Flasher_::flash(Address address, const Data *bufp, size_t buflen) {
   }
   return true;
 }
+
+
+Flasher_::Flasher_(Data page_buf[])
+:
+  page_bufp(page_buf),
+  page_modified(false),
+  page(0)
+{}
 
 
 void Flasher_::jump_to(Address address) {

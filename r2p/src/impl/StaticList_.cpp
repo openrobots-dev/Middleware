@@ -43,7 +43,7 @@ bool StaticList_::unlink_unsafe(Link &link) {
 int StaticList_::index_of_unsafe(const Link &link) const {
 
   int i = 0;
-  for (Link *linkp = headp; linkp != NULL; ++i, linkp = linkp->nextp) {
+  for (const Link *linkp = headp; linkp != NULL; ++i, linkp = linkp->nextp) {
     if (linkp == &link) {
       return i;
     }
@@ -69,7 +69,7 @@ const StaticList_::Link *StaticList_::find_first_unsafe(
 
   R2P_ASSERT(featuresp != NULL);
 
-  for (Link *linkp = headp; linkp != NULL; linkp = linkp->nextp) {
+  for (const Link *linkp = headp; linkp != NULL; linkp = linkp->nextp) {
     if (match_func(linkp->itemp, featuresp)) {
       return linkp;
     }
@@ -131,7 +131,7 @@ int StaticList_::index_of(const Link &link) const {
 
   int i = 0;
   SysLock::acquire();
-  for (Link *linkp = headp; linkp != NULL; ++i, linkp = linkp->nextp) {
+  for (const Link *linkp = headp; linkp != NULL; ++i, linkp = linkp->nextp) {
     SysLock::release();
     if (linkp == &link) {
       return i;
@@ -165,7 +165,7 @@ const StaticList_::Link *StaticList_::find_first(
   R2P_ASSERT(featuresp != NULL);
 
   SysLock::acquire();
-  for (Link *linkp = headp; linkp != NULL; linkp = linkp->nextp) {
+  for (const Link *linkp = headp; linkp != NULL; linkp = linkp->nextp) {
     SysLock::release();
     if (match_func(linkp->itemp, featuresp)) {
       return linkp;

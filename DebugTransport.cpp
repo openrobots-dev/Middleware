@@ -342,15 +342,15 @@ void DebugTransport::initialize(void *rx_stackp, size_t rx_stacklen,
                                      rx_threadf, this, "DEBUG_RX" );
   R2P_ASSERT(rx_threadp != NULL);
 
-  advertise(info_rpub, "R2P_INFO", Time::INFINITE, sizeof(InfoMsg));
-  subscribe(info_rsub, "R2P_INFO", info_msgbuf, INFO_BUFFER_LENGTH,
-            sizeof(InfoMsg));
+  advertise(mgmt_rpub, "R2P", Time::INFINITE, sizeof(MgmtMsg));
+  subscribe(mgmt_rsub, "R2P", mgmt_msgbuf, MGMT_BUFFER_LENGTH,
+            sizeof(MgmtMsg));
 
   Middleware::instance.add(*this);
 }
 
 
-RemotePublisher *DebugTransport::create_publisher() {
+RemotePublisher *DebugTransport::create_publisher() const {
 
   return new DebugPublisher();
 }
@@ -359,7 +359,7 @@ RemotePublisher *DebugTransport::create_publisher() {
 RemoteSubscriber *DebugTransport::create_subscriber(
   Transport &transport,
   TimestampedMsgPtrQueue::Entry queue_buf[],
-  size_t queue_length) {
+  size_t queue_length) const {
 
   return new DebugSubscriber(static_cast<DebugTransport &>(transport),
                              queue_buf, queue_length);
@@ -382,7 +382,7 @@ bool DebugTransport::spin_tx() {
 
   while (queue_length-- > 0) {
     SysLock::acquire();
-    sub.fetch(msgp, timestamp);
+    sub.fetch_unsafe(msgp, timestamp);
     if (queue_length == 0) {
       subp_queue.skip_unsafe();
       if (sub.get_queue_count() > 0) {
@@ -414,7 +414,7 @@ bool DebugTransport::spin_rx() {
 
   // Skip the deadline
   if (!skip_after_char(channelp, '@')) return false;
-  Time deadline(0);
+  Time deadline;
   if (!recv_value(channelp, deadline.raw)) return false;
 
   // Receive the topic name length and data
@@ -482,7 +482,15 @@ bool DebugTransport::spin_rx() {
 
       if (typechar == 'p' || typechar == 'P') {
         if (topicp != NULL) {
-          return advertise(*topicp);
+          MgmtMsg *msgp;
+          if (mgmt_rpub.alloc(reinterpret_cast<Message *&>(msgp))) {
+            msgp->type = MgmtMsg::CMD_ADVERTISE;
+            ::strncpy(msgp->pubsub.topic, topicp->get_name(),
+                      NamingTraits<Topic>::MAX_LENGTH);
+            msgp->pubsub.transportp = this;
+            return mgmt_rpub.publish_locally(*msgp);
+          }
+          return false;
         }
       } else {
         // Get the queue length
@@ -490,7 +498,16 @@ bool DebugTransport::spin_rx() {
         if (!recv_value(channelp, queue_length)) return false;
         if (queue_length == 0) return false;
         if (topicp != NULL) {
-          return subscribe(*topicp, queue_length);
+          MgmtMsg *msgp;
+          if (mgmt_rpub.alloc(reinterpret_cast<Message *&>(msgp))) {
+            msgp->type = MgmtMsg::CMD_SUBSCRIBE;
+            ::strncpy(msgp->pubsub.topic, topicp->get_name(),
+                      NamingTraits<Topic>::MAX_LENGTH);
+            msgp->pubsub.transportp = this;
+            msgp->pubsub.queue_length = queue_length;
+            return mgmt_rpub.publish_locally(*msgp);
+          }
+          return false;
         }
       }
       return true;
@@ -511,23 +528,23 @@ bool DebugTransport::spin_rx() {
 
 Thread::Return DebugTransport::rx_threadf(Thread::Argument arg) {
 
-  R2P_ASSERT(arg != static_cast<Thread::Argument>(0));
+  R2P_ASSERT(arg != static_cast<Thread::Argument>(NULL));
 
   for (;;) {
     reinterpret_cast<DebugTransport *>(arg)->spin_rx();
   }
-  return 0;
+  return static_cast<Thread::Return>(0);
 }
 
 
 Thread::Return DebugTransport::tx_threadf(Thread::Argument arg) {
 
-  R2P_ASSERT(arg != static_cast<Thread::Argument>(0));
+  R2P_ASSERT(arg != static_cast<Thread::Argument>(NULL));
 
   for (;;) {
     reinterpret_cast<DebugTransport *>(arg)->spin_tx();
   }
-  return 0;
+  return static_cast<Thread::Return>(0);
 }
 
 
@@ -538,8 +555,8 @@ DebugTransport::DebugTransport(BaseChannel *channelp, char namebuf[])
   tx_threadp(NULL),
   channelp(channelp),
   namebufp(namebuf),
-  info_rsub(*this, info_msgqueue_buf, INFO_BUFFER_LENGTH),
-  info_rpub()
+  mgmt_rsub(*this, mgmt_msgqueue_buf, MGMT_BUFFER_LENGTH),
+  mgmt_rpub()
 {
   R2P_ASSERT(channelp != NULL);
   R2P_ASSERT(namebuf != NULL);

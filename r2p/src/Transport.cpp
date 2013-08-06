@@ -92,16 +92,28 @@ bool Transport::touch_subscriber(Topic &topic, size_t queue_length) {
 bool Transport::advertise(Topic &topic) {
 
   // Process only if there are local subscribers
-  if (!topic.has_local_subscribers()) return true;
-  return touch_publisher(topic);
+  SysLock::acquire();
+  if (topic.has_local_subscribers()) {
+    SysLock::release();
+    return touch_publisher(topic);
+  } else {
+    SysLock::release();
+    return true;
+  }
 }
 
 
 bool Transport::subscribe(Topic &topic, size_t queue_length) {
 
   // Process only if there are local publishers
-  if (!topic.has_local_publishers()) return true;
-  return touch_subscriber(topic, queue_length);
+  SysLock::acquire();
+  if (topic.has_local_publishers()) {
+    SysLock::release();
+    return touch_subscriber(topic, queue_length);
+  } else {
+    SysLock::release();
+    return true;
+  }
 }
 
 

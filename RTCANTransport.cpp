@@ -113,7 +113,7 @@ void RTCANTransport::initialize(const RTCANConfig &rtcan_config) {
 }
 
 
-RemotePublisher *RTCANTransport::create_publisher() {
+RemotePublisher *RTCANTransport::create_publisher() const {
 
   return new RTCANPublisher();
 }
@@ -122,7 +122,7 @@ RemotePublisher *RTCANTransport::create_publisher() {
 RemoteSubscriber *RTCANTransport::create_subscriber(
   Transport &transport,
   TimestampedMsgPtrQueue::Entry queue_buf[],
-  size_t queue_length) {
+  size_t queue_length) const {
 
   (void) queue_buf;
 
@@ -278,8 +278,8 @@ RTCANTransport::RTCANTransport(RTCANDriver &rtcan)
   Transport(),
   rtcan(rtcan),
   header_pool(header_buffer, 10),
-  info_rsub(*this, 10),
-  info_rpub()
+  mgmt_rsub(*this, 10),
+  mgmt_rpub()
 {
   adv_rx_header.id = 123 << 8;
   adv_rx_header.data = reinterpret_cast<uint8_t *>(&adv_rx_msg);

@@ -10,6 +10,7 @@
 #include <r2p/Subscriber.hpp>
 #include <r2p/Mutex.hpp>
 #include <r2p/NamingTraits.hpp>
+#include <r2p/Bootloader.hpp>
 #include "DebugTransport.hpp"
 
 #include <cstdio>
@@ -30,6 +31,8 @@ struct FloatMsg : public r2p::Message {
 void *__dso_handle;
 
 extern "C" void __cxa_pure_virtual() {}
+
+r2p::Bootloader r2p::Bootloader::instance(NULL);
 
 static WORKING_AREA(wa_info, 1024);
 

@@ -54,6 +54,8 @@ private:
   AppInfo tempinfo;
 
 public:
+  void set_page_buffer(Flasher::Data flash_page_buf[]);
+
   bool process(const BootloaderMsg &request_msg, BootloaderMsg &response_msg);
 
 private:
@@ -61,12 +63,12 @@ private:
   bool compute_addresses();
   bool update_layout(const AppInfo *last_infop = NULL);
 
-private:
+public:
   Bootloader(Flasher::Data *flash_page_bufp);
 
 public:
   static Bootloader instance;
-  static FlashLayout flash_layout;
+  static const volatile FlashLayout flash_layout;
 };
 
 

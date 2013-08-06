@@ -14,6 +14,7 @@ public:
   enum { BASE_ADDRESS       = Flasher_::BASE_ADDRESS };
   enum { PAGE_SIZE          = Flasher_::PAGE_SIZE };
   enum { PROGRAM_ALIGNMENT  = Flasher_::PROGRAM_ALIGNMENT };
+  enum { WORD_ALIGNMENT     = Flasher_::WORD_ALIGNMENT };
 
   typedef Flasher_::Address Address;
   typedef Flasher_::Data Data;
@@ -24,12 +25,14 @@ private:
   Flasher_ impl;
 
 public:
+  void set_page_buffer(Data page_buf[]);
+
   void begin();
   bool end();
   bool flash(Address address, const Data *bufp, size_t buflen);
 
 public:
-  Flasher(Data *page_bufp);
+  Flasher(Data page_buf[]);
 
 public:
   static bool is_erased(PageID page);
@@ -56,6 +59,13 @@ public:
 
 
 inline
+void Flasher::set_page_buffer(Data page_buf[]) {
+
+  impl.set_page_buffer(page_buf);
+}
+
+
+inline
 void Flasher::begin() {
 
   impl.begin();
@@ -77,9 +87,9 @@ bool Flasher::flash(Address address, const Data *bufp, size_t buflen) {
 
 
 inline
-Flasher::Flasher(Data *page_bufp)
+Flasher::Flasher(Data page_buf[])
 :
-  impl(page_bufp)
+  impl(page_buf)
 {}
 
 

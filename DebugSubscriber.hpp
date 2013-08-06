@@ -20,7 +20,7 @@ private:
   TimestampedMsgPtrQueue tmsgp_queue;
 
 private:
-  BaseSubscriberQueue::Link by_transport_notify;
+  mutable BaseSubscriberQueue::Link by_transport_notify;
 
 public:
   size_t get_queue_length() const;

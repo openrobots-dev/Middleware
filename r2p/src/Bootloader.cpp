@@ -5,6 +5,18 @@
 namespace r2p {
 
 
+const volatile Bootloader::FlashLayout Bootloader::flash_layout
+__attribute__ ((section(".layout"), aligned(Flasher::WORD_ALIGNMENT))) = {
+  0, 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0 } }
+};
+
+
+void Bootloader::set_page_buffer(Flasher::Data flash_page_buf[]) {
+
+  flasher.set_page_buffer(flash_page_buf);
+}
+
+
 bool Bootloader::process(const BootloaderMsg &request_msg,
                          BootloaderMsg &response_msg) {
 

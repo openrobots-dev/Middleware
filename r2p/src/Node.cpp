@@ -2,7 +2,7 @@
 #include <r2p/Node.hpp>
 #include <r2p/Middleware.hpp>
 #include <r2p/Thread.hpp>
-#include <r2p/InfoMsg.hpp>
+#include <r2p/MgmtMsg.hpp>
 #include <r2p/Publisher.hpp>
 #include <r2p/Subscriber.hpp>
 
@@ -39,9 +39,9 @@ bool Node::subscribe(LocalSubscriber &sub, const char *namep,
 }
 
 
-void Node::publish_publishers(Publisher<InfoMsg> &info_pub) {
+void Node::publish_publishers(Publisher<MgmtMsg> &info_pub) {
 
-  InfoMsg *msgp;
+  MgmtMsg *msgp;
 
   for (StaticList<LocalPublisher>::Iterator i = publishers.begin();
        i != publishers.end(); ++i) {
@@ -49,7 +49,7 @@ void Node::publish_publishers(Publisher<InfoMsg> &info_pub) {
       Thread::yield();
     }
 
-    msgp->type = InfoMsg::ADVERTISEMENT;
+    msgp->type = MgmtMsg::INFO_ADVERTISEMENT;
     ::strncpy(msgp->path.module, Middleware::instance.get_module_name(),
               NamingTraits<Middleware>::MAX_LENGTH);
     ::strncpy(msgp->path.node, this->get_name(),
@@ -64,9 +64,9 @@ void Node::publish_publishers(Publisher<InfoMsg> &info_pub) {
 }
 
 
-void Node::publish_subscribers(Publisher<InfoMsg> &info_pub) {
+void Node::publish_subscribers(Publisher<MgmtMsg> &info_pub) {
 
-  InfoMsg *msgp;
+  MgmtMsg *msgp;
 
   for (StaticList<LocalSubscriber>::Iterator i = subscribers.begin();
        i != subscribers.end(); ++i) {
@@ -74,7 +74,7 @@ void Node::publish_subscribers(Publisher<InfoMsg> &info_pub) {
       Thread::yield();
     }
 
-    msgp->type = InfoMsg::SUBSCRIPTION;
+    msgp->type = MgmtMsg::INFO_SUBSCRIPTION;
     ::strncpy(msgp->path.module, Middleware::instance.get_module_name(),
               NamingTraits<Middleware>::MAX_LENGTH);
     ::strncpy(msgp->path.node, this->get_name(),
