@@ -3,6 +3,7 @@
 #include <r2p/common.hpp>
 #include <r2p/StaticList.hpp>
 #include <r2p/TimestampedMsgPtrQueue.hpp>
+#include <r2p/Mutex.hpp>
 
 namespace r2p {
 
@@ -19,6 +20,8 @@ class Transport : private Uncopyable {
 protected:
   StaticList<RemotePublisher> publishers;
   StaticList<RemoteSubscriber> subscribers;
+  Mutex publishers_lock;
+  Mutex subscribers_lock;
 
 private:
   mutable StaticList<Transport>::Link by_middleware;

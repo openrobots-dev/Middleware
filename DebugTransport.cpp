@@ -478,37 +478,32 @@ bool DebugTransport::spin_rx() {
         return false;
       }
       if (!recv_string(channelp, namebufp, namelen)) return false;
-      Topic *topicp = Middleware::instance.find_topic(namebufp);
 
       if (typechar == 'p' || typechar == 'P') {
-        if (topicp != NULL) {
-          MgmtMsg *msgp;
-          if (mgmt_rpub.alloc(reinterpret_cast<Message *&>(msgp))) {
-            msgp->type = MgmtMsg::CMD_ADVERTISE;
-            ::strncpy(msgp->pubsub.topic, topicp->get_name(),
-                      NamingTraits<Topic>::MAX_LENGTH);
-            msgp->pubsub.transportp = this;
-            return mgmt_rpub.publish_locally(*msgp);
-          }
-          return false;
+        MgmtMsg *msgp;
+        if (mgmt_rpub.alloc(reinterpret_cast<Message *&>(msgp))) {
+          msgp->type = MgmtMsg::CMD_ADVERTISE;
+          ::strncpy(msgp->pubsub.topic, namebufp,
+                    NamingTraits<Topic>::MAX_LENGTH);
+          msgp->pubsub.transportp = this;
+          return mgmt_rpub.publish_locally(*msgp);
         }
+        return false;
       } else {
         // Get the queue length
         uint8_t queue_length;
         if (!recv_value(channelp, queue_length)) return false;
         if (queue_length == 0) return false;
-        if (topicp != NULL) {
-          MgmtMsg *msgp;
-          if (mgmt_rpub.alloc(reinterpret_cast<Message *&>(msgp))) {
-            msgp->type = MgmtMsg::CMD_SUBSCRIBE;
-            ::strncpy(msgp->pubsub.topic, topicp->get_name(),
-                      NamingTraits<Topic>::MAX_LENGTH);
-            msgp->pubsub.transportp = this;
-            msgp->pubsub.queue_length = queue_length;
-            return mgmt_rpub.publish_locally(*msgp);
-          }
-          return false;
+        MgmtMsg *msgp;
+        if (mgmt_rpub.alloc(reinterpret_cast<Message *&>(msgp))) {
+          msgp->type = MgmtMsg::CMD_SUBSCRIBE;
+          ::strncpy(msgp->pubsub.topic, namebufp,
+                    NamingTraits<Topic>::MAX_LENGTH);
+          msgp->pubsub.transportp = this;
+          msgp->pubsub.queue_length = queue_length;
+          return mgmt_rpub.publish_locally(*msgp);
         }
+        return false;
       }
       return true;
     }

@@ -38,22 +38,27 @@ bool Transport::notify_reboot() {
 
 bool Transport::touch_publisher(Topic &topic) {
 
+  Mutex::ScopedLock lock(publishers_lock);
+
   // Check if the remote publisher already exists
-  const StaticList<RemotePublisher>::Link *linkp;
+  register const StaticList<RemotePublisher>::Link *linkp;
   linkp = publishers.find_first(BasePublisher::has_topic, topic.get_name());
-  if (linkp == NULL) {
-    // Create a new remote publisher
-    RemotePublisher *pubp = create_publisher();
-    if (pubp == NULL) return false;
-    pubp->notify_advertised(topic);
-    topic.advertise(*pubp, Time::INFINITE);
-    publishers.link(pubp->by_transport);
-  }
+  if (linkp != NULL) return true;
+
+  // Create a new remote publisher
+  RemotePublisher *pubp = create_publisher();
+  if (pubp == NULL) return false;
+
+  pubp->notify_advertised(topic);
+  topic.advertise(*pubp, Time::INFINITE);
+  publishers.link(pubp->by_transport);
   return true;
 }
 
 
 bool Transport::touch_subscriber(Topic &topic, size_t queue_length) {
+
+  Mutex::ScopedLock lock(subscribers_lock);
 
   // Check if the remote subscriber already exists
   const StaticList<RemoteSubscriber>::Link *linkp;

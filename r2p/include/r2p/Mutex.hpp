@@ -16,6 +16,21 @@ public:
 
   void acquire();
   void release();
+
+public:
+  class ScopedLock : private Uncopyable {
+  private:
+    Mutex &mutex;
+
+  public:
+    ScopedLock(Mutex &mutex) : mutex(mutex) {
+      this->mutex.acquire();
+    }
+
+    ~ScopedLock() {
+      this->mutex.release();
+    }
+  };
 };
 
 

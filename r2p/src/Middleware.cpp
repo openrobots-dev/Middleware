@@ -215,19 +215,21 @@ void Middleware::do_mgmt_thread() {
         switch (msgp->type) {
         case MgmtMsg::CMD_ADVERTISE: {
           Transport *transportp = msgp->pubsub.transportp;
-          Topic *topicp = touch_topic(msgp->pubsub.topic, sizeof(MgmtMsg));
-          R2P_ASSERT(topicp != NULL);
+          Topic *topicp = find_topic(msgp->pubsub.topic);
           mgmt_sub.release(*msgp);
-          transportp->advertise(*topicp);
+          if (topicp != NULL) {
+            transportp->advertise(*topicp);
+          }
           break;
         }
         case MgmtMsg::CMD_SUBSCRIBE: {
           Transport *transportp = msgp->pubsub.transportp;
           size_t queue_length = msgp->pubsub.queue_length;
-          Topic *topicp = touch_topic(msgp->pubsub.topic, sizeof(MgmtMsg));
-          R2P_ASSERT(topicp != NULL);
+          Topic *topicp = find_topic(msgp->pubsub.topic);
           mgmt_sub.release(*msgp);
-          transportp->subscribe(*topicp, queue_length);
+          if (topicp != NULL) {
+            transportp->subscribe(*topicp, queue_length);
+          }
           break;
         }
         case MgmtMsg::CMD_GET_NETWORK_STATE: {
