@@ -23,16 +23,36 @@ private:
 
 public:
   bool fetch_unsafe(Message *&msgp, Time &timestamp);
-  bool fetch(Message *&msgp, Time &timestamp);
   bool notify_unsafe(Message &msg, const Time &timestamp);
+  bool fetch(Message *&msgp, Time &timestamp);
   bool notify(Message &msg, const Time &timestamp);
   size_t get_queue_length() const;
 
 public:
-  RTCANSubscriber(RTCANTransport &transport, size_t queue_length);
+  RTCANSubscriber(RTCANTransport &transport,
+          TimestampedMsgPtrQueue::Entry queue_buf[],
+          size_t queue_length);
   virtual ~RTCANSubscriber();
 };
 
+inline
+bool RTCANSubscriber::notify(Message &msg, const Time &timestamp) {
+
+  SysLock::acquire();
+  bool success = notify_unsafe(msg, timestamp);
+  SysLock::release();
+  return success;
+}
+
+
+inline
+bool RTCANSubscriber::fetch(Message *&msgp, Time &timestamp) {
+
+  SysLock::acquire();
+  bool success = fetch_unsafe(msgp, timestamp);
+  SysLock::release();
+  return success;
+}
 
 } // namespace r2p
 

@@ -64,6 +64,8 @@ static r2p::RTCANTransport rtcantra(RTCAND1);
 size_t num_msgs = 0;
 systime_t start_time, cur_time;
 
+r2p::Middleware * mw;
+
 
 msg_t PubThd(void *) {
 
@@ -86,7 +88,6 @@ msg_t PubThd(void *) {
       if (!pub1.publish(*msgp)) {
         chSysHalt();
       }
-      palTogglePad(LED_GPIO, LED1);
     } else {
       palTogglePad(LED_GPIO, LED4);
     }
@@ -99,16 +100,6 @@ class BlinkLed2 : public r2p::Subscriber<Uint32Msg>::Callback {
   bool action(const Uint32Msg &msg) const {
     (void)msg;
     palTogglePad(LED_GPIO, LED2);
-    ++num_msgs;
-    return true;
-  }
-};
-
-
-class BlinkLed3 : public r2p::Subscriber<Uint32Msg>::Callback {
-  bool action(const Uint32Msg &msg) const {
-    (void)msg;
-    palTogglePad(LED_GPIO, LED3);
     return true;
   }
 };
@@ -175,6 +166,7 @@ static msg_t blinker_thread(void *arg) {
 	return 0;
 }
 
+
 extern "C" {
 int main(void) {
   static const RTCANConfig rtcan_config = {1000000, 100, 60};
@@ -189,11 +181,8 @@ int main(void) {
    */
   chThdCreateStatic(wa_blinker_thread, sizeof(wa_blinker_thread), NORMALPRIO, blinker_thread, NULL);
 
-  char n = sizeof(r2p::RTCANTransport::adv_msg_t);
 
-  sdPut(&SD2, n);
-
-  chThdSetPriority(HIGHPRIO);
+  r2p::Thread::set_priority(r2p::Thread::HIGHEST);
   r2p::Middleware::instance.initialize(wa_info, sizeof(wa_info),
                                        r2p::Thread::IDLE);
   r2p::Middleware::instance.add(test_topic);
@@ -206,9 +195,10 @@ int main(void) {
   chThdCreateFromHeap(NULL, WA_SIZE_1K, NORMALPRIO + 0, PubThd, NULL);
   chThdCreateFromHeap(NULL, WA_SIZE_1K, NORMALPRIO + 1, SubThd, NULL);
 
-  chThdSetPriority(IDLEPRIO);
+  r2p::Thread::set_priority(r2p::Thread::IDLE);
   for (;;) {
-    chThdYield();
+//    r2p::Thread::yield();
+    r2p::Thread::sleep(100);
   }
   return CH_SUCCESS;
 }

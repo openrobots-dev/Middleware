@@ -15,8 +15,9 @@ bool Topic::notify_locals_unsafe(Message &msg, const Time &timestamp) {
     for (StaticList<LocalSubscriber>::IteratorUnsafe i =
          local_subscribers.begin_unsafe();
          i != local_subscribers.end_unsafe(); ++i) {
-      msg.acquire_unsafe();
-      i->itemp->notify_unsafe(msg, timestamp);
+      if (i->itemp->notify_unsafe(msg, timestamp)) {
+        msg.acquire_unsafe();
+      }
     }
 
     if (!msg.release_unsafe()) {
@@ -37,15 +38,16 @@ bool Topic::notify_remotes_unsafe(Message &msg, const Time &timestamp) {
     for (StaticList<RemoteSubscriber>::IteratorUnsafe i =
          remote_subscribers.begin_unsafe();
          i != remote_subscribers.end_unsafe(); ++i) {
-      msg.acquire_unsafe();
-      i->itemp->notify_unsafe(msg, timestamp);
+      if (i->itemp->notify_unsafe(msg, timestamp)) {
+        msg.acquire_unsafe();
+      }
     }
 
     if (!msg.release_unsafe()) {
       free_unsafe(msg);
     }
   } else {
-    free_unsafe(msg);
+//    free_unsafe(msg);
   }
   return true;
 }

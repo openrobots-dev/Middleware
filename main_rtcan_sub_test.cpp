@@ -89,6 +89,47 @@ msg_t SubThd(void *) {
 }
 
 
+/*
+ * LED blinker thread, times are in milliseconds.
+ */
+static WORKING_AREA(wa_blinker_thread, 128);
+static msg_t blinker_thread(void *arg) {
+
+	(void) arg;
+	chRegSetThreadName("blinker");
+
+	while (TRUE) {
+		switch (RTCAND1.state) {
+		case RTCAN_MASTER:
+			palClearPad(LED_GPIO, LED1);
+			chThdSleepMilliseconds(200);
+			palSetPad(LED_GPIO, LED1);
+			chThdSleepMilliseconds(100);
+			palClearPad(LED_GPIO, LED1);
+			chThdSleepMilliseconds(200);
+			palSetPad(LED_GPIO, LED1);
+			chThdSleepMilliseconds(500);
+			break;
+		case RTCAN_SYNCING:
+			palTogglePad(LED_GPIO, LED1);
+			chThdSleepMilliseconds(100);
+			break;
+		case RTCAN_SLAVE:
+			palTogglePad(LED_GPIO, LED1);
+			chThdSleepMilliseconds(500);
+			break;
+		case RTCAN_ERROR:
+			palTogglePad(LED_GPIO, LED4);
+			chThdSleepMilliseconds(200);
+			break;
+		default:
+			chThdSleepMilliseconds(100);
+			break;
+		}
+	}
+
+	return 0;
+}
 
 extern "C" {
 int main(void) {
@@ -100,6 +141,11 @@ int main(void) {
   chSysInit();
 
   sdStart(&SD2, NULL);
+
+  /*
+   * Creates the blinker thread.
+   */
+  chThdCreateStatic(wa_blinker_thread, sizeof(wa_blinker_thread), NORMALPRIO, blinker_thread, NULL);
 
   chThdSetPriority(HIGHPRIO);
   r2p::Middleware::instance.initialize(wa_info, sizeof(wa_info),

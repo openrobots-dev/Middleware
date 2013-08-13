@@ -23,13 +23,27 @@ void RTCANTransport::adv_rx_cb(rtcan_msg_t &rtcan_msg) {
 
 
 void RTCANTransport::recv_adv_msg(const adv_msg_t &adv_msg) {
+  MgmtMsg *msgp;
 
   switch (adv_msg.type) {
-  case 'S':
-//	  advertise(adv_msg.topic);
-	  break;
   case 'P':
-//	  subscribe(adv_msg.topic, static_cast<size_t>(adv_msg.queue_length));
+    if (mgmt_rpub.alloc_unsafe(reinterpret_cast<Message *&>(msgp))) {
+	  msgp->type = MgmtMsg::CMD_ADVERTISE;
+	  ::strncpy(msgp->pubsub.topic, adv_msg.topic,
+				NamingTraits<Topic>::MAX_LENGTH);
+	  msgp->pubsub.transportp = this;
+	  mgmt_rpub.publish_locally_unsafe(*msgp);
+	}
+	break;
+  case 'S':
+      if (mgmt_rpub.alloc_unsafe(reinterpret_cast<Message *&>(msgp))) {
+        msgp->type = MgmtMsg::CMD_SUBSCRIBE;
+        ::strncpy(msgp->pubsub.topic, adv_msg.topic,
+                  NamingTraits<Topic>::MAX_LENGTH);
+        msgp->pubsub.transportp = this;
+        msgp->pubsub.queue_length = static_cast<size_t>(adv_msg.queue_length);
+        mgmt_rpub.publish_locally_unsafe(*msgp);
+      }
 	  break;
   default:
 	  R2P_ASSERT(false && "Should never happen");
@@ -104,11 +118,10 @@ void RTCANTransport::initialize(const RTCANConfig &rtcan_config) {
 
   rtcanReceive(&rtcan, &adv_rx_header);
 
-/*
-  advertise(info_rpub, "R2P_INFO", Time::INFINITE, sizeof(InfoMsg));
-  subscribe(info_rsub, "R2P_INFO", info_msgbuf, INFO_BUFFER_LENGTH,
-            sizeof(InfoMsg));
-*/
+  advertise(mgmt_rpub, "R2P", Time::INFINITE, sizeof(MgmtMsg));
+  subscribe(mgmt_rsub, "R2P", mgmt_msgbuf, MGMT_BUFFER_LENGTH,
+            sizeof(MgmtMsg));
+
   Middleware::instance.add(*this);
 }
 
@@ -124,9 +137,7 @@ RemoteSubscriber *RTCANTransport::create_subscriber(
   TimestampedMsgPtrQueue::Entry queue_buf[],
   size_t queue_length) const {
 
-  (void) queue_buf;
-
-  return new RTCANSubscriber(static_cast<RTCANTransport &>(transport), queue_length);
+  return new RTCANSubscriber(static_cast<RTCANTransport &>(transport), queue_buf, queue_length);
 }
 
 /*
@@ -278,7 +289,7 @@ RTCANTransport::RTCANTransport(RTCANDriver &rtcan)
   Transport(),
   rtcan(rtcan),
   header_pool(header_buffer, 10),
-  mgmt_rsub(*this, 10),
+  mgmt_rsub(*this, mgmt_msgqueue_buf, MGMT_BUFFER_LENGTH),
   mgmt_rpub()
 {
   adv_rx_header.id = 123 << 8;
