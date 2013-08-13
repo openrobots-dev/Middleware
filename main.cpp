@@ -20,17 +20,17 @@
 
 struct Uint32Msg : public r2p::Message {
   uint32_t value;
-};
+} R2P_PACKED;
 
 
 struct FloatMsg : public r2p::Message {
   float value;
-};
+} R2P_PACKED;
 
 
 void *__dso_handle;
 
-extern "C" void __cxa_pure_virtual() {}
+extern "C" void __cxa_pure_virtual() { chSysHalt(); }
 
 r2p::Bootloader r2p::Bootloader::instance(NULL);
 
@@ -96,9 +96,12 @@ class BlinkLed2 : public r2p::Subscriber<Uint32Msg>::Callback {
 };
 
 
+static unsigned remote_msg_count = 0;
+
 class BlinkLed3 : public r2p::Subscriber<Uint32Msg>::Callback {
   bool action(const Uint32Msg &msg) const {
     (void)msg;
+    ++remote_msg_count;
     palTogglePad(LED_GPIO, LED3);
     return true;
   }
@@ -157,7 +160,7 @@ int main(void) {
   dbgtra.initialize(wa_rx_dbgtra, sizeof(wa_rx_dbgtra), r2p::Thread::LOWEST + 11,
                     wa_tx_dbgtra, sizeof(wa_tx_dbgtra), r2p::Thread::LOWEST + 10);
 
-  r2p::Thread::create_static(wa3, sizeof(wa3), r2p::Thread::NORMAL + 2, Thread3, NULL, "Thread3");
+  r2p::Thread::create_static(wa3, sizeof(wa3), r2p::Thread::NORMAL - 2, Thread3, NULL, "Thread3");
   r2p::Thread::create_static(wa2, sizeof(wa2), r2p::Thread::NORMAL + 1, Thread2, NULL, "Thread2");
   r2p::Thread::create_static(wa1, sizeof(wa1), r2p::Thread::NORMAL + 0, Thread1, NULL, "Thread1");
 

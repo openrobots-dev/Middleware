@@ -37,6 +37,7 @@ public:
   double to_s() const;
   double to_m() const;
 
+  Time &operator = (const Time &rhs);
   Time &operator += (const Time &rhs);
   Time &operator -= (const Time &rhs);
 
@@ -123,6 +124,14 @@ inline
 double Time::to_m() const {
 
   return raw / 60000000.0;
+}
+
+
+inline
+Time &Time::operator = (const Time &rhs) {
+
+  raw = rhs.raw;
+  return *this;
 }
 
 
