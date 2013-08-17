@@ -9,11 +9,7 @@ namespace r2p {
 
 bool Topic::notify_locals_unsafe(Message &msg, const Time &timestamp) {
 
-  R2P_ASSERT(msg.refcount < 4); // XXX
-
   if (has_local_subscribers()) {
-//    msg.acquire_unsafe();
-
     for (StaticList<LocalSubscriber>::IteratorUnsafe i =
          local_subscribers.begin_unsafe();
          i != local_subscribers.end_unsafe(); ++i) {
@@ -22,16 +18,7 @@ bool Topic::notify_locals_unsafe(Message &msg, const Time &timestamp) {
         msg.release_unsafe();
       }
     }
-
-//    if (!msg.release_unsafe()) {
-//      free_unsafe(msg);
-//    }
   }
-/*
-  else {
-    free_unsafe(msg);
-  }
-*/
 
   return true;
 }
@@ -39,11 +26,7 @@ bool Topic::notify_locals_unsafe(Message &msg, const Time &timestamp) {
 
 bool Topic::notify_remotes_unsafe(Message &msg, const Time &timestamp) {
 
-  R2P_ASSERT(msg.refcount < 4); // XXX
-
   if (has_remote_subscribers()) {
-//    msg.acquire_unsafe();
-
     for (StaticList<RemoteSubscriber>::IteratorUnsafe i =
          remote_subscribers.begin_unsafe();
          i != remote_subscribers.end_unsafe(); ++i) {
@@ -52,16 +35,7 @@ bool Topic::notify_remotes_unsafe(Message &msg, const Time &timestamp) {
         msg.release_unsafe();
       }
     }
-
-//    if (!msg.release_unsafe()) {
-//      free_unsafe(msg);
-//    }
   }
-/*
-  else {
-    free_unsafe(msg);
-  }
-*/
 
   return true;
 }
