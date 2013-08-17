@@ -109,6 +109,48 @@ bool RTCANTransport::send_reboot() {
   return true;
 }
 
+bool RTCANTransport::send(Message * msgp, RTCANSubscriber * rsubp) {
+	rtcan_msg_t * rtcan_msg_p;
+
+	// Allocate RTCAN msg header
+	rtcan_msg_p = header_pool.alloc_unsafe();
+	if (rtcan_msg_p == NULL) return false;
+
+	rtcan_msg_p->id = rsubp->rtcan_id;
+//FIXME XXX
+	rtcan_msg_p->callback = reinterpret_cast<rtcan_msgcallback_t>(send_cb);
+	rtcan_msg_p->params = rsubp;
+	rtcan_msg_p->params2 = msgp;
+	// FIXME
+	rtcan_msg_p->size = rsubp->get_topic()->get_size();
+	rtcan_msg_p->status = RTCAN_MSG_READY;
+	rtcan_msg_p->data = (uint8_t *)msgp->get_raw_data();
+
+	rtcanTransmitI(&rtcan, rtcan_msg_p, 100);
+  // TODO
+  return true;
+}
+
+#include "hal.h"
+void RTCANTransport::send_cb(rtcan_msg_t &rtcan_msg) {
+//  RTCANTransport &transport = reinterpret_cast<RTCANTransport &>(rtcan_msg.params);
+//  transport.recv_adv_msg(reinterpret_cast<const adv_msg_t &>(rtcan_msg.data));
+
+  RTCANSubscriber * rsubp = (RTCANSubscriber *)rtcan_msg.params;
+  Message * msg = (Message *)rtcan_msg.params2;
+
+  rsubp->release_unsafe(*msg);
+  rsubp->queue_free++;
+
+  palTogglePad(LED_GPIO, LED3);
+
+}
+
+
+
+
+
+
 
 void RTCANTransport::initialize(const RTCANConfig &rtcan_config) {
 

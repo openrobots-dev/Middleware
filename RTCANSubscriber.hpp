@@ -9,6 +9,8 @@
 #include <r2p/BaseSubscriberQueue.hpp>
 #include <ch.h>
 
+#include "rtcan.h"
+
 namespace r2p {
 
 class Message;
@@ -20,6 +22,7 @@ class RTCANSubscriber : public RemoteSubscriber {
 
 private:
   size_t queue_free;
+  rtcan_id_t rtcan_id;
 
 public:
   bool fetch_unsafe(Message *&msgp, Time &timestamp);

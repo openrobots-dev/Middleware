@@ -84,7 +84,7 @@ msg_t PubThd(void *) {
     cur_time = chTimeNow();
     Uint32Msg *msgp;
     if (pub1.alloc(msgp)) {
-      msgp->value = 1;
+      msgp->value = 0xAAAAAAAA;
       if (!pub1.publish(*msgp)) {
         chSysHalt();
       }

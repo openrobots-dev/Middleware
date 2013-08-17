@@ -52,6 +52,7 @@ public:
   bool send_subscription(const Topic &topic, size_t queue_length);
   bool send_stop();
   bool send_reboot();
+  bool send(Message * msgp, RTCANSubscriber * rsubp);
 
   void initialize(const RTCANConfig &rtcan_config);
 
@@ -70,6 +71,8 @@ public:
 
 private:
   static void adv_rx_cb(rtcan_msg_t &rtcan_msg);
+  static void send_cb(rtcan_msg_t &rtcan_msg);
+
 };
 
 } // namespace r2p

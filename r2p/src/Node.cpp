@@ -106,6 +106,8 @@ bool Node::spin(const Time &timeout) {
       if (callback != NULL) {
         Message *msgp;
         while (sub.fetch(msgp, dummy_timestamp)) {
+          R2P_ASSERT(msgp->refcount < 4); // XXX
+
           (*callback)(*msgp);
           sub.release(*msgp);
         }

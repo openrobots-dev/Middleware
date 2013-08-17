@@ -1,6 +1,7 @@
 #pragma once
 
 #include <r2p/common.hpp>
+#include <r2p/Message.hpp>
 
 namespace r2p {
 
@@ -83,9 +84,18 @@ bool BasePublisher::publish_remotely_unsafe(Message &msg) {
 
 inline
 bool BasePublisher::publish(Message &msg) {
+  bool ret;
 
-  return topicp->notify_locals(msg, Time::now()) &&
-         topicp->notify_remotes(msg, Time::now());
+  msg.acquire();
+
+  ret =  topicp->notify_locals(msg, Time::now());
+  ret &= topicp->notify_remotes(msg, Time::now());
+
+  if (!msg.release()) {
+    topicp->free(msg);
+  }
+
+  return ret;
 }
 
 

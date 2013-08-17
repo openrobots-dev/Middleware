@@ -24,13 +24,13 @@ bool RTCANSubscriber::fetch_unsafe(Message *&msgp, Time &timestamp) {
 
 
 bool RTCANSubscriber::notify_unsafe(Message &msg, const Time &timestamp) {
-	(void) msg;
+	RTCANTransport * transportp;
 	(void) timestamp;
 
 	if (queue_free > 0) {
 		queue_free--;
-		palTogglePad(LED_GPIO, LED3);
-		release_unsafe(msg);
+		transportp = static_cast<RTCANTransport *>(get_transport());
+		transportp->send(&msg, this);
 		return true;
 	}
 
@@ -47,7 +47,8 @@ RTCANSubscriber::RTCANSubscriber(RTCANTransport &transport,
                                  size_t queue_length)
 :
   RemoteSubscriber(transport),
-  queue_free(queue_length)
+  queue_free(queue_length),
+  rtcan_id(111 << 8)
 {}
 
 

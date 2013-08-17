@@ -30,6 +30,7 @@ bool LocalSubscriber::fetch_unsafe(Message *&msgp, Time &timestamp) {
 bool LocalSubscriber::notify_unsafe(Message &msg, const Time &timestamp) {
 
   (void)timestamp;
+  R2P_ASSERT(msg.refcount < 4); // XXX
   if (msgp_queue.post_unsafe(&msg)) {
     nodep->notify_unsafe(event_index);
     return true;
@@ -41,6 +42,8 @@ bool LocalSubscriber::notify_unsafe(Message &msg, const Time &timestamp) {
 bool LocalSubscriber::fetch(Message *&msgp, Time &timestamp) {
 
   if (msgp_queue.fetch(msgp)) {
+    R2P_ASSERT(msgp->refcount < 4); // XXX
+
     timestamp = Time::now();
     return true;
   }

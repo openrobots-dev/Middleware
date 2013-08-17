@@ -21,9 +21,9 @@ public:
   typedef R2P_BASEMESSAGE_LENGTH_TYPE LengthType;
 
 private:
-  RefcountType refcount;
 
 public:
+  RefcountType refcount;
   void acquire_unsafe();
   bool release_unsafe();
   void reset_unsafe();
@@ -52,6 +52,7 @@ const uint8_t *Message::get_raw_data() const {
 inline
 void Message::acquire_unsafe() {
 
+  R2P_ASSERT(refcount < 4); // XXX
   R2P_ASSERT(refcount < ((1 << (8 * sizeof(refcount) - 1)) - 1));
   ++refcount;
 }
@@ -60,6 +61,7 @@ void Message::acquire_unsafe() {
 inline
 bool Message::release_unsafe() {
 
+  R2P_ASSERT(refcount < 4); // XXX
   R2P_ASSERT(refcount > 0);
   return --refcount > 0;
 }
