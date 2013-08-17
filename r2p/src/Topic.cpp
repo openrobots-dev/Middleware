@@ -9,8 +9,7 @@ namespace r2p {
 
 bool Topic::notify_locals_unsafe(Message &msg, const Time &timestamp) {
 
-	// XXX
-	R2P_ASSERT(msg.refcount < 4);
+  R2P_ASSERT(msg.refcount < 4); // XXX
 
   if (has_local_subscribers()) {
 //    msg.acquire_unsafe();
@@ -28,11 +27,12 @@ bool Topic::notify_locals_unsafe(Message &msg, const Time &timestamp) {
 //      free_unsafe(msg);
 //    }
   }
-  /*
+/*
   else {
     free_unsafe(msg);
   }
-  */
+*/
+
   return true;
 }
 
@@ -57,11 +57,12 @@ bool Topic::notify_remotes_unsafe(Message &msg, const Time &timestamp) {
 //      free_unsafe(msg);
 //    }
   }
-  /*
+/*
   else {
     free_unsafe(msg);
   }
-  */
+*/
+
   return true;
 }
 

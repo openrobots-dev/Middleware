@@ -23,7 +23,7 @@ public:
 private:
 
 public:
-  RefcountType refcount;
+  RefcountType refcount; // XXX
   void acquire_unsafe();
   bool release_unsafe();
   void reset_unsafe();

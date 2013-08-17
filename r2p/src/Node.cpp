@@ -1,4 +1,3 @@
-
 #include <r2p/Node.hpp>
 #include <r2p/Middleware.hpp>
 #include <r2p/Thread.hpp>
@@ -104,13 +103,7 @@ bool Node::spin(const Time &timeout) {
       const LocalSubscriber::Callback *callback = i->get_callback();
       if (callback != NULL) {
         Message *msgp;
-<<<<<<< HEAD
-        while (sub.fetch(msgp, dummy_timestamp)) {
-          R2P_ASSERT(msgp->refcount < 4); // XXX
-
-=======
         while (i->fetch(msgp, dummy_timestamp)) {
->>>>>>> 7cecf40226ac6a53f09682a1c864ff5d47ccddf6
           (*callback)(*msgp);
           i->release(*msgp);
         }
