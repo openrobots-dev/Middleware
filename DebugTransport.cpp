@@ -29,7 +29,7 @@ static bool recv_char(BaseChannel *channelp, char &c,
                       systime_t timeout = TIME_INFINITE) {
 
   register msg_t value = chnGetTimeout(channelp, timeout);
-  if (value >= 0 && value <= 255) {
+  if ((value & ~0xFF) == 0) {
     c = static_cast<char>(value);
     return true;
   }
@@ -177,7 +177,7 @@ static bool skip_after_char(BaseChannel *channelp, char c,
   register msg_t value;
   do {
     value = chnGetTimeout(channelp, timeout);
-    if (value < 0 || value > 255) return false;
+    if ((value & ~0xFF) != 0) return false;
   } while (static_cast<char>(value) != c);
   return true;
 }
@@ -414,8 +414,7 @@ bool DebugTransport::spin_rx() {
 
   // Skip the deadline
   if (!skip_after_char(channelp, '@')) return false;
-  Time deadline;
-  if (!recv_value(channelp, deadline.raw)) return false;
+  { Time deadline; if (!recv_value(channelp, deadline.raw)) return false; }
 
   // Receive the topic name length and data
   if (!expect_char(channelp, ':')) return false;

@@ -5,36 +5,37 @@
 namespace r2p {
 
 
-const LocalSubscriber::Callback *LocalSubscriber::get_callback() const {
+bool LocalSubscriber::fetch(Message *&msgp, Time &timestamp) {
 
-  return callbackp;
-}
-
-
-size_t LocalSubscriber::get_queue_length() const {
-
-  return msgp_queue.get_length();
-}
-
-
-bool LocalSubscriber::fetch_unsafe(Message *&msgp, Time &timestamp) {
-
+  SysLock::acquire();
   if (msgp_queue.fetch_unsafe(msgp)) {
+    SysLock::release();
     timestamp = Time::now();
     return true;
+  } else {
+    SysLock::release();
+    return false;
   }
-  return false;
 }
 
 
-bool LocalSubscriber::notify_unsafe(Message &msg, const Time &timestamp) {
+bool LocalSubscriber::notify(Message &msg, const Time &timestamp) {
 
   (void)timestamp;
+<<<<<<< HEAD
   R2P_ASSERT(msg.refcount < 4); // XXX
+=======
+  SysLock::acquire();
+>>>>>>> 7cecf40226ac6a53f09682a1c864ff5d47ccddf6
   if (msgp_queue.post_unsafe(&msg)) {
     nodep->notify_unsafe(event_index);
+    SysLock::release();
     return true;
+  } else {
+    SysLock::release();
+    return false;
   }
+<<<<<<< HEAD
   return false;
 }
 
@@ -59,6 +60,8 @@ bool LocalSubscriber::notify(Message &msg, const Time &timestamp) {
     return true;
   }
   return false;
+=======
+>>>>>>> 7cecf40226ac6a53f09682a1c864ff5d47ccddf6
 }
 
 

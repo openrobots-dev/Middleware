@@ -32,7 +32,7 @@ bool Node::subscribe(LocalSubscriber &sub, const char *namep,
     SysLock::release();
     R2P_ASSERT(index >= 0);
     R2P_ASSERT(index <= static_cast<int>(SpinEvent::MAX_INDEX));
-    sub.event_index = static_cast<unsigned>(index);
+    sub.event_index = static_cast<uint_least8_t>(index);
     return true;
   }
   return false;
@@ -54,7 +54,7 @@ void Node::publish_publishers(Publisher<MgmtMsg> &info_pub) {
               NamingTraits<Middleware>::MAX_LENGTH);
     ::strncpy(msgp->path.node, this->get_name(),
               NamingTraits<Node>::MAX_LENGTH);
-    ::strncpy(msgp->path.topic, i->itemp->get_topic()->get_name(),
+    ::strncpy(msgp->path.topic, i->get_topic()->get_name(),
               NamingTraits<Topic>::MAX_LENGTH);
 
     while (!info_pub.publish_remotely(*msgp)) {
@@ -79,7 +79,7 @@ void Node::publish_subscribers(Publisher<MgmtMsg> &info_pub) {
               NamingTraits<Middleware>::MAX_LENGTH);
     ::strncpy(msgp->path.node, this->get_name(),
               NamingTraits<Node>::MAX_LENGTH);
-    ::strncpy(msgp->path.topic, i->itemp->get_topic()->get_name(),
+    ::strncpy(msgp->path.topic, i->get_topic()->get_name(),
               NamingTraits<Topic>::MAX_LENGTH);
 
     while (!info_pub.publish_remotely(*msgp)) {
@@ -101,15 +101,18 @@ bool Node::spin(const Time &timeout) {
        i != subscribers.end() && mask != 0; bit <<= 1, ++i) {
     if ((mask & bit) != 0) {
       mask &= ~bit;
-      LocalSubscriber &sub = *i->itemp;
-      const LocalSubscriber::Callback *callback = sub.get_callback();
+      const LocalSubscriber::Callback *callback = i->get_callback();
       if (callback != NULL) {
         Message *msgp;
+<<<<<<< HEAD
         while (sub.fetch(msgp, dummy_timestamp)) {
           R2P_ASSERT(msgp->refcount < 4); // XXX
 
+=======
+        while (i->fetch(msgp, dummy_timestamp)) {
+>>>>>>> 7cecf40226ac6a53f09682a1c864ff5d47ccddf6
           (*callback)(*msgp);
-          sub.release(*msgp);
+          i->release(*msgp);
         }
       }
     }

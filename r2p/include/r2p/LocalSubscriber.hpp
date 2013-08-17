@@ -65,3 +65,47 @@ protected:
 
 
 } // namespace r2p
+
+#include <r2p/Node.hpp>
+
+namespace r2p {
+
+
+inline
+const LocalSubscriber::Callback *LocalSubscriber::get_callback() const {
+
+  return callbackp;
+}
+
+
+inline
+size_t LocalSubscriber::get_queue_length() const {
+
+  return msgp_queue.get_length();
+}
+
+
+inline
+bool LocalSubscriber::fetch_unsafe(Message *&msgp, Time &timestamp) {
+
+  if (msgp_queue.fetch_unsafe(msgp)) {
+    timestamp = Time::now();
+    return true;
+  }
+  return false;
+}
+
+
+inline
+bool LocalSubscriber::notify_unsafe(Message &msg, const Time &timestamp) {
+
+  (void)timestamp;
+  if (msgp_queue.post_unsafe(&msg)) {
+    nodep->notify_unsafe(event_index);
+    return true;
+  }
+  return false;
+}
+
+
+} // namespace r2p

@@ -19,7 +19,7 @@ bool Topic::notify_locals_unsafe(Message &msg, const Time &timestamp) {
          local_subscribers.begin_unsafe();
          i != local_subscribers.end_unsafe(); ++i) {
       msg.acquire_unsafe();
-      if (!i->itemp->notify_unsafe(msg, timestamp)) {
+      if (!i->notify_unsafe(msg, timestamp)) {
         msg.release_unsafe();
       }
     }
@@ -48,7 +48,7 @@ bool Topic::notify_remotes_unsafe(Message &msg, const Time &timestamp) {
          remote_subscribers.begin_unsafe();
          i != remote_subscribers.end_unsafe(); ++i) {
       msg.acquire_unsafe();
-      if (!i->itemp->notify_unsafe(msg, timestamp)) {
+      if (!i->notify_unsafe(msg, timestamp)) {
         msg.release_unsafe();
       }
     }

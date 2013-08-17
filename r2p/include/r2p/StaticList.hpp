@@ -43,12 +43,12 @@ public:
     }
 
   public:
-    const Link *operator -> () const {
-      return curp;
+    Item *operator -> () const {
+      return curp->itemp;
     }
 
-    const Link &operator * () const {
-      return *curp;
+    Item &operator * () const {
+      return *curp->itemp;
     }
 
     IteratorUnsafe &operator ++ () {
@@ -90,12 +90,12 @@ public:
     }
 
   public:
-    const ConstLink *operator -> () const {
-      return curp;
+    const Item *operator -> () const {
+      return curp->itemp;
     }
 
-    const ConstLink &operator * () const {
-      return *curp;
+    const Item &operator * () const {
+      return *curp->itemp;
     }
 
     ConstIteratorUnsafe &operator ++ () {
@@ -137,12 +137,12 @@ public:
     }
 
   public:
-    const Link *operator -> () const {
-      return curp;
+    Item *operator -> () const {
+      return curp->itemp;
     }
 
-    const Link &operator * () const {
-      return *curp;
+    Item &operator * () const {
+      return *curp->itemp;
     }
 
     Iterator &operator ++ () {
@@ -188,12 +188,12 @@ public:
     }
 
   public:
-    const ConstLink *operator -> () const {
-      return curp;
+    const Item *operator -> () const {
+      return curp->itemp;
     }
 
-    const ConstLink &operator * () const {
-      return *curp;
+    const Item &operator * () const {
+      return *curp->itemp;
     }
 
     ConstIterator &operator ++ () {

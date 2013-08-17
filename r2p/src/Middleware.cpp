@@ -52,13 +52,13 @@ void Middleware::stop() {
     // Stop all nodes
     for (StaticList<Node>::Iterator i = nodes.begin();
          i != nodes.end(); ++i) {
-      i->itemp->notify_stop();
+      i->notify_stop();
     }
 
     // Stop all remote middlewares
     for (StaticList<Transport>::Iterator i = transports.begin();
          i != transports.end(); ++i) {
-      i->itemp->notify_stop();
+      i->notify_stop();
     }
 
     Thread::Priority oldprio = Thread::get_priority();
@@ -105,7 +105,7 @@ bool Middleware::advertise(LocalPublisher &pub, const char *namep,
 
   for (StaticList<Transport>::Iterator i = transports.begin();
        i != transports.end(); ++i) {
-    i->itemp->notify_advertisement(*topicp);
+    i->notify_advertisement(*topicp);
   }
 
   return true;
@@ -122,7 +122,7 @@ bool Middleware::advertise(RemotePublisher &pub, const char *namep,
 
   for (StaticList<Transport>::Iterator i = transports.begin();
        i != transports.end(); ++i) {
-    i->itemp->notify_advertisement(*topicp);
+    i->notify_advertisement(*topicp);
   }
 
   return true;
@@ -141,7 +141,7 @@ bool Middleware::subscribe(LocalSubscriber &sub, const char *namep,
 
   for (StaticList<Transport>::Iterator i = transports.begin();
        i != transports.end(); ++i) {
-    i->itemp->notify_subscription(*topicp);
+    i->notify_subscription(*topicp);
   }
 
   return true;
@@ -237,8 +237,8 @@ void Middleware::do_mgmt_thread() {
 
           for (StaticList<Node>::Iterator i = nodes.begin();
                i != nodes.end(); ++i) {
-            i->itemp->publish_publishers(mgmt_pub);
-            i->itemp->publish_subscribers(mgmt_pub);
+            i->publish_publishers(mgmt_pub);
+            i->publish_subscribers(mgmt_pub);
           }
 
           break;
@@ -261,11 +261,11 @@ void Middleware::do_mgmt_thread() {
       if (now >= topic_lastiter_time + TOPIC_CHECK_TIMEOUT_MS) {
         topic_lastiter_time = now; // TODO: Add random time
         SysLock::acquire();
-        if (topic_iter->itemp->is_awaiting_advertisements()) {
+        if (topic_iter->is_awaiting_advertisements()) {
           SysLock::release();
           for (StaticList<Transport>::Iterator i = transports.begin();
                i != transports.end(); ++i) {
-            i->itemp->notify_subscription(*topic_iter->itemp);
+            i->notify_subscription(*topic_iter);
           }
         } else {
           SysLock::release();
