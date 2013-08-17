@@ -31,6 +31,7 @@ void RTCANTransport::recv_adv_msg(const adv_msg_t &adv_msg) {
 	  msgp->type = MgmtMsg::CMD_ADVERTISE;
 	  ::strncpy(msgp->pubsub.topic, adv_msg.topic,
 				NamingTraits<Topic>::MAX_LENGTH);
+	  msgp->pubsub.rtcan_id = adv_msg.rtcan_id;
 	  msgp->pubsub.transportp = this;
 	  mgmt_rpub.publish_locally_unsafe(*msgp);
 	}
@@ -58,7 +59,7 @@ bool RTCANTransport::send_adv_msg(const adv_msg_t &adv_msg) {
   rtcan_msg_p = header_pool.alloc();
   if (rtcan_msg_p == NULL) return false;
 
-  rtcan_msg_p->id = 123 << 8;
+  rtcan_msg_p->id = 123 << 8; // FIXME
   // FIXME need callback to free the message header
   rtcan_msg_p->callback = NULL;
   rtcan_msg_p->params = NULL;
@@ -76,7 +77,7 @@ bool RTCANTransport::send_advertisement(const Topic &topic) {
   adv_tx_msg.type = 'P';
   adv_tx_msg.queue_length = 0;
   ::strncpy(adv_tx_msg.topic, topic.get_name(), NamingTraits<Topic>::MAX_LENGTH);
-  adv_tx_msg.rtcan_id = 123;
+  adv_tx_msg.rtcan_id = 111 << 8; // FIXME the transport-dependent id comes from the rsub, should we move to send_advertisement(rsub *) ?
 
   return send_adv_msg(adv_tx_msg);
 }
@@ -90,7 +91,6 @@ bool RTCANTransport::send_subscription(const Topic &topic,
   adv_tx_msg.type = 'S';
   adv_tx_msg.queue_length = queue_length;
   ::strncpy(adv_tx_msg.topic, topic.get_name(), NamingTraits<Topic>::MAX_LENGTH);
-  adv_tx_msg.rtcan_id = 123;
 
   return send_adv_msg(adv_tx_msg);
 }
@@ -117,37 +117,39 @@ bool RTCANTransport::send(Message * msgp, RTCANSubscriber * rsubp) {
 	if (rtcan_msg_p == NULL) return false;
 
 	rtcan_msg_p->id = rsubp->rtcan_id;
-//FIXME XXX
 	rtcan_msg_p->callback = reinterpret_cast<rtcan_msgcallback_t>(send_cb);
 	rtcan_msg_p->params = rsubp;
-	rtcan_msg_p->params2 = msgp;
-	// FIXME
 	rtcan_msg_p->size = rsubp->get_topic()->get_size();
 	rtcan_msg_p->status = RTCAN_MSG_READY;
-	rtcan_msg_p->data = (uint8_t *)msgp->get_raw_data();
+	rtcan_msg_p->data = msgp->get_raw_data();
 
 	rtcanTransmitI(&rtcan, rtcan_msg_p, 100);
-  // TODO
+
   return true;
 }
 
-#include "hal.h"
 void RTCANTransport::send_cb(rtcan_msg_t &rtcan_msg) {
 //  RTCANTransport &transport = reinterpret_cast<RTCANTransport &>(rtcan_msg.params);
 //  transport.recv_adv_msg(reinterpret_cast<const adv_msg_t &>(rtcan_msg.data));
 
   RTCANSubscriber * rsubp = (RTCANSubscriber *)rtcan_msg.params;
-  Message * msg = (Message *)rtcan_msg.params2;
+  RTCANTransport * transport = (RTCANTransport *)rsubp->get_transport();
+
+  Message * msg = (Message *)(rtcan_msg.data - 1);
 
   rsubp->release_unsafe(*msg);
+  transport->header_pool.free_unsafe(&rtcan_msg);
   rsubp->queue_free++;
-
-  palTogglePad(LED_GPIO, LED3);
-
 }
 
 
+void RTCANTransport::recv_cb(rtcan_msg_t &rtcan_msg) {
+  RTCANPublisher* rpub = (RTCANPublisher *)rtcan_msg.params;
+  Message * msgp;
 
+  msgp = (Message *)(((uint8_t *) rtcan_msg.data) - sizeof(Message));
+  rpub->publish_unsafe(*msgp);
+}
 
 
 
@@ -168,9 +170,16 @@ void RTCANTransport::initialize(const RTCANConfig &rtcan_config) {
 }
 
 
-RemotePublisher *RTCANTransport::create_publisher() const {
+RemotePublisher *RTCANTransport::create_publisher(Topic &topic) const {
+  RTCANPublisher * rpubp = new RTCANPublisher();
+  rpubp->rtcan_header.id = 111 << 8; //FIXME
+  rpubp->rtcan_header.callback = reinterpret_cast<rtcan_msgcallback_t>(recv_cb);
+  rpubp->rtcan_header.params = rpubp;
+  rpubp->rtcan_header.size = 4; // FIXME
+  rpubp->rtcan_header.status = RTCAN_MSG_READY;
 
-  return new RTCANPublisher();
+  rtcanReceive(&RTCAND1, &rpubp->rtcan_header);
+  return rpubp;
 }
 
 

@@ -25,12 +25,12 @@
 
 struct Uint32Msg : public r2p::Message {
   uint32_t value;
-};
+} R2P_PACKED;
 
 
 struct FloatMsg : public r2p::Message {
   float value;
-};
+} R2P_PACKED;
 
 
 void *__dso_handle;

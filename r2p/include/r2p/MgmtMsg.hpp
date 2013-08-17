@@ -38,6 +38,7 @@ public:
       char topic[NamingTraits<Topic>::MAX_LENGTH];
       Transport *transportp;
       size_t queue_length;
+      uint16_t rtcan_id; // FIXME: pubsub content should be specified by the transport to insert transport-dependent fields
     } pubsub;
   } R2P_PACKED;
 

@@ -25,12 +25,12 @@
 
 struct Uint32Msg : public r2p::Message {
   uint32_t value;
-};
+} R2P_PACKED;
 
 
 struct FloatMsg : public r2p::Message {
   float value;
-};
+} R2P_PACKED;
 
 
 void *__dso_handle;
@@ -81,8 +81,8 @@ msg_t SubThd(void *) {
   node.subscribe(sub2, "test", sub2_msgbuf);
 
   for (;;) {
-    if (!node.spin()) {
-      palTogglePad(LED_GPIO, LED4);
+    if (!node.spin(1000)) {
+//      palTogglePad(LED_GPIO, LED4);
     }
   }
   return CH_SUCCESS;

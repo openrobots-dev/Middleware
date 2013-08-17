@@ -59,7 +59,7 @@ public:
 private:
   bool send_adv_msg(const adv_msg_t &adv_msg);
   void recv_adv_msg(const adv_msg_t &adv_msg);
-  RemotePublisher *create_publisher() const;
+  RemotePublisher *create_publisher(Topic &topic) const;
   RemoteSubscriber *create_subscriber(
     Transport &transport,
     TimestampedMsgPtrQueue::Entry queue_buf[], // TODO: remove
@@ -72,7 +72,7 @@ public:
 private:
   static void adv_rx_cb(rtcan_msg_t &rtcan_msg);
   static void send_cb(rtcan_msg_t &rtcan_msg);
-
+  static void recv_cb(rtcan_msg_t &rtcan_msg);
 };
 
 } // namespace r2p

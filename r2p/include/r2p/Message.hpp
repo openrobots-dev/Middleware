@@ -45,7 +45,7 @@ public:
 inline
 const uint8_t *Message::get_raw_data() const {
 
-  return reinterpret_cast<const uint8_t *>(&refcount + 1);
+  return reinterpret_cast<const uint8_t *>(&refcount + 1); // FIXME: does not work without packed attribute (and maybe without gcc -O3)
 }
 
 
