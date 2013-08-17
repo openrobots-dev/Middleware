@@ -51,7 +51,7 @@ public:
   void notify_first_sub_unsafe(const DebugSubscriber &sub);
 
 private:
-  RemotePublisher *create_publisher() const;
+  RemotePublisher *create_publisher(Topic &topic) const;
   RemoteSubscriber *create_subscriber(
     Transport &transport,
     TimestampedMsgPtrQueue::Entry queue_buf[],

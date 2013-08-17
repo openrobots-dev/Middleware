@@ -350,7 +350,7 @@ void DebugTransport::initialize(void *rx_stackp, size_t rx_stacklen,
 }
 
 
-RemotePublisher *DebugTransport::create_publisher() const {
+RemotePublisher *DebugTransport::create_publisher(Topic &topic) const {
 
   return new DebugPublisher();
 }
