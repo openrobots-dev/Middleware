@@ -229,6 +229,7 @@ void Middleware::do_mgmt_thread() {
           mgmt_sub.release(*msgp);
           if (topicp != NULL) {
             transportp->subscribe(*topicp, queue_length);
+            transportp->notify_advertisement(*topicp);
           }
           break;
         }
