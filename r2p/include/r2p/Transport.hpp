@@ -50,7 +50,7 @@ protected:
   virtual bool send_stop() = 0;
   virtual bool send_reboot() = 0;
 
-  virtual RemotePublisher *create_publisher() const = 0;
+  virtual RemotePublisher *create_publisher(Topic &topic) const = 0;
   virtual RemoteSubscriber *create_subscriber(
     Transport &transport,
     TimestampedMsgPtrQueue::Entry queue_buf[], // TODO: Make as generic <const void *> argument

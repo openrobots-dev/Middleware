@@ -5,6 +5,7 @@
 #include <r2p/RemotePublisher.hpp>
 #include <r2p/RemoteSubscriber.hpp>
 #include <r2p/TimestampedMsgPtrQueue.hpp>
+#include "RTCANPublisher.hpp"
 
 namespace r2p {
 
@@ -46,12 +47,17 @@ bool Transport::touch_publisher(Topic &topic) {
   if (linkp != NULL) return true;
 
   // Create a new remote publisher
-  RemotePublisher *pubp = create_publisher();
+  RemotePublisher *pubp = create_publisher(topic);
   if (pubp == NULL) return false;
 
   pubp->notify_advertised(topic);
   topic.advertise(*pubp, Time::INFINITE);
   publishers.link(pubp->by_transport);
+
+  // FIXME
+  RTCANPublisher *rpubp = (RTCANPublisher *)pubp;
+  rpubp->rtcan_header.data = (const uint8_t *)topic.alloc();
+
   return true;
 }
 
