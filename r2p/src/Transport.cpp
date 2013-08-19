@@ -5,6 +5,7 @@
 #include <r2p/RemotePublisher.hpp>
 #include <r2p/RemoteSubscriber.hpp>
 #include <r2p/TimestampedMsgPtrQueue.hpp>
+#include <r2p/ScopedLock.hpp>
 #include "RTCANPublisher.hpp"
 
 namespace r2p {
@@ -39,7 +40,7 @@ bool Transport::notify_reboot() {
 
 bool Transport::touch_publisher(Topic &topic) {
 
-  Mutex::ScopedLock lock(publishers_lock);
+  ScopedLock<Mutex> lock(publishers_lock);
 
   // Check if the remote publisher already exists
   register const StaticList<RemotePublisher>::Link *linkp;
@@ -64,7 +65,7 @@ bool Transport::touch_publisher(Topic &topic) {
 
 bool Transport::touch_subscriber(Topic &topic, size_t queue_length) {
 
-  Mutex::ScopedLock lock(subscribers_lock);
+  ScopedLock<Mutex> lock(subscribers_lock);
 
   // Check if the remote subscriber already exists
   const StaticList<RemoteSubscriber>::Link *linkp;

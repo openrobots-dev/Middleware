@@ -96,13 +96,11 @@ msg_t PubThd(void *) {
 }
 
 
-class BlinkLed2 : public r2p::Subscriber<Uint32Msg>::Callback {
-  bool action(const Uint32Msg &msg) const {
-    (void)msg;
-    palTogglePad(LED_GPIO, LED2);
-    return true;
-  }
-};
+bool callback_2(const Uint32Msg &msg) const {
+  (void)msg;
+  palTogglePad(LED_GPIO, LED2);
+  return true;
+}
 
 
 msg_t SubThd(void *) {
@@ -111,8 +109,7 @@ msg_t SubThd(void *) {
 
   Uint32Msg sub2_msgbuf[5], *sub2_queue[5];
   r2p::Node node("Sub");
-  BlinkLed2 blinker;
-  r2p::Subscriber<Uint32Msg> sub2(sub2_queue, 5, &blinker);
+  r2p::Subscriber<Uint32Msg> sub2(sub2_queue, 5, callback_2);
 
   node.subscribe(sub2, "test", sub2_msgbuf);
 

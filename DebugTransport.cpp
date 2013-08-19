@@ -3,6 +3,7 @@
 #include "DebugPublisher.hpp"
 #include "DebugSubscriber.hpp"
 #include <r2p/Middleware.hpp>
+#include <r2p/ScopedLock.hpp>
 
 #include <cstring>
 
@@ -291,38 +292,30 @@ static bool send_reboot_msg(BaseChannel *channelp) {
 
 bool DebugTransport::send_advertisement(const Topic &topic) {
 
-  send_lock.acquire();
-  bool success = send_pubsub_msg(channelp, topic);
-  send_lock.release();
-  return success;
+  ScopedLock<Mutex> lock(send_lock);
+  return send_pubsub_msg(channelp, topic);
 }
 
 
 bool DebugTransport::send_subscription(const Topic &topic,
                                        size_t queue_length) {
 
-  send_lock.acquire();
-  bool success = send_pubsub_msg(channelp, topic, queue_length);
-  send_lock.release();
-  return success;
+  ScopedLock<Mutex> lock(send_lock);
+  return send_pubsub_msg(channelp, topic, queue_length);
 }
 
 
 bool DebugTransport::send_stop() {
 
-  send_lock.acquire();
-  bool success = send_stop_msg(channelp);
-  send_lock.release();
-  return success;
+  ScopedLock<Mutex> lock(send_lock);
+  return send_stop_msg(channelp);
 }
 
 
 bool DebugTransport::send_reboot() {
 
-  send_lock.acquire();
-  bool success = send_reboot_msg(channelp);
-  send_lock.release();
-  return success;
+  ScopedLock<Mutex> lock(send_lock);
+  return send_reboot_msg(channelp);
 }
 
 

@@ -17,29 +17,11 @@ class LocalSubscriber : public BaseSubscriber {
   friend class Topic;
 
 public:
-  class Callback {
-  private:
-    virtual bool action(const Message &msg) const = 0;
-
-  public:
-    bool operator () (const Message &msg) const {
-      return action(msg);
-    }
-
-    bool operator () (const Message &msg) {
-      return action(msg);
-    }
-
-  protected:
-    Callback() {}
-
-  public:
-    virtual ~Callback() {}
-  };
+  typedef bool (*Callback)(const Message &msg);
 
 private:
   Node *nodep;
-  const Callback *callbackp;
+  const Callback callback;
   MessagePtrQueue msgp_queue;
   uint_least8_t event_index;
 
@@ -47,7 +29,7 @@ private:
   mutable StaticList<LocalSubscriber>::Link by_topic;
 
 public:
-  const Callback *get_callback() const;
+  Callback get_callback() const;
   size_t get_queue_length() const;
 
 public:
@@ -59,7 +41,7 @@ public:
 
 protected:
   LocalSubscriber(Message *queue_buf[], size_t queue_length,
-                  const Callback *callbackp = NULL);
+                  Callback callback = NULL);
   virtual ~LocalSubscriber();
 };
 
@@ -72,9 +54,9 @@ namespace r2p {
 
 
 inline
-const LocalSubscriber::Callback *LocalSubscriber::get_callback() const {
+LocalSubscriber::Callback LocalSubscriber::get_callback() const {
 
-  return callbackp;
+  return callback;
 }
 
 

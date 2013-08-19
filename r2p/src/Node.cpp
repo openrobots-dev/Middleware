@@ -100,7 +100,7 @@ bool Node::spin(const Time &timeout) {
        i != subscribers.end() && mask != 0; bit <<= 1, ++i) {
     if ((mask & bit) != 0) {
       mask &= ~bit;
-      const LocalSubscriber::Callback *callback = i->get_callback();
+      const LocalSubscriber::Callback callback = i->get_callback();
       if (callback != NULL) {
         Message *msgp;
         while (i->fetch(msgp, dummy_timestamp)) {

@@ -34,11 +34,11 @@ bool LocalSubscriber::notify(Message &msg, const Time &timestamp) {
 
 
 LocalSubscriber::LocalSubscriber(Message *queue_buf[], size_t queue_length,
-                                 const Callback *callbackp)
+                                 Callback callback)
 :
   BaseSubscriber(),
   nodep(NULL),
-  callbackp(callbackp),
+  callback(callback),
   msgp_queue(queue_buf, queue_length),
   event_index(~0),
   by_node(*this),

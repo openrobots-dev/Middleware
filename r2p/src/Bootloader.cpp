@@ -114,7 +114,9 @@ bool Bootloader::process_ihex(const IhexRecord &record) {
       ++numapps;
       freeadr += Flasher::align_next(tempinfo.pgmlen) +
                  Flasher::align_next(tempinfo.datalen);
-      return update_layout(&tempinfo);
+      bool updated = update_layout(&tempinfo);
+      R2P_ASSERT(updated);
+      return true;
     } else {
       return false;
     }

@@ -50,8 +50,7 @@ void Middleware::stop() {
 
   do {
     // Stop all nodes
-    for (StaticList<Node>::Iterator i = nodes.begin();
-         i != nodes.end(); ++i) {
+    for (StaticList<Node>::Iterator i = nodes.begin(); i != nodes.end(); ++i) {
       i->notify_stop();
     }
 
@@ -66,12 +65,6 @@ void Middleware::stop() {
     Thread::yield();
     Thread::set_priority(oldprio);
   } while (nodes.get_count() > 0);
-}
-
-
-void Middleware::reboot() {
-
-  // TODO: call impl
 }
 
 
@@ -302,15 +295,18 @@ void Middleware::do_boot_thread() {
   boot_node.subscribe(boot_sub, boot_topic.get_name(), boot_msgbuf);
 
   for (;;) {
-    if (boot_node.spin()) {
+    if (boot_node.spin(Time::ms(1000))) {
       BootloaderMsg *requestp = NULL, *responsep = NULL;
       Time deadline;
       while (boot_sub.fetch(requestp, deadline)) {
         if (boot_pub.alloc(responsep)) {
           Bootloader::instance.process(*requestp, *responsep);
-          boot_pub.publish_remotely(*responsep);
+          boot_sub.release(*requestp);
+        } else {
+          responsep = requestp;
+          responsep->type = BootloaderMsg::NACK;
         }
-        boot_sub.release(*requestp);
+        boot_pub.publish_remotely(*responsep);
         Thread::yield();
       }
     }
