@@ -78,4 +78,23 @@ void DebugTransport::notify_first_sub_unsafe(const DebugSubscriber &sub) {
 }
 
 
+inline
+RemotePublisher *DebugTransport::create_publisher(Topic &topic) const {
+
+  (void)topic;
+  return new DebugPublisher();
+}
+
+
+inline
+RemoteSubscriber *DebugTransport::create_subscriber(
+  Transport &transport,
+  TimestampedMsgPtrQueue::Entry queue_buf[],
+  size_t queue_length) const {
+
+  return new DebugSubscriber(static_cast<DebugTransport &>(transport),
+                             queue_buf, queue_length);
+}
+
+
 } // namespace r2p

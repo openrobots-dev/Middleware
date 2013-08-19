@@ -17,11 +17,34 @@ bool BasePublisher::alloc_unsafe(Message *&msgp) {
 }
 
 
-bool BasePublisher::alloc(Message *&msgp) {
+bool BasePublisher::publish_unsafe(Message &msg) {
 
-  SysLock::acquire();
-  bool success = alloc_unsafe(msgp);
-  SysLock::release();
+  msg.acquire_unsafe();
+
+  Time now = Time::now();
+  bool success = topicp->notify_locals_unsafe(msg, now) &&
+                 topicp->notify_remotes_unsafe(msg, now);
+
+  if (!msg.release_unsafe()) {
+    topicp->free_unsafe(msg);
+  }
+
+  return success;
+}
+
+
+bool BasePublisher::publish(Message &msg) {
+
+  msg.acquire();
+
+  Time now = Time::now();
+  bool success = topicp->notify_locals(msg, now) &&
+                 topicp->notify_remotes(msg, now);
+
+  if (!msg.release()) {
+    topicp->free(msg);
+  }
+
   return success;
 }
 

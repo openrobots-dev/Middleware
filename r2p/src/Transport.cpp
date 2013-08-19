@@ -55,8 +55,8 @@ bool Transport::touch_publisher(Topic &topic) {
   publishers.link(pubp->by_transport);
 
   // FIXME
-  RTCANPublisher *rpubp = (RTCANPublisher *)pubp;
-  rpubp->rtcan_header.data = (const uint8_t *)topic.alloc();
+  RTCANPublisher *rpubp = static_cast<RTCANPublisher *>(pubp);
+  rpubp->rtcan_header.data = reinterpret_cast<uint8_t *>(topic.alloc());
 
   return true;
 }
@@ -77,7 +77,7 @@ bool Transport::touch_subscriber(Topic &topic, size_t queue_length) {
   RemoteSubscriber *subp = NULL;
 
   msgpool_bufp = reinterpret_cast<Message *>(
-    new uint8_t[topic.get_size() * queue_length]
+    new uint8_t[(topic.get_size() + sizeof(Message)) * queue_length]
   );
   if (msgpool_bufp != NULL) {
     queue_bufp = new TimestampedMsgPtrQueue::Entry[queue_length];

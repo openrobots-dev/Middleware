@@ -199,10 +199,7 @@ static bool send_msg(BaseChannel *channelp, const Message &msg,
 
   // Send the payload length and data
   if (!send_char(channelp, ':')) return false;
-  msg_size -= sizeof(Message::RefcountType);
-  Message::LengthType msg_length =
-    static_cast<Message::LengthType>(msg_size);
-  if (!send_value(channelp, msg_length)) return false;
+  if (!send_value(channelp, msg_size)) return false;
   if (!send_chunk(channelp, msg.get_raw_data(), msg_size)) return false;
 
   if (!send_char(channelp, '\r')) return false;
@@ -349,22 +346,6 @@ void DebugTransport::initialize(void *rx_stackp, size_t rx_stacklen,
   Middleware::instance.add(*this);
 }
 
-
-RemotePublisher *DebugTransport::create_publisher(Topic &topic) const {
-
-  return new DebugPublisher();
-}
-
-
-RemoteSubscriber *DebugTransport::create_subscriber(
-  Transport &transport,
-  TimestampedMsgPtrQueue::Entry queue_buf[],
-  size_t queue_length) const {
-
-  return new DebugSubscriber(static_cast<DebugTransport &>(transport),
-                             queue_buf, queue_length);
-}
-
 bool DebugTransport::spin_tx() {
 
   Message *msgp;
@@ -437,7 +418,7 @@ bool DebugTransport::spin_rx() {
     // Get the payload length
     Message::LengthType datalen;
     if (!recv_value(channelp, datalen)) return false;
-    if (datalen + sizeof(Message::RefcountType) != topicp->get_size()) {
+    if (datalen != topicp->get_size()) {
       return false;
     }
 

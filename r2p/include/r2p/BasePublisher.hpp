@@ -61,14 +61,6 @@ void BasePublisher::notify_advertised(Topic &topic) {
 
 
 inline
-bool BasePublisher::publish_unsafe(Message &msg) {
-
-  return topicp->notify_locals_unsafe(msg, Time::now()) &&
-         topicp->notify_remotes_unsafe(msg, Time::now());
-}
-
-
-inline
 bool BasePublisher::publish_locally_unsafe(Message &msg) {
 
   return topicp->notify_locals_unsafe(msg, Time::now());
@@ -83,19 +75,12 @@ bool BasePublisher::publish_remotely_unsafe(Message &msg) {
 
 
 inline
-bool BasePublisher::publish(Message &msg) {
-  bool ret;
+bool BasePublisher::alloc(Message *&msgp) {
 
-  msg.acquire();
-
-  ret =  topicp->notify_locals(msg, Time::now());
-  ret &= topicp->notify_remotes(msg, Time::now());
-
-  if (!msg.release()) {
-    topicp->free(msg);
-  }
-
-  return ret;
+  SysLock::acquire();
+  bool success = alloc_unsafe(msgp);
+  SysLock::release();
+  return success;
 }
 
 

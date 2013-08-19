@@ -94,7 +94,7 @@ const Time &Topic::get_publish_timeout() const {
 inline
 size_t Topic::get_size() const {
 
-  return msg_pool.get_item_size() - sizeof(R2P_BASEMESSAGE_REFCOUNT_TYPE);
+  return msg_pool.get_item_size() - sizeof(Message);
 }
 
 
