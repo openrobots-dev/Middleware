@@ -15,7 +15,6 @@ private:
   Item *tailp;
 
 public:
-  size_t get_count_unsafe() const;
   bool post_unsafe(Item item);
   bool fetch_unsafe(Item &item);
   bool skip_unsafe();
@@ -32,13 +31,6 @@ public:
 
 
 // TODO: Low-level implementation
-
-
-template<typename Item> inline
-size_t ArrayQueue<Item>::get_count_unsafe() const {
-
-  return count;
-}
 
 
 template<typename Item> inline

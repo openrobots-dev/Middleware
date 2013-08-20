@@ -43,20 +43,14 @@ public:
 inline
 bool DebugSubscriber::notify(Message &msg, const Time &timestamp) {
 
-  SysLock::acquire();
-  bool success = notify_unsafe(msg, timestamp);
-  SysLock::release();
-  return success;
+  return safeguard(notify_unsafe(msg, timestamp));
 }
 
 
 inline
 bool DebugSubscriber::fetch(Message *&msgp, Time &timestamp) {
 
-  SysLock::acquire();
-  bool success = fetch_unsafe(msgp, timestamp);
-  SysLock::release();
-  return success;
+  return safeguard(fetch_unsafe(msgp, timestamp));
 }
 
 

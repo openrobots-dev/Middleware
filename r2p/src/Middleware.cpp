@@ -25,7 +25,7 @@ void Middleware::initialize(void *info_stackp, size_t info_stacklen,
   Thread::Priority oldprio = Thread::get_priority();
   Thread::set_priority(Thread::IDLE);
   SysLock::acquire();
-  while (!mgmt_topic.has_local_publishers() &&
+  while (!mgmt_topic.has_local_publishers() ||
          !mgmt_topic.has_local_subscribers()) {
     SysLock::release();
     Thread::yield();
@@ -227,6 +227,18 @@ void Middleware::do_mgmt_thread() {
         case MgmtMsg::CMD_GET_NETWORK_STATE: {
           sub.release(*msgp);
 
+          // Send the module info
+          while (!pub.alloc(msgp)) {
+            Thread::yield();
+          }
+          ::strncpy(msgp->module.name, get_module_name(),
+                    NamingTraits<Middleware>::MAX_LENGTH);
+          msgp->module.flags.stopped = safeguard(is_stopped()) ? 1 : 0;
+          while (!pub.publish(*msgp)) {
+            Thread::yield();
+          }
+
+          // Send the (lazy) list of publishers and subscribers
           for (StaticList<Node>::Iterator i = nodes.begin();
                i != nodes.end(); ++i) {
             i->publish_publishers(pub);
@@ -286,7 +298,7 @@ void Middleware::do_boot_thread() {
   Node node("R2P_BOOT");
 
   Bootloader::instance.set_page_buffer(
-    new r2p::Flasher::Data[BOOT_PAGE_LENGTH]
+    new Flasher::Data[BOOT_PAGE_LENGTH]
   );
 
   bool success; (void)success;

@@ -61,13 +61,6 @@ TimestampedMsgPtrQueue::Entry::Entry(Message *msgp,
 
 
 inline
-size_t TimestampedMsgPtrQueue::get_count_unsafe() const {
-
-  return impl.get_count_unsafe();
-}
-
-
-inline
 bool TimestampedMsgPtrQueue::post_unsafe(Entry &entry) {
 
   return impl.post_unsafe(entry);
@@ -91,7 +84,7 @@ size_t TimestampedMsgPtrQueue::get_length() const {
 inline
 size_t TimestampedMsgPtrQueue::get_count() const {
 
-  return get_count();
+  return impl.get_count();
 }
 
 
