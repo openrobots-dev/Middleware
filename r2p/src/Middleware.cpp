@@ -64,7 +64,7 @@ void Middleware::stop() {
     Thread::set_priority(Thread::IDLE);
     Thread::yield();
     Thread::set_priority(oldprio);
-  } while (nodes.get_count() > 0);
+  } while (nodes.count() > 0);
 }
 
 
@@ -157,9 +157,7 @@ bool Middleware::subscribe(RemoteSubscriber &sub, const char *namep,
 
 Topic *Middleware::find_topic(const char *namep) {
 
-  const StaticList<Topic>::Link *linkp =
-    topics.find_first(Topic::has_name, namep);
-  return (linkp != NULL) ? linkp->itemp : NULL;
+  return topics.find_first(Topic::has_name, namep);
 }
 
 
@@ -189,27 +187,27 @@ Thread::Return Middleware::mgmt_threadf(Thread::Argument) {
 
 void Middleware::do_mgmt_thread() {
 
-  MgmtMsg mgmt_msgbuf[MGMT_BUFFER_LENGTH];
-  MgmtMsg *mgmt_msgqueue_buf[MGMT_BUFFER_LENGTH];
-  Subscriber<MgmtMsg> mgmt_sub(mgmt_msgqueue_buf, MGMT_BUFFER_LENGTH);
-  Publisher<MgmtMsg> mgmt_pub;
-  Node mgmt_node("R2P_MGMT");
+  MgmtMsg msgbuf[MGMT_BUFFER_LENGTH];
+  MgmtMsg *msgqueue_buf[MGMT_BUFFER_LENGTH];
+  Subscriber<MgmtMsg> sub(msgqueue_buf, MGMT_BUFFER_LENGTH);
+  Publisher<MgmtMsg> pub;
+  Node node("R2P_MGMT");
 
-  mgmt_node.advertise(mgmt_pub, mgmt_topic.get_name(), Time::INFINITE);
-  mgmt_node.subscribe(mgmt_sub, mgmt_topic.get_name(), mgmt_msgbuf);
+  node.advertise(pub, mgmt_topic.get_name(), Time::INFINITE);
+  node.subscribe(sub, mgmt_topic.get_name(), msgbuf);
 
   do {
-    if (mgmt_node.spin(Time::ms(MGMT_TIMEOUT_MS))) {
+    if (node.spin(Time::ms(MGMT_TIMEOUT_MS))) {
       if (is_stopped()) break;
 
       MgmtMsg *msgp;
       Time deadline;
-      while (mgmt_sub.fetch(msgp, deadline)) {
+      while (sub.fetch(msgp, deadline)) {
         switch (msgp->type) {
         case MgmtMsg::CMD_ADVERTISE: {
           Transport *transportp = msgp->pubsub.transportp;
           Topic *topicp = find_topic(msgp->pubsub.topic);
-          mgmt_sub.release(*msgp);
+          sub.release(*msgp);
           if (topicp != NULL) {
             transportp->advertise(*topicp);
           }
@@ -219,7 +217,7 @@ void Middleware::do_mgmt_thread() {
           Transport *transportp = msgp->pubsub.transportp;
           size_t queue_length = msgp->pubsub.queue_length;
           Topic *topicp = find_topic(msgp->pubsub.topic);
-          mgmt_sub.release(*msgp);
+          sub.release(*msgp);
           if (topicp != NULL) {
             transportp->subscribe(*topicp, queue_length);
             transportp->notify_advertisement(*topicp);
@@ -227,18 +225,18 @@ void Middleware::do_mgmt_thread() {
           break;
         }
         case MgmtMsg::CMD_GET_NETWORK_STATE: {
-          mgmt_sub.release(*msgp);
+          sub.release(*msgp);
 
           for (StaticList<Node>::Iterator i = nodes.begin();
                i != nodes.end(); ++i) {
-            i->publish_publishers(mgmt_pub);
-            i->publish_subscribers(mgmt_pub);
+            i->publish_publishers(pub);
+            i->publish_subscribers(pub);
           }
 
           break;
         }
         default: {
-          mgmt_sub.release(*msgp);
+          sub.release(*msgp);
           break;
         }
         }
@@ -281,32 +279,39 @@ Thread::Return Middleware::boot_threadf(Thread::Argument) {
 
 void Middleware::do_boot_thread() {
 
-  BootloaderMsg boot_msgbuf[BOOT_BUFFER_LENGTH];
-  BootloaderMsg *boot_msgqueue_buf[BOOT_BUFFER_LENGTH];
-  Subscriber<BootloaderMsg> boot_sub(boot_msgqueue_buf, BOOT_BUFFER_LENGTH);
-  Publisher<BootloaderMsg> boot_pub;
-  Node boot_node("R2P_BOOT");
+  BootloaderMsg msgbuf[BOOT_BUFFER_LENGTH];
+  BootloaderMsg *msgqueue_buf[BOOT_BUFFER_LENGTH];
+  Subscriber<BootloaderMsg> sub(msgqueue_buf, BOOT_BUFFER_LENGTH);
+  Publisher<BootloaderMsg> pub;
+  Node node("R2P_BOOT");
 
   Bootloader::instance.set_page_buffer(
     new r2p::Flasher::Data[BOOT_PAGE_LENGTH]
   );
 
-  boot_node.advertise(boot_pub, boot_topic.get_name(), Time::INFINITE);
-  boot_node.subscribe(boot_sub, boot_topic.get_name(), boot_msgbuf);
+  bool success; (void)success;
+  success = node.advertise(pub, boot_topic.get_name(), Time::INFINITE);
+  R2P_ASSERT(success);
+  success = node.subscribe(sub, boot_topic.get_name(), msgbuf);
+  R2P_ASSERT(success);
 
   for (;;) {
-    if (boot_node.spin(Time::ms(1000))) {
+    if (node.spin(Time::ms(1000))) {
       BootloaderMsg *requestp = NULL, *responsep = NULL;
       Time deadline;
-      while (boot_sub.fetch(requestp, deadline)) {
-        if (boot_pub.alloc(responsep)) {
-          Bootloader::instance.process(*requestp, *responsep);
-          boot_sub.release(*requestp);
+      while (sub.fetch(requestp, deadline)) {
+        if (pub.alloc(responsep)) {
+          if (Bootloader::instance.process(*requestp, *responsep)) {
+            sub.release(*requestp);
+            pub.publish_remotely(*responsep);
+          } else {
+            sub.release(*requestp);
+            sub.release(*responsep);
+          }
         } else {
-          responsep = requestp;
-          responsep->type = BootloaderMsg::NACK;
+          requestp->type = BootloaderMsg::NACK;
+          pub.publish_remotely(*requestp);
         }
-        boot_pub.publish_remotely(*responsep);
         Thread::yield();
       }
     }

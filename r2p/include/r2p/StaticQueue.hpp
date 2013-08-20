@@ -5,6 +5,7 @@
 namespace r2p {
 
 
+// TODO: ConstIterator
 template<typename T>
 class StaticQueue : private Uncopyable {
 public:

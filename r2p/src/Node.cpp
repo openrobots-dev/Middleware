@@ -26,7 +26,7 @@ bool Node::subscribe(LocalSubscriber &sub, const char *namep,
                                      sub.get_queue_length(), msg_size)) {
     sub.nodep = this;
     SysLock::acquire();
-    int index = subscribers.get_count_unsafe();
+    int index = subscribers.count_unsafe();
     subscribers.link_unsafe(sub.by_node);
     SysLock::release();
     R2P_ASSERT(index >= 0);

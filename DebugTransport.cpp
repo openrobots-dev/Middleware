@@ -404,9 +404,9 @@ bool DebugTransport::spin_rx() {
     // Check if the topic is known
     Topic *topicp = Middleware::instance.find_topic(namebufp);
     if (topicp == NULL) return false;
-    const StaticList<RemotePublisher>::Link *linkp =
-      publishers.find_first(BasePublisher::has_topic, topicp->get_name());
-    if (linkp == NULL) return false;
+    RemotePublisher *pubp;
+    pubp = publishers.find_first(BasePublisher::has_topic, topicp->get_name());
+    if (pubp == NULL) return false;
 
     // Get the payload length
     Message::LengthType datalen;
@@ -417,7 +417,7 @@ bool DebugTransport::spin_rx() {
 
     // Allocate a new message
     Message *msgp;
-    if (!linkp->itemp->alloc(msgp)) return false;
+    if (!pubp->alloc(msgp)) return false;
 
     // Get the payload data
     if (!recv_chunk(channelp, const_cast<uint8_t *>(msgp->get_raw_data()),
@@ -427,7 +427,7 @@ bool DebugTransport::spin_rx() {
     }
 
     // Forward the message locally
-    return linkp->itemp->publish_locally(*msgp);
+    return pubp->publish_locally(*msgp);
   }
   else { // Management message
     // Read the management message type character

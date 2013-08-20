@@ -4,23 +4,13 @@
 namespace r2p {
 
 
-size_t StaticList_::get_count_unsafe() const {
+size_t StaticList_::count_unsafe() const {
 
   size_t count = 0;
   for (const Link *linkp = headp; linkp != NULL; linkp = linkp->nextp) {
     ++count;
   }
   return count;
-}
-
-
-void StaticList_::link_unsafe(Link &link) {
-
-  R2P_ASSERT(link.nextp == NULL);
-  R2P_ASSERT(!unlink_unsafe(link));
-
-  link.nextp = headp;
-  headp = &link;
 }
 
 
@@ -40,11 +30,13 @@ bool StaticList_::unlink_unsafe(Link &link) {
 }
 
 
-int StaticList_::index_of_unsafe(const Link &link) const {
+int StaticList_::index_of_unsafe(const void *itemp) const {
+
+  if (itemp == NULL) return -1;
 
   int i = 0;
   for (const Link *linkp = headp; linkp != NULL; ++i, linkp = linkp->nextp) {
-    if (linkp == &link) {
+    if (linkp->itemp == itemp) {
       return i;
     }
   }
@@ -52,26 +44,25 @@ int StaticList_::index_of_unsafe(const Link &link) const {
 }
 
 
-const StaticList_::Link *StaticList_::find_first_unsafe(
-  Predicate pred_func) const {
+void *StaticList_::find_first_unsafe(Predicate pred_func) const {
 
   for (const Link *linkp = headp; linkp != NULL; linkp = linkp->nextp) {
     if (pred_func(linkp->itemp)) {
-      return linkp;
+      return linkp->itemp;
     }
   }
   return NULL;
 }
 
 
-const StaticList_::Link *StaticList_::find_first_unsafe(
-  Matches match_func, const void *featuresp) const {
+void *StaticList_::find_first_unsafe(Matches match_func,
+                                     const void *featuresp) const {
 
   R2P_ASSERT(featuresp != NULL);
 
   for (const Link *linkp = headp; linkp != NULL; linkp = linkp->nextp) {
     if (match_func(linkp->itemp, featuresp)) {
-      return linkp;
+      return linkp->itemp;
     }
   }
   return NULL;
@@ -80,23 +71,17 @@ const StaticList_::Link *StaticList_::find_first_unsafe(
 
 const StaticList_::Link *StaticList_::get_head() const {
 
-  SysLock::acquire();
-  const Link *linkp = get_head_unsafe();
-  SysLock::release();
-  return linkp;
+  return safeguard(get_head_unsafe());
 }
 
 
 bool StaticList_::is_empty() const {
 
-  SysLock::acquire();
-  bool empty = is_empty_unsafe();
-  SysLock::release();
-  return empty;
+  return safeguard(is_empty_unsafe());
 }
 
 
-size_t StaticList_::get_count() const {
+size_t StaticList_::count() const {
 
   size_t count = 0;
   SysLock::acquire();
@@ -120,20 +105,19 @@ void StaticList_::link(Link &link) {
 
 bool StaticList_::unlink(Link &link) {
 
-  SysLock::acquire();
-  bool success = unlink_unsafe(link);
-  SysLock::release();
-  return success;
+  return safeguard(unlink_unsafe(link));
 }
 
 
-int StaticList_::index_of(const Link &link) const {
+int StaticList_::index_of(const void *itemp) const {
+
+  if (itemp == NULL) return -1;
 
   int i = 0;
   SysLock::acquire();
   for (const Link *linkp = headp; linkp != NULL; ++i, linkp = linkp->nextp) {
     SysLock::release();
-    if (linkp == &link) {
+    if (linkp->itemp == itemp) {
       return i;
     }
     SysLock::acquire();
@@ -143,14 +127,13 @@ int StaticList_::index_of(const Link &link) const {
 }
 
 
-const StaticList_::Link *StaticList_::find_first(Predicate pred_func)
-  const {
+void *StaticList_::find_first(Predicate pred_func) const {
 
   SysLock::acquire();
   for (const Link *linkp = headp; linkp != NULL; linkp = linkp->nextp) {
     SysLock::release();
     if (pred_func(linkp->itemp)) {
-      return linkp;
+      return linkp->itemp;
     }
     SysLock::acquire();
   }
@@ -159,8 +142,8 @@ const StaticList_::Link *StaticList_::find_first(Predicate pred_func)
 }
 
 
-const StaticList_::Link *StaticList_::find_first(
-  Matches match_func, const void *featuresp) const {
+void *StaticList_::find_first(Matches match_func,
+                              const void *featuresp) const {
 
   R2P_ASSERT(featuresp != NULL);
 
@@ -168,7 +151,7 @@ const StaticList_::Link *StaticList_::find_first(
   for (const Link *linkp = headp; linkp != NULL; linkp = linkp->nextp) {
     SysLock::release();
     if (match_func(linkp->itemp, featuresp)) {
-      return linkp;
+      return linkp->itemp;
     }
     SysLock::acquire();
   }
@@ -181,24 +164,6 @@ StaticList_::StaticList_()
 :
   headp(NULL)
 {}
-
-
-bool StaticList_::is(const Link &link, const Link &reference) {
-
-  return &link == &reference;
-}
-
-
-bool StaticList_::has_next(const Link &link, const Link &reference) {
-
-  return link.nextp == &reference;
-}
-
-
-bool StaticList_::has_item(const Link &link, const void *itemp) {
-
-  return link.itemp == itemp;
-}
 
 
 } // namespace r2p

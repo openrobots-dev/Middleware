@@ -43,12 +43,12 @@ bool Transport::touch_publisher(Topic &topic) {
   ScopedLock<Mutex> lock(publishers_lock);
 
   // Check if the remote publisher already exists
-  register const StaticList<RemotePublisher>::Link *linkp;
-  linkp = publishers.find_first(BasePublisher::has_topic, topic.get_name());
-  if (linkp != NULL) return true;
+  RemotePublisher *pubp;
+  pubp = publishers.find_first(BasePublisher::has_topic, topic.get_name());
+  if (pubp != NULL) return true;
 
   // Create a new remote publisher
-  RemotePublisher *pubp = create_publisher(topic);
+  pubp = create_publisher(topic);
   if (pubp == NULL) return false;
 
   pubp->notify_advertised(topic);
@@ -68,14 +68,13 @@ bool Transport::touch_subscriber(Topic &topic, size_t queue_length) {
   ScopedLock<Mutex> lock(subscribers_lock);
 
   // Check if the remote subscriber already exists
-  const StaticList<RemoteSubscriber>::Link *linkp;
-  linkp = subscribers.find_first(BaseSubscriber::has_topic, topic.get_name());
-  if (linkp != NULL) return true;
+  RemoteSubscriber *subp;
+  subp = subscribers.find_first(BaseSubscriber::has_topic, topic.get_name());
+  if (subp != NULL) return true;
 
   // Create a new remote subscriber
   Message *msgpool_bufp = NULL;
   TimestampedMsgPtrQueue::Entry *queue_bufp = NULL;
-  RemoteSubscriber *subp = NULL;
 
   msgpool_bufp = reinterpret_cast<Message *>(
     new uint8_t[(topic.get_size() + sizeof(Message)) * queue_length]

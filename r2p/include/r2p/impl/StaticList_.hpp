@@ -26,29 +26,24 @@ private:
 public:
   const Link *get_head_unsafe() const;
   bool is_empty_unsafe() const;
-  size_t get_count_unsafe() const;
+  size_t count_unsafe() const;
   void link_unsafe(Link &link);
   bool unlink_unsafe(Link &link);
-  int index_of_unsafe(const Link &link) const;
-  const Link *find_first_unsafe(Predicate pred_func) const;
-  const Link *find_first_unsafe(Matches match_func, const void *featuresp) const;
+  int index_of_unsafe(const void *itemp) const;
+  void *find_first_unsafe(Predicate pred_func) const;
+  void *find_first_unsafe(Matches match_func, const void *featuresp) const;
 
   const Link *get_head() const;
   bool is_empty() const;
-  size_t get_count() const;
+  size_t count() const;
   void link(Link &link);
   bool unlink(Link &link);
-  int index_of(const Link &link) const;
-  const Link *find_first(Predicate pred_func) const;
-  const Link *find_first(Matches match_func, const void *featuresp) const;
+  int index_of(const void *itemp) const;
+  void *find_first(Predicate pred_func) const;
+  void *find_first(Matches match_func, const void *featuresp) const;
 
 public:
   StaticList_();
-
-public:
-  bool is(const Link &link, const Link &reference);
-  bool has_next(const Link &link, const Link &reference);
-  bool has_item(const Link &link, const void *itemp);
 };
 
 
@@ -63,6 +58,17 @@ inline
 bool StaticList_::is_empty_unsafe() const {
 
   return headp == NULL;
+}
+
+
+inline
+void StaticList_::link_unsafe(Link &link) {
+
+  R2P_ASSERT(link.nextp == NULL);
+  R2P_ASSERT(!unlink_unsafe(link));
+
+  link.nextp = headp;
+  headp = &link;
 }
 
 

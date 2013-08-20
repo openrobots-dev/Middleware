@@ -77,10 +77,7 @@ bool BasePublisher::publish_remotely_unsafe(Message &msg) {
 inline
 bool BasePublisher::alloc(Message *&msgp) {
 
-  SysLock::acquire();
-  bool success = alloc_unsafe(msgp);
-  SysLock::release();
-  return success;
+  return safeguard(alloc_unsafe(msgp));
 }
 
 

@@ -231,8 +231,8 @@ public:
     return impl.is_empty_unsafe();
   }
 
-  size_t get_count_unsafe() const {
-    return impl.get_count_unsafe();
+  size_t count_unsafe() const {
+    return impl.count_unsafe();
   }
 
   void link_unsafe(Link &link) {
@@ -243,23 +243,21 @@ public:
     return impl.unlink_unsafe(reinterpret_cast<Node_impl &>(link));
   }
 
-  int index_of_unsafe(const Link &link) const {
-    return impl.index_of_unsafe(
-      reinterpret_cast<const Node_impl &>(link)
-    );
+  int index_of_unsafe(const Item &item) const {
+    return impl.index_of_unsafe(reinterpret_cast<const void *>(&item));
   }
 
   template<typename Predicate>
-  const Link *find_first_unsafe(Predicate pred_func) const {
-    return reinterpret_cast<const Link *>(impl.find_first_unsafe(
-        reinterpret_cast<StaticList_::Predicate>(pred_func)
+  Item *find_first_unsafe(Predicate pred_func) const {
+    return reinterpret_cast<Item *>(impl.find_first_unsafe(
+      reinterpret_cast<StaticList_::Predicate>(pred_func)
     ));
   }
 
   template<typename Matches, typename Reference>
-  const Link *find_first_unsafe(Matches match_func, const Reference &reference)
+  Item *find_first_unsafe(Matches match_func, const Reference &reference)
   const {
-    return reinterpret_cast<const Link *>(impl.find_first_unsafe(
+    return reinterpret_cast<Item *>(impl.find_first_unsafe(
       reinterpret_cast<StaticList_::Matches>(match_func), reference
     ));
   }
@@ -296,8 +294,8 @@ public:
     return impl.is_empty();
   }
 
-  size_t get_count() const {
-    return impl.get_count();
+  size_t count() const {
+    return impl.count();
   }
 
   void link(Link &link) {
@@ -308,40 +306,20 @@ public:
     return impl.unlink(reinterpret_cast<Node_impl &>(link));
   }
 
-  int index_of(const Link &link) const {
-    return impl.index_of(reinterpret_cast<const Node_impl &>(link));
-  }
-
-  int index_of(const ConstLink &link) const {
-    return impl.index_of(reinterpret_cast<const Node_impl &>(link));
+  int index_of(const Item &item) const {
+    return impl.index_of(reinterpret_cast<const void *>(&item));
   }
 
   template<typename Predicate>
-  const Link *find_first(Predicate pred_func) {
-    return reinterpret_cast<const Link *>(
+  Item *find_first(Predicate pred_func) const {
+    return reinterpret_cast<Item *>(
       impl.find_first(reinterpret_cast<StaticList_::Predicate>(pred_func))
     );
   }
 
   template<typename Matches, typename Reference>
-  const Link *find_first(Matches match_func, const Reference &reference) {
-    return reinterpret_cast<const Link *>(
-      impl.find_first(reinterpret_cast<StaticList_::Matches>(match_func),
-                      reference)
-    );
-  }
-
-  template<typename Predicate>
-  const ConstLink *find_first(Predicate pred_func) const {
-    return reinterpret_cast<const ConstLink *>(
-      impl.find_first(reinterpret_cast<StaticList_::Predicate>(pred_func))
-    );
-  }
-
-  template<typename Matches, typename Reference>
-  const ConstLink *find_first(Matches match_func, const Reference &reference)
-  const {
-    return reinterpret_cast<const ConstLink *>(
+  Item *find_first(Matches match_func, const Reference &reference) const {
+    return reinterpret_cast<Item *>(
       impl.find_first(reinterpret_cast<StaticList_::Matches>(match_func),
                       reference)
     );
@@ -369,25 +347,6 @@ public:
 
   void restart(ConstIterator &iterator) const {
     iterator = begin();
-  }
-
-public:
-  bool is(const Link &link, const Link &reference) {
-    return StaticList_::is(
-      reinterpret_cast<const StaticList_::Link>(link), reference
-    );
-  }
-
-  bool has_next(const Link &link, const Link &reference) {
-    return StaticList_::has_next(
-      reinterpret_cast<const StaticList_::Link>(link), reference
-    );
-  }
-
-  bool has_item(const Link &link, const Item &item) {
-    return StaticList_::has_item(
-      reinterpret_cast<const StaticList_::Link>(link), &item
-    );
   }
 };
 

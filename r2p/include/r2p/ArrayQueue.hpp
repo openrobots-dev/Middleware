@@ -95,40 +95,28 @@ size_t ArrayQueue<Item>::get_length() const {
 template<typename Item> inline
 size_t ArrayQueue<Item>::get_count() const {
 
-  SysLock::acquire();
-  size_t n = count;
-  SysLock::release();
-  return n;
+  return count;
 }
 
 
 template<typename Item> inline
 bool ArrayQueue<Item>::post(Item item) {
 
-  SysLock::acquire();
-  bool success = post_unsafe(item);
-  SysLock::release();
-  return success;
+  return safeguard(post_unsafe(item));
 }
 
 
 template<typename Item> inline
 bool ArrayQueue<Item>::fetch(Item &item) {
 
-  SysLock::acquire();
-  bool success = fetch_unsafe(item);
-  SysLock::release();
-  return success;
+  return safeguard(fetch_unsafe(item));
 }
 
 
 template<typename Item> inline
 bool ArrayQueue<Item>::skip() {
 
-  SysLock::acquire();
-  bool success = skip_unsafe();
-  SysLock::release();
-  return success;
+  return safeguard(skip_unsafe());
 }
 
 

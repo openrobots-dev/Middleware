@@ -15,10 +15,7 @@ void Message::acquire() {
 
 bool Message::release() {
 
-  SysLock::acquire();
-  bool has_refs = release_unsafe();
-  SysLock::release();
-  return has_refs;
+  return safeguard(release_unsafe());
 }
 
 
