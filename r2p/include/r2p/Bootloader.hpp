@@ -13,7 +13,7 @@ namespace r2p {
 
 
 class Bootloader : private Uncopyable {
-private:
+public:
   enum { MAX_APPS = R2P_MAX_APPS };
 
   enum State {
@@ -26,17 +26,16 @@ private:
   typedef Flasher::Length Length;
 
   struct AppInfo {
-    Length  pgmlen;
-    Address pgmadr;
-    Length  bsslen;
-    Address bssadr;
-    Length  datalen;
-    Address dataadr;
-    Address datapgmadr;
-    Length  stacklen;
-    Address threadadr;
+    Length  pgmlen R2P_FLASH_ALIGNED;
+    Address pgmadr R2P_FLASH_ALIGNED;
+    Length  bsslen R2P_FLASH_ALIGNED;
+    Address bssadr R2P_FLASH_ALIGNED;
+    Length  datalen R2P_FLASH_ALIGNED;
+    Address dataadr R2P_FLASH_ALIGNED;
+    Address datapgmadr R2P_FLASH_ALIGNED;
+    Length  stacklen R2P_FLASH_ALIGNED;
+    Address threadadr R2P_FLASH_ALIGNED;
     char    name[NamingTraits<Node>::MAX_LENGTH] R2P_FLASH_ALIGNED;
-    uint8_t namelen;
   } R2P_FLASH_ALIGNED;
 
   struct FlashLayout {

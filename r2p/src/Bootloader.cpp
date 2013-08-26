@@ -7,7 +7,7 @@ namespace r2p {
 
 const volatile Bootloader::FlashLayout Bootloader::flash_layout
 __attribute__ ((section(".layout"), aligned(Flasher::WORD_ALIGNMENT))) = {
-  0, 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0 } }
+  0, 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, "" } }
 };
 
 
@@ -79,6 +79,10 @@ bool Bootloader::process(const BootloaderMsg &request_msg,
 
 bool Bootloader::process_ihex(const IhexRecord &record) {
 
+  // Check the checksum
+  if (record.checksum != record.compute_checksum()) return false;
+
+  // Select the record type
   switch (record.type) {
   case IhexRecord::DATA: {
     Address start = baseadr + record.offset;
@@ -193,7 +197,6 @@ bool Bootloader::compute_addresses() {
 
 
 bool Bootloader::update_layout(const AppInfo *last_infop) {
-
 
   flasher.begin();
 

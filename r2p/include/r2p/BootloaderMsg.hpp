@@ -20,11 +20,13 @@ struct IhexRecord {
     START_LINEAR_ADDRESS,
   };
 
-  uint8_t   type;
-  uint8_t   checksum;
-  uint16_t  offset;
   uint8_t   count;
+  uint16_t  offset;
+  uint8_t   type;
   uint8_t   data[MAX_DATA_LENGTH];
+  uint8_t   checksum;
+
+  uint8_t compute_checksum() const;
 } R2P_PACKED;
 
 
@@ -47,8 +49,7 @@ public:
     Length  datalen;
     Length  stacklen;
     char    name[NamingTraits<Node>::MAX_LENGTH];
-    uint8_t namelen;
-    uint8_t checksum;
+    uint8_t checksum; // TODO
   } R2P_PACKED;
 
   struct SetupResponse {
@@ -56,6 +57,7 @@ public:
     Address bssadr;
     Address dataadr;
     Address datapgmadr;
+    uint8_t checksum; // TODO
   } R2P_PACKED;
 
 public:

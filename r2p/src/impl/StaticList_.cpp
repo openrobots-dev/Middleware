@@ -44,6 +44,17 @@ int StaticList_::index_of_unsafe(const void *itemp) const {
 }
 
 
+bool StaticList_::contains_unsafe(const void *itemp) const {
+
+  for (const Link *linkp = headp; linkp != NULL; linkp = linkp->nextp) {
+    if (linkp->itemp == itemp) {
+      return true;
+    }
+  }
+  return false;
+}
+
+
 void *StaticList_::find_first_unsafe(Predicate pred_func) const {
 
   for (const Link *linkp = headp; linkp != NULL; linkp = linkp->nextp) {
@@ -124,6 +135,22 @@ int StaticList_::index_of(const void *itemp) const {
   }
   SysLock::release();
   return -1;
+}
+
+
+bool StaticList_::contains(const void *itemp) const {
+
+  SysLock::acquire();
+  for (const Link *linkp = headp; linkp != NULL; linkp = linkp->nextp) {
+    if (linkp->itemp == itemp) {
+      SysLock::release();
+      return true;
+    }
+    SysLock::release();
+    SysLock::acquire();
+  }
+  SysLock::release();
+  return false;
 }
 
 

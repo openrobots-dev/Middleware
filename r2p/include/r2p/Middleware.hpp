@@ -29,10 +29,14 @@ private:
   StaticList<Topic> topics;
   StaticList<Transport> transports;
 
+  void *mgmt_boot_stackp;
+  size_t mgmt_boot_stacklen;
+  Thread::Priority mgmt_boot_priority;
+
   enum { MGMT_BUFFER_LENGTH = 5 };
   enum { MGMT_TIMEOUT_MS = 20 };
   Topic mgmt_topic;
-  Thread *mgmt_threadp;
+  Thread *mgmt_boot_threadp;
 
   enum { BOOT_PAGE_LENGTH = 1 << 10 };
   enum { BOOT_BUFFER_LENGTH = 4 };
@@ -43,6 +47,7 @@ private:
   Time topic_lastiter_time;
 
   bool stopped;
+  size_t num_running_nodes;
 
 public:
   static Middleware instance;
@@ -54,8 +59,8 @@ public:
   const StaticList<Transport> &get_transports() const;
   bool is_stopped() const;
 
-  void initialize(void *info_stackp, size_t info_stacklen,
-                  Thread::Priority info_priority);
+  void initialize(void *mgmt_boot_stackp, size_t mgmt_boot_stacklen,
+                  Thread::Priority mgmt_boot_priority);
   void spin();
   void stop();
   void reboot();
@@ -74,6 +79,8 @@ public:
   bool subscribe(RemoteSubscriber &sub, const char *namep,
                  Message msgpool_buf[], size_t msgpool_buflen,
                  size_t type_size);
+
+  void confirm_stop(Node &node);
 
   Topic *find_topic(const char *namep);
 

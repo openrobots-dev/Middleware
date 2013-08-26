@@ -30,6 +30,7 @@ public:
   void link_unsafe(Link &link);
   bool unlink_unsafe(Link &link);
   int index_of_unsafe(const void *itemp) const;
+  bool contains_unsafe(const void *itemp) const;
   void *find_first_unsafe(Predicate pred_func) const;
   void *find_first_unsafe(Matches match_func, const void *featuresp) const;
 
@@ -39,6 +40,7 @@ public:
   void link(Link &link);
   bool unlink(Link &link);
   int index_of(const void *itemp) const;
+  bool contains(const void *itemp) const;
   void *find_first(Predicate pred_func) const;
   void *find_first(Matches match_func, const void *featuresp) const;
 
@@ -65,7 +67,7 @@ inline
 void StaticList_::link_unsafe(Link &link) {
 
   R2P_ASSERT(link.nextp == NULL);
-  R2P_ASSERT(!unlink_unsafe(link));
+  R2P_ASSERT(!contains_unsafe(link.itemp));
 
   link.nextp = headp;
   headp = &link;

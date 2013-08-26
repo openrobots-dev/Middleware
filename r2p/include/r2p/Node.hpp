@@ -59,6 +59,7 @@ private:
 
 public:
   Node(const char *namep);
+  ~Node();
 
 public:
   static bool has_name(const Node &node, const char *namep);

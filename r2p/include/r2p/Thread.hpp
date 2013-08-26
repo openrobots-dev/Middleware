@@ -20,6 +20,8 @@ public:
     INTERRUPT   = Thread_::INTERRUPT
   };
 
+  enum { OK = Thread_::OK };
+
   typedef Thread_::Priority Priority;
   typedef Thread_::Function Function;
   typedef Thread_::Return Return;
@@ -66,7 +68,7 @@ const char *Thread::get_name() const {
 
 
 inline
-size_t compute_stack_size(size_t userlen) {
+size_t Thread::compute_stack_size(size_t userlen) {
 
   return Thread_::compute_stack_size(userlen);
 }

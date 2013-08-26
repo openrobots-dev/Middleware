@@ -7,6 +7,7 @@ R2PSRC = $(R2P)/src/impl/ArrayQueue_.cpp \
          $(R2P)/src/BaseSubscriber.cpp \
          $(R2P)/src/BaseSubscriberQueue.cpp \
 		 $(R2P)/src/Bootloader.cpp \
+		 $(R2P)/src/BootloaderMsg.cpp \
          $(R2P)/src/LocalPublisher.cpp \
          $(R2P)/src/LocalSubscriber.cpp \
          $(R2P)/src/MessagePtrQueue.cpp \

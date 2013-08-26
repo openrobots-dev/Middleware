@@ -247,6 +247,10 @@ public:
     return impl.index_of_unsafe(reinterpret_cast<const void *>(&item));
   }
 
+  bool contains_unsafe(const Item &item) const {
+    return impl.contains_unsafe(reinterpret_cast<const void *>(&item));
+  }
+
   template<typename Predicate>
   Item *find_first_unsafe(Predicate pred_func) const {
     return reinterpret_cast<Item *>(impl.find_first_unsafe(
@@ -308,6 +312,10 @@ public:
 
   int index_of(const Item &item) const {
     return impl.index_of(reinterpret_cast<const void *>(&item));
+  }
+
+  bool contains(const Item &item) const {
+    return impl.contains(reinterpret_cast<const void *>(&item));
   }
 
   template<typename Predicate>

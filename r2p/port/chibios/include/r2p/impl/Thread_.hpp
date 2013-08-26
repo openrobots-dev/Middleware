@@ -23,6 +23,8 @@ public:
     INTERRUPT   = HIGHPRIO
   };
 
+  enum { OK = CH_SUCCESS };
+
   typedef tprio_t Priority;
   typedef ::tfunc_t Function;
   typedef msg_t Return;

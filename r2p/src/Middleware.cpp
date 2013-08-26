@@ -13,13 +13,21 @@
 namespace r2p {
 
 
-void Middleware::initialize(void *info_stackp, size_t info_stacklen,
-                            Thread::Priority info_priority) {
+void Middleware::initialize(void *mgmt_boot_stackp, size_t mgmt_boot_stacklen,
+                            Thread::Priority mgmt_boot_priority) {
 
-  mgmt_threadp = Thread::create_static(info_stackp, info_stacklen,
-                                       info_priority, mgmt_threadf, NULL,
-                                       "R2P_INFO");
-  R2P_ASSERT(mgmt_threadp != NULL);
+  R2P_ASSERT(mgmt_boot_stackp != NULL);
+  R2P_ASSERT(mgmt_boot_stacklen > 0);
+
+  this->mgmt_boot_stackp = mgmt_boot_stackp;
+  this->mgmt_boot_stacklen = mgmt_boot_stacklen;
+  this->mgmt_boot_priority = mgmt_boot_priority;
+
+  mgmt_boot_threadp = Thread::create_static(
+    mgmt_boot_stackp, mgmt_boot_stacklen, mgmt_boot_priority,
+    mgmt_threadf, NULL, "R2P_MGMT"
+  );
+  R2P_ASSERT(mgmt_boot_threadp != NULL);
 
   // Wait until the info topic is fully initialized
   Thread::Priority oldprio = Thread::get_priority();
@@ -44,19 +52,23 @@ void Middleware::spin() {
 
 void Middleware::stop() {
 
+  bool trigger = false;
+
   SysLock::acquire();
-  stopped = true;
+  if (!stopped) {
+    trigger = stopped = true;
+  }
   SysLock::release();
+
+  // Stop all remote middlewares
+  for (StaticList<Transport>::Iterator i = transports.begin();
+       i != transports.end(); ++i) {
+    i->notify_stop();
+  }
 
   do {
     // Stop all nodes
     for (StaticList<Node>::Iterator i = nodes.begin(); i != nodes.end(); ++i) {
-      i->notify_stop();
-    }
-
-    // Stop all remote middlewares
-    for (StaticList<Transport>::Iterator i = transports.begin();
-         i != transports.end(); ++i) {
       i->notify_stop();
     }
 
@@ -65,12 +77,26 @@ void Middleware::stop() {
     Thread::yield();
     Thread::set_priority(oldprio);
   } while (nodes.count() > 0);
+
+  // Enter bootloader mode
+  if (trigger) {
+    trigger = Thread::join(*mgmt_boot_threadp);
+    R2P_ASSERT(trigger);
+    mgmt_boot_threadp = Thread::create_static(
+      mgmt_boot_stackp,mgmt_boot_stacklen, mgmt_boot_priority,
+      boot_threadf, NULL, "R2P_BOOT"
+    );
+    R2P_ASSERT(mgmt_boot_threadp != NULL);
+  }
 }
 
 
 void Middleware::add(Node &node) {
 
-  nodes.link(node.by_middleware);
+  SysLock::acquire();
+  nodes.link_unsafe(node.by_middleware);
+  ++num_running_nodes;
+  SysLock::release();
 }
 
 
@@ -155,6 +181,16 @@ bool Middleware::subscribe(RemoteSubscriber &sub, const char *namep,
 }
 
 
+void Middleware::confirm_stop(Node &node) {
+
+  SysLock::acquire();
+  R2P_ASSERT(num_running_nodes > 0);
+  R2P_ASSERT(nodes.contains_unsafe(node));
+  --num_running_nodes;
+  SysLock::release();
+}
+
+
 Topic *Middleware::find_topic(const char *namep) {
 
   return topics.find_first(Topic::has_name, namep);
@@ -181,7 +217,7 @@ Topic *Middleware::touch_topic(const char *namep, size_t type_size) {
 Thread::Return Middleware::mgmt_threadf(Thread::Argument) {
 
   instance.do_mgmt_thread();
-  return static_cast<Thread::Return>(0);
+  return Thread::OK;
 }
 
 
@@ -247,6 +283,12 @@ void Middleware::do_mgmt_thread() {
 
           break;
         }
+        case MgmtMsg::CMD_BOOTLOADER: {
+          // Enter bootloader mode
+          if (safeguard(is_stopped()) && nodes.count() == 0) {
+          }
+          break;
+        }
         default: {
           sub.release(*msgp);
           break;
@@ -285,7 +327,7 @@ void Middleware::do_mgmt_thread() {
 Thread::Return Middleware::boot_threadf(Thread::Argument) {
 
   instance.do_boot_thread();
-  return static_cast<Thread::Return>(0);
+  return Thread::OK;
 }
 
 
@@ -334,11 +376,15 @@ void Middleware::do_boot_thread() {
 Middleware::Middleware(const char *module_namep, const char *bootloader_namep)
 :
   module_namep(module_namep),
+  mgmt_boot_stackp(NULL),
+  mgmt_boot_stacklen(0),
+  mgmt_boot_priority(Thread::LOWEST),
   mgmt_topic("R2P", sizeof(MgmtMsg)),
-  mgmt_threadp(NULL),
+  mgmt_boot_threadp(NULL),
   boot_topic(bootloader_namep, sizeof(BootloaderMsg)),
   topic_iter(topics.end()),
-  stopped(false)
+  stopped(false),
+  num_running_nodes(0)
 {
   R2P_ASSERT(is_identifier(module_namep));
 

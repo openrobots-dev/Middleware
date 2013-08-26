@@ -21,6 +21,7 @@ public:
     CMD_GET_NETWORK_STATE   = 0x20,
     CMD_ADVERTISE           = 0x21,
     CMD_SUBSCRIBE           = 0x22,
+    CMD_BOOTLOADER          = 0x23,
   };
 
 public:

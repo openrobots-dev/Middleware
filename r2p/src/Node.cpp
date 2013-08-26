@@ -126,4 +126,10 @@ Node::Node(const char *namep)
 }
 
 
+Node::~Node() {
+
+  Middleware::instance.confirm_stop(*this);
+}
+
+
 }; // namespace r2p
