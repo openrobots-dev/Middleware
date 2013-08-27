@@ -43,13 +43,17 @@ public:
   typedef Flasher::Address Address;
   typedef Flasher::Length Length;
 
+  struct AckNack {
+    uint16_t to_seqn;
+  } R2P_PACKED;
+
   struct SetupRequest {
     Length  pgmlen;
     Length  bsslen;
     Length  datalen;
     Length  stacklen;
     char    name[NamingTraits<Node>::MAX_LENGTH];
-    uint8_t checksum; // TODO
+    uint8_t checksum; // TODO move outside
   } R2P_PACKED;
 
   struct SetupResponse {
@@ -57,7 +61,7 @@ public:
     Address bssadr;
     Address dataadr;
     Address datapgmadr;
-    uint8_t checksum; // TODO
+    uint8_t checksum; // TODO move outside
   } R2P_PACKED;
 
 public:
@@ -67,6 +71,8 @@ public:
     IhexRecord      ihex_record;
   };
   uint8_t type;
+  //uint16_t seqn;
+  //uint8_t checksum;
 } R2P_PACKED;
 
 

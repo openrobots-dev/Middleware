@@ -180,14 +180,20 @@ void Topic::free(Message &msg) {
 inline
 bool Topic::notify_locals(Message &msg, const Time &timestamp) {
 
-  return safeguard(notify_locals_unsafe(msg, timestamp));
+  SysLock::acquire();
+  bool success = notify_locals_unsafe(msg, timestamp);
+  SysLock::release();
+  return success;
 }
 
 
 inline
 bool Topic::notify_remotes(Message &msg, const Time &timestamp) {
 
-  return safeguard(notify_remotes_unsafe(msg, timestamp));
+  SysLock::acquire();
+  bool success = notify_remotes_unsafe(msg, timestamp);
+  SysLock::release();
+  return success;
 }
 
 

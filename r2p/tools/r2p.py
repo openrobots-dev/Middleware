@@ -9,6 +9,7 @@ from elftools.elf.elffile import ELFFile
 MODULE_NAME_MAX_LENGTH = 7
 NODE_NAME_MAX_LENGTH = 8
 TOPIC_NAME_MAX_LENGTH = 16
+IHEX_MAX_DATA_LENGTH = 16
 
 
 _MODULE_NAME = ''.join([ random.choice(string.ascii_uppercase + string.digits)
@@ -25,8 +26,9 @@ def _hexb2str(data):
     return ''.join([ chr(int(data[i : i + 2], 16)) for i in range(0, len(data), 2) ])
     
     
-def _intsum(value):
+def _uintsum(value):
     value = int(value)
+    assert value >= 0
     cs = 0
     while value > 0:
         cs += value & 0xFF
@@ -36,8 +38,10 @@ def _intsum(value):
 #==============================================================================
 
 class Serializable:
+    
     def marshal(self):
         raise NotImplementedError()
+        # return 'data'
     
     def unmarshal(self, data):
         raise NotImplementedError()
@@ -45,12 +49,13 @@ class Serializable:
 #==============================================================================
 
 class Transport:
+    
     class TypeEnum:
-        MESSAGE = 0
-        ADVERTISEMENT = 1
-        SUBSCRIPTION = 2
-        STOP = 3
-        RESET = 4
+        MESSAGE         = 0
+        ADVERTISEMENT   = 1
+        SUBSCRIPTION    = 2
+        STOP            = 3
+        RESET           = 4
     
     def send_message(self, topic, payload):
         raise NotImplementedError()
@@ -69,11 +74,12 @@ class Transport:
     
     def recv(self):
         raise NotImplementedError()
-        # return (type, topic, payload)
+        # return (type, 'topic', 'payload')
 
 #==============================================================================
 
 class LineIO:
+    
     def open(self):
         raise NotImplementedError()
         
@@ -90,6 +96,7 @@ class LineIO:
 #==============================================================================
 
 class SerialLineIO(LineIO):
+    
     def __init__(self, dev_path, baud):
         self.__ser = None
         self.__sio = None
@@ -109,14 +116,18 @@ class SerialLineIO(LineIO):
         self.__sio = None
     
     def readln(self):
-        return self.__sio.readline().rstrip('\r\n')
+        line = self.__sio.readline().rstrip('\r\n')
+        logging.debug("%s >>> '%s'" % (self.__dev_path, line))
+        return line
     
     def writeln(self, line):
+        logging.debug("%s <<< '%s'" % (self.__dev_path, line))
         self.__sio.write(unicode(line + '\n'));
     
 #==============================================================================
     
 class StdLineIO(LineIO):
+    
     def open(self):
         pass
         
@@ -124,14 +135,81 @@ class StdLineIO(LineIO):
         pass
     
     def readln(self):
-        return raw_input()
+        line = raw_input()
+        logging.debug("stdin <<< '%s'" % line)
+        return line
     
     def writeln(self, line):
+        logging.debug("stdout >>> '%s'" % line)
         print line
 
 #==============================================================================
 
 class DebugTransport(Transport):
+    
+    class MsgParser:
+        def __init__(self, line):
+            self._line = str(line)
+            self._linelen = len(self._line)
+            self._offset = 0
+        
+        def _check_length(self, length):
+            assert length >= 0
+            endx = self._offset + length
+            if self._linelen < endx:
+                raise ValueError("Expected %d chars at '%s'[%d:%d] == '%s' (%d chars less)" %
+                                 (length, self._line, self._offset, endx,
+                                  self._line[self._offset : endx], endx - self._linelen))
+        
+        def check_eol(self):
+            assert self._linelen >= self._offset
+            if self._linelen > self._offset:
+                raise ValueError("Expected end of line at '%s'[%d:] == '%s' (%d chars more)" %
+                                 (self._line, self._offset, self._line[self._offset:],
+                                  self._linelen - self._offset))
+        
+        def expect_char(self, c): 
+            self._check_length(1)
+            if self._line[self._offset] != c:
+                raise ValueError("Expected '%s' at '%s'[%d] == '%s'" %
+                                 (c, self._line, self._offset, self._line[self._offset]))
+            self._offset += 1
+        
+        def read_char(self):
+            self._check_length(1)
+            c = self._line[self._offset]
+            self._offset += 1
+            return c
+        
+        def read_hexb(self):
+            self._check_length(2)
+            off = self._offset
+            try: b = int(self._line[off : off + 2], 16)
+            except: raise ValueError("Expected hex byte at '%s'[%d:%d] == '%s'" %
+                                     (line, off, off + 2, line[off : off + 2]))
+            self._offset += 2
+            return b
+        
+        def read_unsigned(self, size):
+            assert size > 0
+            self._check_length(2 * size)
+            value = 0
+            while size > 0:
+                value = (value << 8) | self.read_hexb()
+                size -= 1
+            return value
+        
+        def read_string(self, length):
+            self._check_length(length)
+            s = self._line[self._offset : self._offset + length]
+            self._offset += length
+            return s
+        
+        def read_bytes(self, length):
+            self._check_length(2 * length)
+            return ''.join([ self.read_char() for i in range(length) ])
+    
+    
     def __init__(self, lineio):
         self.__lineio = lineio
     
@@ -144,138 +222,85 @@ class DebugTransport(Transport):
     def send_message(self, topic, payload):
         assert 0 < len(topic) < 256
         assert len(payload) < 256
-        self.__lineio.writeln('@%.8X:%.2X%s:%.2X%s' % (
-            int(time.time()) & 0xFFFFFFFF,
-            len(topic) & 0xFF, topic,
-            len(payload) & 0xFF, payload
-        ))
+        line = '@%.8X:%.2X%s:%.2X%s' % (int(time.time()) & 0xFFFFFFFF,
+                                        len(topic) & 0xFF, topic,
+                                        len(payload) & 0xFF, _str2hexb(payload))
+        self.__lineio.writeln(line)
     
     def send_advertisement(self, topic):
         assert 0 < len(topic) < 256
         assert 0 < len(_MODULE_NAME) <= 7
-        self.__lineio.writeln('@%.8X:00:p:%.2X%s:%.2X%s' % (
-            int(time.time()) & 0xFFFFFFFF,
-            len(_MODULE_NAME), _MODULE_NAME,
-            len(topic) & 0xFF, topic,
-        ))
+        line = '@%.8X:00:p:%.2X%s:%.2X%s' % (int(time.time()) & 0xFFFFFFFF,
+                                             len(_MODULE_NAME), _MODULE_NAME,
+                                             len(topic) & 0xFF, topic)
+        self.__lineio.writeln(line)
     
     def send_subscription(self, topic, queue_length):
         assert 0 < len(topic) < 256
         assert 0 < queue_length < 256
         assert 0 < len(_MODULE_NAME) <= 7
-        self.__lineio.writeln('@%.8X:00:s%.2X:%.2X%s:%.2X%s' % (
-            int(time.time()) & 0xFFFFFFFF,
-            queue_length,
-            len(_MODULE_NAME), _MODULE_NAME,
-            len(topic) & 0xFF, topic,
-        ))
+        line = '@%.8X:00:s%.2X:%.2X%s:%.2X%s' % (int(time.time()) & 0xFFFFFFFF,
+                                                 queue_length,
+                                                 len(_MODULE_NAME), _MODULE_NAME,
+                                                 len(topic) & 0xFF, topic)
+        self.__lineio.writeln(line)
     
     def send_stop(self):
-        assert 0 < len(topic) < 256
-        assert len(payload) < 256
-        self.__lineio.writeln('@%.8X:00:t' % (int(time.time()) & 0xFFFFFFFF))
+        line = '@%.8X:00:t' % (int(time.time()) & 0xFFFFFFFF)
+        self.__lineio.writeln(line)
     
     def send_reset(self):
-        assert 0 < len(topic) < 256
-        assert len(payload) < 256
-        self.__lineio.writeln('@%.8X:00:r' % (int(time.time()) & 0xFFFFFFFF))
+        line = '@%.8X:00:r' % (int(time.time()) & 0xFFFFFFFF)
+        self.__lineio.writeln(line)
         
     def recv(self):
         line = self.__lineio.readln()
-        linelen = len(line)
-        offset = 0
-        
-        def check_eol():
-            assert linelen >= offset
-            if linelen > offset:
-                raise ValueError("Expected end of line at '%s'[%d:] == '%s' (%d chars more)" %
-                                 (line, offset, line[offset:], linelen - offset))
-        
-        def check_length(length):
-            assert length >= 0
-            if linelen < offset + length:
-                raise ValueError("Expected %d chars at '%s'[%d:%d] == '%s' (%d chars less)" %
-                                 (length, line, offset, offset + length,
-                                  line[offset : offset + length], offset + length - linelen))
-        
-        def expect_char(c): 
-            check_length(1)
-            if line[offset] != c:
-                raise ValueError("Expected '%s' at '%s'[%d] == '%s'" %
-                                 (c, line, offset, line[offset]))
-            offset += 1
-        
-        def read_char():
-            check_length(1)
-            c = line[offset]
-            offset += 1
-            return c
-        
-        def read_hexb():
-            check_length(2)
-            try: b = int(line[offset : offset + 2], 16)
-            except: raise ValueError("Expected hex byte at '%s'[%d:%d] == '%s'" %
-                                     (line, offset, offset + 2, line[offset : offset + 2]))
-            offset += 2
-            return b
-        
-        def read_unsigned(size):
-            assert size > 0
-            check_length(2 * size)
-            value = 0
-            while size > 0:
-                value = (value << 8) | read_hexb()
-                size -= 1
-            return value
-        
-        def read_string(length):
-            check_length(length)
-            s = line[offset : offset + length]
-            offset += length
-            return s
-        
-        def read_bytes(length):
-            check_length(2 * length)
-            return ''.join([ read_char() for i in range(length) ])
+        parser = self.MsgParser(line)
         
         # Receive the incoming message
-        expect_char('@')
-        deadline = read_unsigned(4)
-        expect_char(':')
-        length = read_unsigned(1)
-        topic = read_string(length)
-        expect_char(':')
+        parser.expect_char('@')
+        deadline = parser.read_unsigned(4)
+        parser.expect_char(':')
+        length = parser.read_unsigned(1)
+        topic = parser.read_string(length)
+        parser.expect_char(':')
         
         if length > 0: # Normal message
-            length = read_unsigned(1)
-            payload = read_bytes(length)
-            check_eol()
+            length = parser.read_unsigned(1)
+            payload = parser.read_bytes(length)
+            parser.check_eol()
             return (Transport.TypeEnum.MESSAGE, topic, payload)
         
         else: # Management message
-            typechar = read_char()
+            typechar = parser.read_char()
             
             if typechar == 'p' or typechar == 'P':
-                expect_char(':')
-                length = read_unsigned(1)
-                topic = read_string(length)
-                check_eol()
+                parser.expect_char(':')
+                length = parser.read_unsigned(1)
+                module = parser.read_string(length)
+                parser.expect_char(':')
+                length = parser.read_unsigned(1)
+                topic = parser.read_string(length)
+                parser.check_eol()
                 return (Transport.TypeEnum.ADVERTISEMENT, topic)
             
             elif typechar == 's' or typechar == 'S':
-                queue_length = read_unsigned(1)
-                expect_char(':')
-                length = read_unsigned(1)
-                topic = read_string(length)
-                check_eol()
+                queue_length = parser.read_unsigned(1)
+                parser.expect_char(':')
+                length = parser.read_unsigned(1)
+                module = parser.read_string(length)
+                parser.expect_char(':')
+                length = parser.read_unsigned(1)
+                topic = parser.read_string(length)
+                parser.check_eol()
                 return (Transport.TypeEnum.SUBSCRIPTION, topic, queue_length)
             
             elif typechar == 't' or typechar == 'T':
-                check_eol()
+                parser.check_eol()
                 return (Transport.TypeEnum.STOP,)
             
             elif typechar == 'r' or typechar == 'R':
-                check_eol()
+                parser.check_eol()
                 return (Transport.TypeEnum.RESET,)
             
             else:
@@ -284,15 +309,15 @@ class DebugTransport(Transport):
 #==============================================================================
 
 class IhexRecord(Serializable):
-    MAX_DATA_LENGTH = 32
+    MAX_DATA_LENGTH = 16
     
     class TypeEnum:
-        DATA = 0
-        END_OF_FILE = 1
-        EXTENDED_SEGMENT_ADDRESS = 2
-        START_SEGMENT_ADDRESS = 3
-        EXTENDED_LINEAR_ADDRESS = 4
-        START_LINEAR_ADDRESS = 5
+        DATA                        = 0
+        END_OF_FILE                 = 1
+        EXTENDED_SEGMENT_ADDRESS    = 2
+        START_SEGMENT_ADDRESS       = 3
+        EXTENDED_LINEAR_ADDRESS     = 4
+        START_LINEAR_ADDRESS        = 5
     
     def __init__(self):
         self.count = 0
@@ -309,46 +334,43 @@ class IhexRecord(Serializable):
                                             _str2hexb(self.data), self.checksum)
     
     def check_valid(self):
+        if not (0 <= self.count <= 255):
+            raise ValueError('not(0 <= count=%d <= 255)' % self.count)
         if self.count != len(self.data):
-            raise ValueError('count=%s != len(data)=%s' % (self.count, len(self.data)))
+            raise ValueError('count=%d != len(data)=%d' % (self.count, len(self.data)))
+        if not (0 <= self.offset <= 0xFFFF):
+            raise ValueError('not(0 <= offset=0x%0.8X <= 0xFFFF)' % self.offset)
         if self.checksum != self.compute_checksum():
-            raise ValueError('checksum=%s != expected=%s', (self.checksum, self.compute_checksum()));
+            raise ValueError('checksum=%d != expected=%d', (self.checksum, self.compute_checksum()));
         
         if self.type == self.TypeEnum.DATA:
             pass
-        
         elif self.type == self.TypeEnum.END_OF_FILE:
             if self.count  != 0: raise ValueError('count=%s != 0', self.count)
-        
         elif self.type == self.TypeEnum.EXTENDED_SEGMENT_ADDRESS:
             if self.count  != 2: raise ValueError('count=%s != 2', self.count)
             if self.offset != 0: raise ValueError('offset=%s != 0', self.count)
-        
         elif self.type == self.TypeEnum.START_SEGMENT_ADDRESS:
             if self.count  != 4: raise ValueError('count=%s != 4', self.count)
             if self.offset != 0: raise ValueError('offset=%s != 0', self.count)
-        
         elif self.type == self.TypeEnum.EXTENDED_LINEAR_ADDRESS:
             if self.count  != 2: raise ValueError('count=%s != 2', self.count)
             if self.offset != 0: raise ValueError('offset=%s != 0', self.count)
-        
         elif self.type == self.TypeEnum.START_LINEAR_ADDRESS:
             if self.count  != 4: raise ValueError('count=%s != 4', self.count)
             if self.offset != 0: raise ValueError('offset=%s != 0', self.count)
-        
         else:
             raise ValueError('Unknown type %s' % self.type)
 
     def compute_checksum(self):
-        cs = (_intsum(self.count) + _intsum(self.offset) + _intsum(self.type)) & 0xFF
+        cs = (_uintsum(self.count) + _uintsum(self.offset) + _uintsum(self.type)) & 0xFF
         for b in self.data:
             cs = (cs + ord(b)) & 0xFF
         return 0x100 - cs
     
     def marshal(self):
         return struct.pack('<BHB%dsB' % self.MAX_DATA_LENGTH,
-                           self.count, self.offset, self.type,
-                           self.data, self.checksum)
+                           self.count, self.offset, self.type, self.data, self.checksum)
     
     def unmarshal(self, data):
         self.count, self.offset, self.type, self.data, self.checksum = \
@@ -388,22 +410,21 @@ class BootloaderMsg(Serializable):
             self.bsslen = 0
             self.datalen = 0
             self.stacklen = 0
-            self.name = ''
+            self.appname = ''
             self.checksum = 0
         
         def marshal(self):
             return struct.pack('<LLLL%dsB' % NODE_NAME_MAX_LENGTH,
-                self.pgmlen, self.bsslen, self.datalen, self.stacklen,
-                self.name, self.checksum)
+                self.pgmlen, self.bsslen, self.datalen, self.stacklen, self.appname, self.checksum)
         
         def unmarshal(self, data):
-            self.pgmlen, self.bsslen, self.datalen, self.stacklen, self.name, self.checksum = \
+            self.pgmlen, self.bsslen, self.datalen, self.stacklen, self.appname, self.checksum = \
                 struct.unpack('<LLLL%dsB' % NODE_NAME_MAX_LENGTH, data)
 
         def compute_checksum(self):
-            cs = (_intsum(self.pgmlen) + _intsum(self.bsslen) + \
-                  _intsum(self.datalen) + _intsum(self.stacklen)) & 0xFF
-            for c in self.name:
+            cs = (_uintsum(self.pgmlen) + _uintsum(self.bsslen) + \
+                  _uintsum(self.datalen) + _uintsum(self.stacklen)) & 0xFF
+            for c in self.appname:
                 cs = (cs + ord(c)) & 0xFF
             return 0x100 - cs
 
@@ -417,17 +438,16 @@ class BootloaderMsg(Serializable):
             self.checksum = 0
         
         def marshal(self):
-            return struct.pack('<LLLLB',
-                self.pgmadr, self.bssadr, self.dataadr, self.datapgmadr,
-                self.checksum)
+            return struct.pack('<LLLLB', self.pgmadr, self.bssadr, self.dataadr,
+                               self.datapgmadr, self.checksum)
             
         def unmarshal(self, data):
             self.pgmadr, self.bssadr, self.dataadr, self.datapgmadr,
             self.checksum = struct.unpack('<LLLLB', data)
             
         def compute_checksum(self):
-            return 0x100 - ((_intsum(self.pgmadr) + _intsum(self.bssadr) + \
-                             _intsum(self.dataadr) + _intsum(self.datapgmadr)) & 0xFF)
+            return 0x100 - ((_uintsum(self.pgmadr) + _uintsum(self.bssadr) + \
+                             _uintsum(self.dataadr) + _uintsum(self.datapgmadr)) & 0xFF)
 
 
     def __init__(self):
@@ -520,9 +540,11 @@ class SimpleBootloader:
                     return msg
         
         # Stop all middlewares
-        logging.info('Stopping all middlewares...')
+        logging.info('Stopping all middlewares')
         self.__transport.send_stop()
+        logging.debug('Signal sent, sleeping for 3 seconds...')
         time.sleep(3)
+        logging.debug('... awake again')
         
         # Get the length of each section
         logging.info('Reading section lengths from "%s":' % ldobjelf)
@@ -603,8 +625,24 @@ class SimpleBootloader:
             if len(line) == 0: continue
             record = IhexRecord()
             record.parse_ihex(line)
-            if record.type != IhexRecord.TypeEnum.START_SEGMENT_ADDRESS and \
-               record.type != IhexRecord.TypeEnum.START_LINEAR_ADDRESS:
+            if record.type == IhexRecord.TypeEnum.DATA:
+                # Split into smaller packets
+                while record.count > IhexRecord.MAX_DATA_LENGTH:
+                    initial = IhexRecord()
+                    initial.count = IhexRecord.MAX_DATA_LENGTH
+                    initial.offset = record.offset
+                    initial.type = IhexRecord.TypeEnum.DATA
+                    initial.data = record.data[:IhexRecord.MAX_DATA_LENGTH]
+                    ihex_records.append(initial)
+                    
+                    record.count -= IhexRecord.MAX_DATA_LENGTH
+                    record.offset += IhexRecord.MAX_DATA_LENGTH
+                    record.data = record.data[IhexRecord.MAX_DATA_LENGTH:]
+                
+                ihex_records.append(record)
+                
+            elif record.type != IhexRecord.TypeEnum.START_SEGMENT_ADDRESS and \
+                 record.type != IhexRecord.TypeEnum.START_LINEAR_ADDRESS:
                 ihex_records.append(record)
             else:
                 logging.info('  ' + str(record))
@@ -640,9 +678,4 @@ class SimpleBootloader:
         logging.info('Bootloading completed successfully')
 
 #==============================================================================
-
-if __name__ == '__main__':
-    logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
-    logging.debug('Running as __main__')
-    logging.shutdown()
 

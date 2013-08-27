@@ -15,7 +15,10 @@ void Message::acquire() {
 
 bool Message::release() {
 
-  return safeguard(release_unsafe());
+  SysLock::acquire();
+  bool floating = release_unsafe();
+  SysLock::release();
+  return floating;
 }
 
 

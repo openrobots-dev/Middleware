@@ -324,20 +324,33 @@ void DebugTransport::initialize(void *rx_stackp, size_t rx_stacklen,
                                 void *tx_stackp, size_t tx_stacklen,
                                 Thread::Priority tx_priority) {
 
+  // Create the transmission pump thread
   tx_threadp = Thread::create_static(tx_stackp, tx_stacklen, tx_priority,
                                      tx_threadf, this, "DEBUG_TX");
   R2P_ASSERT(tx_threadp != NULL);
 
+  // Create the reception pump thread
   rx_threadp = Thread::create_static(rx_stackp, rx_stacklen, rx_priority,
                                      rx_threadf, this, "DEBUG_RX" );
   R2P_ASSERT(rx_threadp != NULL);
 
-  advertise(mgmt_rpub, "R2P", Time::INFINITE, sizeof(MgmtMsg));
-  subscribe(mgmt_rsub, "R2P", mgmt_msgbuf, MGMT_BUFFER_LENGTH,
-            sizeof(MgmtMsg));
+  // Clear any previous crap caused by serial port initialization
+  bool success; (void)success;
+  send_lock.acquire();
+  success = send_chunk(channelp, "\r\n\r\n\r\n", 6);
+  R2P_ASSERT(success);
+  send_lock.release();
+
+  // Register remote publisher and subscriber for the management thread
+  success = advertise(mgmt_rpub, "R2P", Time::INFINITE, sizeof(MgmtMsg));
+  R2P_ASSERT(success);
+  success = subscribe(mgmt_rsub, "R2P", mgmt_msgbuf, MGMT_BUFFER_LENGTH,
+                      sizeof(MgmtMsg));
+  R2P_ASSERT(success);
 
   Middleware::instance.add(*this);
 }
+
 
 bool DebugTransport::spin_tx() {
 
@@ -498,6 +511,7 @@ Thread::Return DebugTransport::rx_threadf(Thread::Argument arg) {
 
   R2P_ASSERT(arg != static_cast<Thread::Argument>(NULL));
 
+  // Reception pump
   for (;;) {
     reinterpret_cast<DebugTransport *>(arg)->spin_rx();
   }
@@ -509,6 +523,7 @@ Thread::Return DebugTransport::tx_threadf(Thread::Argument arg) {
 
   R2P_ASSERT(arg != static_cast<Thread::Argument>(NULL));
 
+  // Transmission pump
   for (;;) {
     reinterpret_cast<DebugTransport *>(arg)->spin_tx();
   }

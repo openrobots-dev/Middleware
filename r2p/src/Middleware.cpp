@@ -36,7 +36,7 @@ void Middleware::initialize(void *mgmt_boot_stackp, size_t mgmt_boot_stacklen,
   while (!mgmt_topic.has_local_publishers() ||
          !mgmt_topic.has_local_subscribers()) {
     SysLock::release();
-    Thread::yield();
+    Thread::sleep(Time::ms(500));
     SysLock::acquire();
   }
   SysLock::release();
@@ -66,17 +66,19 @@ void Middleware::stop() {
     i->notify_stop();
   }
 
-  do {
+  SysLock::acquire();
+  while (num_running_nodes > 0) {
+    SysLock::release();
+
     // Stop all nodes
     for (StaticList<Node>::Iterator i = nodes.begin(); i != nodes.end(); ++i) {
       i->notify_stop();
     }
 
-    Thread::Priority oldprio = Thread::get_priority();
-    Thread::set_priority(Thread::IDLE);
-    Thread::yield();
-    Thread::set_priority(oldprio);
-  } while (nodes.count() > 0);
+    Thread::sleep(Time::ms(500)); // TODO: Configure delay
+    SysLock::acquire();
+  }
+  SysLock::release();
 
   // Enter bootloader mode
   if (trigger) {
@@ -187,6 +189,7 @@ void Middleware::confirm_stop(Node &node) {
   R2P_ASSERT(num_running_nodes > 0);
   R2P_ASSERT(nodes.contains_unsafe(node));
   --num_running_nodes;
+  nodes.unlink_unsafe(node.by_middleware);
   SysLock::release();
 }
 
@@ -269,7 +272,9 @@ void Middleware::do_mgmt_thread() {
           }
           ::strncpy(msgp->module.name, get_module_name(),
                     NamingTraits<Middleware>::MAX_LENGTH);
-          msgp->module.flags.stopped = safeguard(is_stopped()) ? 1 : 0;
+          SysLock::acquire();
+          msgp->module.flags.stopped = (is_stopped() != false);
+          SysLock::release();
           while (!pub.publish(*msgp)) {
             Thread::yield();
           }
@@ -281,12 +286,6 @@ void Middleware::do_mgmt_thread() {
             i->publish_subscribers(pub);
           }
 
-          break;
-        }
-        case MgmtMsg::CMD_BOOTLOADER: {
-          // Enter bootloader mode
-          if (safeguard(is_stopped()) && nodes.count() == 0) {
-          }
           break;
         }
         default: {

@@ -17,6 +17,10 @@
 #include <cstdlib>
 #include <cstring>
 
+#ifndef R2P_MODULE_NAME
+#define R2P_MODULE_NAME "R2PMODX"
+#endif
+
 
 struct Uint32Msg : public r2p::Message {
   uint32_t value;
@@ -36,7 +40,8 @@ r2p::Bootloader r2p::Bootloader::instance(NULL);
 
 static WORKING_AREA(wa_info, 1024);
 
-r2p::Middleware r2p::Middleware::instance("IMU_0", "BOOT_IMU_0");
+r2p::Middleware r2p::Middleware::instance(R2P_MODULE_NAME,
+                                          "BOOT_"R2P_MODULE_NAME);
 
 static WORKING_AREA(wa1, 1024);
 static WORKING_AREA(wa2, 1024);
@@ -154,14 +159,13 @@ int main(void) {
   dbgtra.initialize(wa_rx_dbgtra, sizeof(wa_rx_dbgtra), r2p::Thread::LOWEST + 11,
                     wa_tx_dbgtra, sizeof(wa_tx_dbgtra), r2p::Thread::LOWEST + 10);
 
-  r2p::Thread::create_static(wa3, sizeof(wa3), r2p::Thread::NORMAL - 2, Thread3, NULL, "Thread3");
-  r2p::Thread::create_static(wa2, sizeof(wa2), r2p::Thread::NORMAL + 1, Thread2, NULL, "Thread2");
-  r2p::Thread::create_static(wa1, sizeof(wa1), r2p::Thread::NORMAL + 0, Thread1, NULL, "Thread1");
+  //r2p::Thread::create_static(wa3, sizeof(wa3), r2p::Thread::NORMAL - 2, Thread3, NULL, "Thread3");
+  //r2p::Thread::create_static(wa2, sizeof(wa2), r2p::Thread::NORMAL + 1, Thread2, NULL, "Thread2");
+  //r2p::Thread::create_static(wa1, sizeof(wa1), r2p::Thread::NORMAL + 0, Thread1, NULL, "Thread1");
 
-  r2p::Thread::set_priority(r2p::Thread::IDLE);
   for (;;) {
-    r2p::Middleware::instance.spin();
-    r2p::Thread::yield();
+    palTogglePad(LED_GPIO, LED1);
+    r2p::Thread::sleep(r2p::Time::ms(500));
   }
   return CH_SUCCESS;
 }

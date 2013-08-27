@@ -101,7 +101,7 @@ ifeq ($(TEST),rtcan_pub_test)
   CPPSRC += DebugTransport.cpp DebugPublisher.cpp DebugSubscriber.cpp \
          RTCANTransport.cpp RTCANPublisher.cpp RTCANSubscriber.cpp \
          chnew.cpp main_rtcan_pub_test.cpp
-#  UDEFS = -DRTCAN_ISMASTER
+  UDEFS = -DRTCAN_ISMASTER
 endif
 
 ifeq ($(TEST),rtcan_sub_test)
@@ -190,7 +190,7 @@ CPPWARN = -Wall -Wextra
 #
 
 # List all default C defines here, like -D_DEBUG=1
-DDEFS = -DPORT_INT_REQUIRED_STACK=128
+DDEFS = -DPORT_INT_REQUIRED_STACK=64
 
 # List all default ASM defines here, like -D_DEBUG=1
 DADEFS =
@@ -213,7 +213,7 @@ DLIBS = -lm
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS += -DR2MW_TEST
+UDEFS += -DR2MW_TEST -DR2P_MODULE_NAME='"$(R2P_MODULE_NAME)"'
 
 # Define ASM defines here
 UADEFS +=

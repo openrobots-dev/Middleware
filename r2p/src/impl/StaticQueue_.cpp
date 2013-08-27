@@ -80,19 +80,28 @@ bool StaticQueue_::skip_unsafe() {
 
 const StaticQueue_::Link *StaticQueue_::get_head() const {
 
-  return safeguard(get_head_unsafe());
+  SysLock::acquire();
+  const Link *headp = get_head_unsafe();
+  SysLock::release();
+  return headp;
 }
 
 
 const StaticQueue_::Link *StaticQueue_::get_tail() const {
 
-  return safeguard(get_tail_unsafe());
+  SysLock::acquire();
+  const Link *tailp = get_tail_unsafe();
+  SysLock::release();
+  return tailp;
 }
 
 
 bool StaticQueue_::is_empty() const {
 
-  return safeguard(is_empty_unsafe());
+  SysLock::acquire();
+  bool isempty = is_empty_unsafe();
+  SysLock::release();
+  return isempty;
 }
 
 
@@ -106,19 +115,28 @@ void StaticQueue_::post(Link &link) {
 
 bool StaticQueue_::peek(const Link *&linkp) const {
 
-  return safeguard(peek_unsafe(linkp));
+  SysLock::acquire();
+  bool success = peek_unsafe(linkp);
+  SysLock::release();
+  return success;
 }
 
 
 bool StaticQueue_::fetch(Link &link) {
 
-  return safeguard(fetch_unsafe(link));
+  SysLock::acquire();
+  bool success = fetch_unsafe(link);
+  SysLock::release();
+  return success;
 }
 
 
 bool StaticQueue_::skip() {
 
-  return safeguard(skip_unsafe());
+  SysLock::acquire();
+  bool success = skip_unsafe();
+  SysLock::release();
+  return success;
 }
 
 

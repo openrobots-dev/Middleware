@@ -82,13 +82,19 @@ void *StaticList_::find_first_unsafe(Matches match_func,
 
 const StaticList_::Link *StaticList_::get_head() const {
 
-  return safeguard(get_head_unsafe());
+  SysLock::acquire();
+  const Link *headp = get_head_unsafe();
+  SysLock::release();
+  return headp;
 }
 
 
 bool StaticList_::is_empty() const {
 
-  return safeguard(is_empty_unsafe());
+  SysLock::acquire();
+  bool success = is_empty_unsafe();
+  SysLock::release();
+  return success;
 }
 
 
@@ -116,7 +122,10 @@ void StaticList_::link(Link &link) {
 
 bool StaticList_::unlink(Link &link) {
 
-  return safeguard(unlink_unsafe(link));
+  SysLock::acquire();
+  bool success = unlink_unsafe(link);
+  SysLock::release();
+  return success;
 }
 
 
