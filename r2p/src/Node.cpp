@@ -49,12 +49,12 @@ void Node::publish_publishers(Publisher<MgmtMsg> &info_pub) {
     }
 
     msgp->type = MgmtMsg::INFO_ADVERTISEMENT;
-    ::strncpy(msgp->path.module, Middleware::instance.get_module_name(),
-              NamingTraits<Middleware>::MAX_LENGTH);
-    ::strncpy(msgp->path.node, this->get_name(),
-              NamingTraits<Node>::MAX_LENGTH);
-    ::strncpy(msgp->path.topic, i->get_topic()->get_name(),
-              NamingTraits<Topic>::MAX_LENGTH);
+    strncpy(msgp->path.module, Middleware::instance.get_module_name(),
+            NamingTraits<Middleware>::MAX_LENGTH);
+    strncpy(msgp->path.node, this->get_name(),
+            NamingTraits<Node>::MAX_LENGTH);
+    strncpy(msgp->path.topic, i->get_topic()->get_name(),
+            NamingTraits<Topic>::MAX_LENGTH);
 
     while (!info_pub.publish_remotely(*msgp)) {
       Thread::yield();
@@ -74,12 +74,12 @@ void Node::publish_subscribers(Publisher<MgmtMsg> &info_pub) {
     }
 
     msgp->type = MgmtMsg::INFO_SUBSCRIPTION;
-    ::strncpy(msgp->path.module, Middleware::instance.get_module_name(),
-              NamingTraits<Middleware>::MAX_LENGTH);
-    ::strncpy(msgp->path.node, this->get_name(),
-              NamingTraits<Node>::MAX_LENGTH);
-    ::strncpy(msgp->path.topic, i->get_topic()->get_name(),
-              NamingTraits<Topic>::MAX_LENGTH);
+    strncpy(msgp->path.module, Middleware::instance.get_module_name(),
+            NamingTraits<Middleware>::MAX_LENGTH);
+    strncpy(msgp->path.node, this->get_name(),
+            NamingTraits<Node>::MAX_LENGTH);
+    strncpy(msgp->path.topic, i->get_topic()->get_name(),
+            NamingTraits<Topic>::MAX_LENGTH);
 
     while (!info_pub.publish_remotely(*msgp)) {
       Thread::yield();
@@ -120,7 +120,6 @@ Node::Node(const char *namep)
   by_middleware(*this)
 {
   R2P_ASSERT(is_identifier(namep));
-  R2P_ASSERT(::strlen(namep) <= NamingTraits<Node>::MAX_LENGTH);
 
   Middleware::instance.add(*this);
 }

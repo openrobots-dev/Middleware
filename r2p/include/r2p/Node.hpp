@@ -122,8 +122,8 @@ void Node::notify_stop() {
 inline
 bool Node::has_name(const Node &node, const char *namep) {
 
-  return namep != NULL && 0 == ::strncmp(node.get_name(), namep,
-                                         NamingTraits<Node>::MAX_LENGTH);
+  return namep != NULL && 0 == strncmp(node.get_name(), namep,
+                                       NamingTraits<Node>::MAX_LENGTH);
 }
 
 

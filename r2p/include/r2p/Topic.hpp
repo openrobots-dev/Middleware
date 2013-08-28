@@ -207,8 +207,8 @@ void Topic::extend_pool(Message array[], size_t arraylen) {
 inline
 bool Topic::has_name(const Topic &topic, const char *namep) {
 
-  return namep != NULL && 0 == ::strncmp(topic.get_name(), namep,
-                                         NamingTraits<Topic>::MAX_LENGTH);
+  return namep != NULL && 0 == strncmp(topic.get_name(), namep,
+                                       NamingTraits<Topic>::MAX_LENGTH);
 }
 
 

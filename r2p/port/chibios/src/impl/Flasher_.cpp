@@ -105,9 +105,9 @@ int Flasher_::compare(PageID page, const Data *bufp) {
 
 bool Flasher_::read(PageID page, Data *bufp) {
 
-  ::memcpy(static_cast<void *>(bufp),
-           reinterpret_cast<const void *>(address_of(page)),
-           PAGE_SIZE);
+  memcpy(static_cast<void *>(bufp),
+         reinterpret_cast<const void *>(address_of(page)),
+         PAGE_SIZE);
   return true;
 }
 
@@ -202,7 +202,7 @@ bool Flasher_::flash(Address address, const Data *bufp, size_t buflen) {
     }
 
     // Copy buffer into page buffer and mark as tainted
-    ::memcpy(&page_bufp[offset / sizeof(Data)], bufp, length);
+    memcpy(&page_bufp[offset / sizeof(Data)], bufp, length);
     page_modified = true;
     buflen -= length;
 

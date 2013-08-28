@@ -194,13 +194,16 @@ static bool send_msg(BaseChannel *channelp, const Message &msg,
   if (!send_char(channelp, ':')) return false;
 
   // Send the topic name
-  uint8_t namelen = ::strlen(topicp);
+  uint8_t namelen = static_cast<uint8_t>(
+    strnlen(topicp, NamingTraits<Topic>::MAX_LENGTH)
+  );
   if (!send_value(channelp, namelen)) return false;
   if (!send_string(channelp, topicp, namelen)) return false;
 
   // Send the payload length and data
   if (!send_char(channelp, ':')) return false;
-  if (!send_value(channelp, msg_size)) return false;
+  namelen = static_cast<uint8_t>(msg_size);
+  if (!send_value(channelp, namelen)) return false;
   if (!send_chunk(channelp, msg.get_raw_data(), msg_size)) return false;
 
   if (!send_char(channelp, '\r')) return false;
@@ -235,12 +238,16 @@ static bool send_pubsub_msg(BaseChannel *channelp, const Topic &topic,
 
   // Send the module and topic names
   const char *namep = Middleware::instance.get_module_name();
-  uint8_t namelen = static_cast<uint8_t>(::strlen(namep));
+  uint8_t namelen = static_cast<uint8_t>(
+    strnlen(namep, NamingTraits<Middleware>::MAX_LENGTH)
+  );
   if (!send_value(channelp, namelen)) return false;
   if (!send_string(channelp, namep, namelen)) return false;
   if (!send_char(channelp, ':')) return false;
   namep = topic.get_name();
-  namelen = static_cast<uint8_t>(::strlen(namep));
+  namelen = static_cast<uint8_t>(
+    strnlen(namep, NamingTraits<Topic>::MAX_LENGTH)
+  );
   if (!send_value(channelp, namelen)) return false;
   if (!send_string(channelp, namep, namelen)) return false;
 
@@ -469,8 +476,8 @@ bool DebugTransport::spin_rx() {
         MgmtMsg *msgp;
         if (mgmt_rpub.alloc(reinterpret_cast<Message *&>(msgp))) {
           msgp->type = MgmtMsg::CMD_ADVERTISE;
-          ::strncpy(msgp->pubsub.topic, namebufp,
-                    NamingTraits<Topic>::MAX_LENGTH);
+          strncpy(msgp->pubsub.topic, namebufp,
+                  NamingTraits<Topic>::MAX_LENGTH);
           msgp->pubsub.transportp = this;
           return mgmt_rpub.publish_locally(*msgp);
         }
@@ -483,8 +490,8 @@ bool DebugTransport::spin_rx() {
         MgmtMsg *msgp;
         if (mgmt_rpub.alloc(reinterpret_cast<Message *&>(msgp))) {
           msgp->type = MgmtMsg::CMD_SUBSCRIBE;
-          ::strncpy(msgp->pubsub.topic, namebufp,
-                    NamingTraits<Topic>::MAX_LENGTH);
+          strncpy(msgp->pubsub.topic, namebufp,
+                  NamingTraits<Topic>::MAX_LENGTH);
           msgp->pubsub.transportp = this;
           msgp->pubsub.queue_length = queue_length;
           return mgmt_rpub.publish_locally(*msgp);

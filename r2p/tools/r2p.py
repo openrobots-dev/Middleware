@@ -1,3 +1,5 @@
+# TODO: Check BootlaoderMsg checksums
+# TODO: Add BootlaoderMsg sequence number check
 
 import sys, os, io, time, struct, string, random
 import subprocess
@@ -207,7 +209,7 @@ class DebugTransport(Transport):
         
         def read_bytes(self, length):
             self._check_length(2 * length)
-            return ''.join([ self.read_char() for i in range(length) ])
+            return ''.join([ chr(self.read_unsigned(1)) for i in range(length) ])
     
     
     def __init__(self, lineio):
@@ -364,17 +366,17 @@ class IhexRecord(Serializable):
 
     def compute_checksum(self):
         cs = (_uintsum(self.count) + _uintsum(self.offset) + _uintsum(self.type)) & 0xFF
-        for b in self.data:
-            cs = (cs + ord(b)) & 0xFF
-        return 0x100 - cs
+        for c in self.data:
+            cs = (cs + ord(c)) & 0xFF
+        return (0x100 - cs) & 0xFF
     
     def marshal(self):
-        return struct.pack('<BHB%dsB' % self.MAX_DATA_LENGTH,
+        return struct.pack('<BHB%dsB' % len(self.data),
                            self.count, self.offset, self.type, self.data, self.checksum)
     
     def unmarshal(self, data):
         self.count, self.offset, self.type, self.data, self.checksum = \
-            struct.unpack('<BHB%dsB' % self.MAX_DATA_LENGTH, data)
+            struct.unpack_from('<BHB%dsB' % self.MAX_DATA_LENGTH, data)
         self.data = self.data[:self.count]
     
     def parse_ihex(self, entry):
@@ -394,14 +396,32 @@ class IhexRecord(Serializable):
 #==============================================================================
 
 class BootloaderMsg(Serializable):
-    _LENGTH = 27
+    MAX_PAYLOAD_LENGTH = 26
     
     class TypeEnum:
-        NACK = 0
-        ACK = 1
-        SETUP_REQUEST = 2
-        SETUP_RESPONSE = 3
-        IHEX_RECORD = 4
+        NACK            = 0
+        ACK             = 1
+        HEARTBEAT       = 2
+        SETUP_REQUEST   = 3
+        SETUP_RESPONSE  = 4
+        IHEX_RECORD     = 5
+        
+    
+    class AckNack(Serializable):
+        def __init__(self):
+            self.to_seqn = -1
+        
+        def __repr__(self):
+            return str(self.__dict__)
+        
+        def marshal(self):
+            return struct.pack('<H', self.to_seqn)
+        
+        def unmarshal(self, data):
+            self.to_seqn, = struct.unpack_from('<H', data)
+        
+        def compute_checksum(self):
+            return _uintsum(self.to_seqn)
         
         
     class SetupRequest(Serializable):
@@ -412,6 +432,9 @@ class BootloaderMsg(Serializable):
             self.stacklen = 0
             self.appname = ''
             self.checksum = 0
+            
+        def __repr__(self):
+            return str(self.__dict__)
         
         def marshal(self):
             return struct.pack('<LLLL%dsB' % NODE_NAME_MAX_LENGTH,
@@ -419,14 +442,14 @@ class BootloaderMsg(Serializable):
         
         def unmarshal(self, data):
             self.pgmlen, self.bsslen, self.datalen, self.stacklen, self.appname, self.checksum = \
-                struct.unpack('<LLLL%dsB' % NODE_NAME_MAX_LENGTH, data)
+                struct.unpack_from('<LLLL%dsB' % NODE_NAME_MAX_LENGTH, data)
 
         def compute_checksum(self):
             cs = (_uintsum(self.pgmlen) + _uintsum(self.bsslen) + \
                   _uintsum(self.datalen) + _uintsum(self.stacklen)) & 0xFF
             for c in self.appname:
                 cs = (cs + ord(c)) & 0xFF
-            return 0x100 - cs
+            return (0x100 - cs) & 0xFF
 
 
     class SetupResponse(Serializable):
@@ -436,34 +459,71 @@ class BootloaderMsg(Serializable):
             self.dataadr = 0
             self.datapgmadr = 0
             self.checksum = 0
+            
+        def __repr__(self):
+            return str(self.__dict__)
         
         def marshal(self):
             return struct.pack('<LLLLB', self.pgmadr, self.bssadr, self.dataadr,
                                self.datapgmadr, self.checksum)
             
         def unmarshal(self, data):
-            self.pgmadr, self.bssadr, self.dataadr, self.datapgmadr,
-            self.checksum = struct.unpack('<LLLLB', data)
+            self.pgmadr, self.bssadr, self.dataadr, self.datapgmadr, self.checksum = \
+                struct.unpack_from('<LLLLB', data)
             
         def compute_checksum(self):
-            return 0x100 - ((_uintsum(self.pgmadr) + _uintsum(self.bssadr) + \
-                             _uintsum(self.dataadr) + _uintsum(self.datapgmadr)) & 0xFF)
+            cs = (_uintsum(self.pgmadr) + _uintsum(self.bssadr) + \
+                  _uintsum(self.dataadr) + _uintsum(self.datapgmadr)) & 0xFF
+            return (0x100 - cs) & 0xFF
 
 
     def __init__(self):
-        self.setup_request = self.SetupRequest()
-        self.setup_response = self.SetupResponse()
-        self.ihex_record = IhexRecord()
+        self.checksum = 0
         self.type = -1
+        self.seqn = 0
         
+        self.acknack = BootloaderMsg.AckNack()
+        self.setup_request = BootloaderMsg.SetupRequest()
+        self.setup_response = BootloaderMsg.SetupResponse()
+        self.ihex_record = IhexRecord()
+    
     def __repr__(self):
+        if   self.type == BootloaderMsg.TypeEnum.NACK:
+            return 'NACK(%s)' % repr(self.acknack)
+        elif self.type == BootloaderMsg.TypeEnum.ACK:
+            return 'ACK(%s)' % repr(self.acknack)
+        elif self.type == BootloaderMsg.TypeEnum.HEARTBEAT:
+            return 'HEARTBEAT()'
+        elif self.type == BootloaderMsg.TypeEnum.SETUP_REQUEST:
+            return 'SETUP_REQUEST(%s)' % repr(self.setup_request)
+        elif self.type == BootloaderMsg.TypeEnum.SETUP_RESPONSE:
+            return 'SETUP_RESPONSE(%s)' % repr(self.setup_response)
+        elif self.type == BootloaderMsg.TypeEnum.IHEX_RECORD:
+            return 'IHEX_RECORD(%s)' % repr(self.ihex_record)
+        else:
+            raise ValueError('Unknown bootloader message subtype %d' % self.type)
+        
+    def __str__(self):
         return _str2hexb(self.marshal())
         
-    def set_nack(self):
-        self.type = self.TypeEnum.NACK
+    def compute_checksum(self):
+        cs = 0
+        for c in self.marshal()[1:]:
+            cs = (cs + ord(c)) & 0xFF
+        return (0x100 - cs) & 0xFF
+    
+    def update_checksum(self):
+        self.checksum = self.compute_checksum()
+    
+    def set_nack(self, to_seqn):
+        self.type = BootloaderMsg.TypeEnum.NACK
+        self.acknack.to_seqn = int(to_seqn)
+        self.update_checksum()
         
-    def set_ack(self):
-        self.type = self.TypeEnum.ACK
+    def set_ack(self, to_seqn):
+        self.type = BootloaderMsg.TypeEnum.ACK
+        self.acknack.to_seqn = int(to_seqn)
+        self.update_checksum()
         
     def set_request(self, pgmlen, bsslen, datalen, stacklen, appname):
         self.type = self.TypeEnum.SETUP_REQUEST
@@ -473,39 +533,58 @@ class BootloaderMsg(Serializable):
         self.setup_request.stacklen = int(stacklen)
         self.setup_request.appname = str(appname)
         self.setup_request.checksum = self.setup_request.compute_checksum()
+        self.update_checksum()
         
     def set_response(self, pgmadr, bssadr, dataadr, datapgmadr):
-        self.type = self.TypeEnum.SETUP_RESPONSE
+        self.type = BootloaderMsg.TypeEnum.SETUP_RESPONSE
         self.pgmadr = int(pgmadr)
         self.bssadr = int(bssadr)
         self.dataadr = int(dataadr)
         self.datapgmadr = int(datapgmadr)
         self.setup_response.checksum = self.setup_response.compute_checksum()
+        self.update_checksum()
         
     def set_ihex(self, ihex_entry_line):
-        self.type = self.TypeEnum.IHEX_RECORD
+        self.type = BootloaderMsg.TypeEnum.IHEX_RECORD
         self.ihex_record.parse_ihex(ihex_entry_line)
+        self.update_checksum()
     
     def marshal(self):
-        if   self.type == self.TypeEnum.NACK:           bytes = ''
-        elif self.type == self.TypeEnum.ACK:            bytes = ''
-        elif self.type == self.TypeEnum.SETUP_REQUEST:  bytes = self.setup_request.marshal()
-        elif self.type == self.TypeEnum.SETUP_RESPONSE: bytes = self.setup_response.marshal()
-        elif self.type == self.TypeEnum.IHEX_RECORD:    bytes = self.ihex_record.marshal()
-        else: raise ValueError('Unknown bootloader message subtype %d' % self.type)
-        return struct.pack('<%dsB' % (self._LENGTH - 1), bytes, self.type)
+        if   self.type == BootloaderMsg.TypeEnum.NACK or \
+             self.type == BootloaderMsg.TypeEnum.ACK:
+            payload = self.acknack.marshal()
+        elif self.type == BootloaderMsg.TypeEnum.HEARTBEAT:
+            payload = ''
+        elif self.type == BootloaderMsg.TypeEnum.SETUP_REQUEST:
+            payload = self.setup_request.marshal()
+        elif self.type == BootloaderMsg.TypeEnum.SETUP_RESPONSE:
+            payload = self.setup_response.marshal()
+        elif self.type == BootloaderMsg.TypeEnum.IHEX_RECORD:
+            payload = self.ihex_record.marshal()
+        else:
+            raise ValueError('Unknown bootloader message subtype %d' % self.type)
+        return struct.pack('<BBH%ds' % self.MAX_PAYLOAD_LENGTH,
+                           self.checksum, self.type, self.seqn, payload)
     
     def unmarshal(self, data):
-        if len(data) < self._LENGTH:
+        if len(data) < (1 + 1 + 2 + self.MAX_PAYLOAD_LENGTH):
             raise ValueError("len('%s') < %d", data, len(data))
-        _, self.type = struct.unpack('<%dsB' % (self._LENGTH - 1), data)
+        self.checksum, self.type, self.seqn, payload = \
+            struct.unpack_from('<BBH%ds' % self.MAX_PAYLOAD_LENGTH, data)
         
-        if   self.type == self.TypeEnum.NACK:           pass
-        elif self.type == self.TypeEnum.ACK:            pass
-        elif self.type == self.TypeEnum.SETUP_REQUEST:  self.setup_request.unmarshal(data)
-        elif self.type == self.TypeEnum.SETUP_RESPONSE: self.setup_response.unmarshal(data)
-        elif self.type == self.TypeEnum.IHEX_RECORD:    self.ihex_record.unmarshal(data)
-        else: raise ValueError('Unknown bootloader message subtype %d' % self.type)
+        if   self.type == BootloaderMsg.TypeEnum.NACK or \
+             self.type == BootloaderMsg.TypeEnum.ACK:
+            self.acknack.unmarshal(payload)
+        elif self.type == BootloaderMsg.TypeEnum.HEARTBEAT:
+            pass
+        elif self.type == BootloaderMsg.TypeEnum.SETUP_REQUEST:
+            self.setup_request.unmarshal(payload)
+        elif self.type == BootloaderMsg.TypeEnum.SETUP_RESPONSE:
+            self.setup_response.unmarshal(payload)
+        elif self.type == BootloaderMsg.TypeEnum.IHEX_RECORD:
+            self.ihex_record.unmarshal(payload)
+        else:
+            raise ValueError('Unknown bootloader message subtype %d' % self.type)
 
 #==============================================================================
 
@@ -523,6 +602,15 @@ class SimpleBootloader:
         try:
             self.__do_run(appname, hexpath, stacklen, ldexe, ldscript, ldoself, ldmap, ldobjelf, ldobjs)
         except:
+            try:
+                nack = BootloaderMsg()
+                nack.set_nack(0)
+                data = nack.marshal()
+                self.__transport.send_message(self.__boot_topic, data)
+                self.__transport.send_message(self.__boot_topic, data)
+                self.__transport.send_message(self.__boot_topic, data)
+            except:
+                pass
             self.__transport.close()
             raise
         
@@ -531,20 +619,26 @@ class SimpleBootloader:
         def send(msg):
             self.__transport.send_message(self.__boot_topic, msg.marshal())
         
-        def recv():
+        def recv(ignore_heartbeat=True):
             while True:
                 fields = self.__transport.recv()
                 if fields[0] == Transport.TypeEnum.MESSAGE and fields[1] == self.__boot_topic:
                     msg = BootloaderMsg()
                     msg.unmarshal(fields[2])
+                    logging.debug('received BootloaderMsg_%s' % repr(msg))
+                    if msg.type == BootloaderMsg.TypeEnum.HEARTBEAT and ignore_heartbeat:
+                        continue
                     return msg
         
         # Stop all middlewares
         logging.info('Stopping all middlewares')
         self.__transport.send_stop()
-        logging.debug('Signal sent, sleeping for 3 seconds...')
-        time.sleep(3)
-        logging.debug('... awake again')
+        logging.info('Awaiting heartbeat from target bootloader')
+        while True:
+            msg = recv(False)
+            if msg.type == BootloaderMsg.TypeEnum.HEARTBEAT:
+                break
+            
         
         # Get the length of each section
         logging.info('Reading section lengths from "%s":' % ldobjelf)
@@ -583,10 +677,16 @@ class SimpleBootloader:
         logging.info('  const = 0x%0.8X' % datapgmadr)
         
         # Link to the OS symbols
-        sectopt = [ '--section-start', '.text=0x%0.8X' % pgmadr,
-                    '--section-start', '.bss=0x%0.8X' % bssadr,
-                    '--section-start', '.data=0x%0.8X' % dataadr ]
-        args = [ ldexe, '--script', ldscript, '--just-symbols', ldoself, '-Map', ldmap, '-o', ldobjelf ] + sectopt + ldobjs
+        args = [
+            ldexe,
+            '--script', ldscript,
+            '--just-symbols', ldoself,
+            '-Map', ldmap,
+            '-o', ldobjelf,
+            '--section-start', '.text=0x%0.8X' % pgmadr,
+            '--section-start', '.bss=0x%0.8X' % bssadr,
+            '--section-start', '.data=0x%0.8X' % dataadr
+        ] + list(ldobjs)
         logging.info('Linker command line:')
         logging.info('  ' + ' '.join([ arg for arg in args ]))
         
@@ -610,7 +710,7 @@ class SimpleBootloader:
         logging.info('Reading final ELF file "%s"' % ldobjelf)
         with open(ldobjelf, 'rb') as f:
             elffile = ELFFile(f)
-        threadadr = find_address(elffile, self.ENTRY_THREAD_NAME)
+            threadadr = find_address(elffile, self.ENTRY_THREAD_NAME)
         logging.info('App entry point at 0x%0.8X' % threadadr)
         
         # Read the generated IHEX file and remove unused records
@@ -657,11 +757,7 @@ class SimpleBootloader:
         record.check_valid()
         logging.info('Adding app entry point record:')
         logging.info('  ' + str(record))
-        ihex_records.append(record)
-            
-        response = recv()
-        if response.type != BootloaderMsg.TypeEnum.ACK:
-            raise RuntimeError("Expected ACK, received '%s'" % response)
+        ihex_records.insert(0, record)
         
         # Send IHEX records
         logging.info('Sending IHEX records to target module:')

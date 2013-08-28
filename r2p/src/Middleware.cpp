@@ -44,26 +44,25 @@ void Middleware::initialize(void *mgmt_boot_stackp, size_t mgmt_boot_stacklen,
 }
 
 
-void Middleware::spin() {
-
-  // TODO process bootloader messages
-}
-
-
 void Middleware::stop() {
 
   bool trigger = false;
-
   SysLock::acquire();
   if (!stopped) {
     trigger = stopped = true;
   }
   SysLock::release();
 
-  // Stop all remote middlewares
+  // Stop all remote middlewares, and force remote bootloader pubs/subs
   for (StaticList<Transport>::Iterator i = transports.begin();
        i != transports.end(); ++i) {
-    i->notify_stop();
+    bool success; (void)success;
+    success = i->notify_stop();
+    R2P_ASSERT(success);
+    success = i->touch_publisher(boot_topic);
+    R2P_ASSERT(success);
+    success = i->touch_subscriber(boot_topic, BOOT_BUFFER_LENGTH);
+    R2P_ASSERT(success);
   }
 
   SysLock::acquire();
@@ -245,6 +244,7 @@ void Middleware::do_mgmt_thread() {
         switch (msgp->type) {
         case MgmtMsg::CMD_ADVERTISE: {
           Transport *transportp = msgp->pubsub.transportp;
+          R2P_ASSERT(transportp != NULL);
           Topic *topicp = find_topic(msgp->pubsub.topic);
           sub.release(*msgp);
           if (topicp != NULL) {
@@ -254,12 +254,12 @@ void Middleware::do_mgmt_thread() {
         }
         case MgmtMsg::CMD_SUBSCRIBE: {
           Transport *transportp = msgp->pubsub.transportp;
+          R2P_ASSERT(transportp != NULL);
           size_t queue_length = msgp->pubsub.queue_length;
           Topic *topicp = find_topic(msgp->pubsub.topic);
           sub.release(*msgp);
           if (topicp != NULL) {
             transportp->subscribe(*topicp, queue_length);
-            transportp->notify_advertisement(*topicp);
           }
           break;
         }
@@ -270,8 +270,8 @@ void Middleware::do_mgmt_thread() {
           while (!pub.alloc(msgp)) {
             Thread::yield();
           }
-          ::strncpy(msgp->module.name, get_module_name(),
-                    NamingTraits<Middleware>::MAX_LENGTH);
+          strncpy(msgp->module.name, get_module_name(),
+                  NamingTraits<Middleware>::MAX_LENGTH);
           SysLock::acquire();
           msgp->module.flags.stopped = (is_stopped() != false);
           SysLock::release();
@@ -349,23 +349,37 @@ void Middleware::do_boot_thread() {
   R2P_ASSERT(success);
 
   for (;;) {
-    if (node.spin(Time::ms(1000))) {
+    if (node.spin(Time::ms(1000))) { // TODO: Configuration
       BootloaderMsg *requestp = NULL, *responsep = NULL;
       Time deadline;
       while (sub.fetch(requestp, deadline)) {
         if (pub.alloc(responsep)) {
+          responsep->cleanup();
           if (Bootloader::instance.process(*requestp, *responsep)) {
             sub.release(*requestp);
-            pub.publish_remotely(*responsep);
+            while (!pub.publish_remotely(*responsep)) {
+              Thread::sleep(Time::ms(100)); // TODO: Configuration
+            }
           } else {
             sub.release(*requestp);
             sub.release(*responsep);
           }
         } else {
           requestp->type = BootloaderMsg::NACK;
-          pub.publish_remotely(*requestp);
+          while (!pub.publish_remotely(*requestp)) {
+            Thread::sleep(Time::ms(100)); // TODO: Configuration
+          }
         }
         Thread::yield();
+      }
+    } else {
+      BootloaderMsg *heartbeatp = NULL;
+      if (pub.alloc(heartbeatp)) {
+        heartbeatp->cleanup();
+        heartbeatp->type = BootloaderMsg::HEARTBEAT;
+        if (!pub.publish_remotely(*heartbeatp)) {
+          sub.release(*heartbeatp);
+        }
       }
     }
   }
@@ -388,6 +402,7 @@ Middleware::Middleware(const char *module_namep, const char *bootloader_namep)
   R2P_ASSERT(is_identifier(module_namep));
 
   add(mgmt_topic);
+  add(boot_topic);
 }
 
 

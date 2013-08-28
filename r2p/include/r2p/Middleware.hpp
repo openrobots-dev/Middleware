@@ -61,7 +61,6 @@ public:
 
   void initialize(void *mgmt_boot_stackp, size_t mgmt_boot_stacklen,
                   Thread::Priority mgmt_boot_priority);
-  void spin();
   void stop();
   void reboot();
 

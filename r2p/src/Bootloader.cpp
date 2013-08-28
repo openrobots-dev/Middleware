@@ -180,8 +180,8 @@ bool Bootloader::compute_addresses() {
   if (tempinfo.bsslen > 0) {
     tempinfo.bssadr = 0; // FIXME chCoreTrim(info.bsslen)
     if (tempinfo.bssadr == 0) return false;
-    ::memset(reinterpret_cast<void *>(tempinfo.bssadr), 0x00,
-             tempinfo.bsslen);
+    memset(reinterpret_cast<void *>(tempinfo.bssadr), 0x00,
+           tempinfo.bsslen);
   }
 
   // Allocate the ".data" segment
@@ -189,8 +189,8 @@ bool Bootloader::compute_addresses() {
   if (tempinfo.datalen > 0) {
     tempinfo.dataadr = 0; // FIXME chCoreTrim(info.datalen)
     if (tempinfo.dataadr == 0) return false;
-    ::memset(reinterpret_cast<void *>(tempinfo.dataadr), 0xCC,
-             tempinfo.datalen);
+    memset(reinterpret_cast<void *>(tempinfo.dataadr), 0xCC,
+           tempinfo.datalen);
   }
   return true;
 }
