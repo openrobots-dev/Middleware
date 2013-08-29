@@ -39,6 +39,8 @@ public:
     SETUP_REQUEST,
     SETUP_RESPONSE,
     IHEX_RECORD,
+    REMOVE_ALL, // TODO
+    REMOVE_LAST, // TODO
   };
 
   enum { MAX_PAYLOAD_LENGTH = 26 };

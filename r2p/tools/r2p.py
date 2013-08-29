@@ -371,7 +371,7 @@ class IhexRecord(Serializable):
         return (0x100 - cs) & 0xFF
     
     def marshal(self):
-        return struct.pack('<BHB%dsB' % len(self.data),
+        return struct.pack('<BHB%dsB' % self.MAX_DATA_LENGTH,
                            self.count, self.offset, self.type, self.data, self.checksum)
     
     def unmarshal(self, data):
@@ -385,7 +385,7 @@ class IhexRecord(Serializable):
         explen = 1 + 2 * (1 + 2 + 1 + self.count + 1)
         if len(entry) < explen:
             raise ValueError("len('%s') < %d" % (entry, explen))
-        self.offset = int(entry[5:7] + entry[3:5], 16)
+        self.offset = int(entry[3:7], 16)
         self.type = int(entry[7:9], 16)
         entry = entry[9:]
         self.data = str(bytearray([ int(entry[i : (i + 2)], 16) for i in range(0, 2 * self.count, 2) ]))

@@ -6,20 +6,20 @@
 namespace r2p {
 
 #define R2P_FLASH_ALIGNED \
-  __attribute__((aligned(sizeof(r2p::Flasher::Data))))
+  __attribute__((aligned(Flasher::WORD_ALIGNMENT)))
 
 
 class Flasher : private Uncopyable {
 public:
+  typedef Flasher_::Address Address;
+  typedef Flasher_::Data    Data;
+  typedef Flasher_::PageID  PageID;
+  typedef Flasher_::Length  Length;
+
   enum { BASE_ADDRESS       = Flasher_::BASE_ADDRESS };
   enum { PAGE_SIZE          = Flasher_::PAGE_SIZE };
   enum { PROGRAM_ALIGNMENT  = Flasher_::PROGRAM_ALIGNMENT };
   enum { WORD_ALIGNMENT     = Flasher_::WORD_ALIGNMENT };
-
-  typedef Flasher_::Address Address;
-  typedef Flasher_::Data Data;
-  typedef Flasher_::PageID PageID;
-  typedef Flasher_::Length Length;
 
 private:
   Flasher_ impl;

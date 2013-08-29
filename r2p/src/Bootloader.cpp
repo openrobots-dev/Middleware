@@ -40,6 +40,8 @@ bool Bootloader::process(const BootloaderMsg &request_msg,
     tempinfo.bsslen = request_msg.setup_request.bsslen;
     tempinfo.datalen = request_msg.setup_request.datalen;
     tempinfo.stacklen = request_msg.setup_request.stacklen;
+    strncpy(tempinfo.name, request_msg.setup_request.name,
+            NamingTraits<Node>::MAX_LENGTH);
 
     if (compute_addresses()) {
       response_msg.setup_response.pgmadr = tempinfo.pgmadr;
@@ -88,7 +90,7 @@ bool Bootloader::process_ihex(const IhexRecord &record) {
     Address start = baseadr + record.offset;
     Address endx = start + record.count;
 
-    if (endx <= tempinfo.pgmadr + tempinfo.pgmlen &&
+    if (endx  <= tempinfo.pgmadr + tempinfo.pgmlen &&
         start >= tempinfo.pgmadr) {
       // ".text" segment
       return flasher.flash(
@@ -97,7 +99,7 @@ bool Bootloader::process_ihex(const IhexRecord &record) {
         record.count
       );
     }
-    else if (endx <= tempinfo.datapgmadr + tempinfo.datalen &&
+    else if (endx  <= tempinfo.datapgmadr + tempinfo.datalen &&
              start >= tempinfo.datapgmadr) {
       // ".data" segment
       return flasher.flash(
@@ -240,9 +242,9 @@ Bootloader::Bootloader(Flasher::Data *flash_page_bufp)
 :
   state(AWAITING_REQUEST),
   flasher(flash_page_bufp),
-  numapps(flash_layout.numapps),
+  numapps((flash_layout.numapps <= MAX_APPS) ? flash_layout.numapps : 0),
   baseadr(0),
-  freeadr((flash_layout.numapps > 0 && flash_layout.numapps <= R2P_MAX_APPS)
+  freeadr((numapps > 0 && numapps <= MAX_APPS)
           ? Flasher::align_next(flash_layout.freeadr)
           : Flasher::align_next(Flasher::get_program_start()))
 {}

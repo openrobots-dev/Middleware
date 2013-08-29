@@ -26,15 +26,15 @@ namespace r2p {
 
 class Flasher_ : private Uncopyable {
 public:
+  typedef uint32_t  Address;
+  typedef uint16_t  Data;
+  typedef uint16_t  PageID;
+  typedef size_t    Length;
+
   enum { BASE_ADDRESS       = FLASH_BASE_ADDRESS };
   enum { PAGE_SIZE          = 1024 };
   enum { PROGRAM_ALIGNMENT  = 16 };
-  enum { WORD_ALIGNMENT     = 2 };
-
-  typedef uintptr_t Address;
-  typedef uint16_t  Data;
-  typedef unsigned  PageID;
-  typedef size_t    Length;
+  enum { WORD_ALIGNMENT     = sizeof(Data) };
 
 private:
   Data *page_bufp;

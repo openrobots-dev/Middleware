@@ -1,5 +1,6 @@
-.project
-.cproject
+*.project
+*.cproject
 build
 .dep
 paths.mk
+*.pyc

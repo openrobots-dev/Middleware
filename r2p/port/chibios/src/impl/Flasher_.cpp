@@ -161,8 +161,6 @@ bool Flasher_::write_if_needed(PageID page, const Data *bufp) {
 void Flasher_::begin() {
 
   R2P_ASSERT(page_modified == false);
-
-  page_modified = false;
   page = 0;
 }
 
@@ -171,6 +169,7 @@ bool Flasher_::end() {
 
   // Write back last buffer if it is tainted
   if (page_modified) {
+    page_modified = false;
     return write_if_needed(page, page_bufp);
   }
   return true;

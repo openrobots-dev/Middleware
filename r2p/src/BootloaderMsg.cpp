@@ -7,7 +7,7 @@ namespace r2p {
 
 uint8_t IhexRecord::compute_checksum() const {
 
-  uint8_t cs = static_cast<uint8_t>(offset >> 8) +
+  uint8_t cs = count + static_cast<uint8_t>(offset >> 8) +
                static_cast<uint8_t>(offset & 0xFF) + type;
   for (uint8_t i = 0; i < count; ++i) {
     cs += data[i];
@@ -30,7 +30,7 @@ void BootloaderMsg::cleanup() {
 uint8_t BootloaderMsg::compute_checksum() const {
 
   uint8_t cs = type + static_cast<uint8_t>(seqn >> 8) +
-                      static_cast<uint8_t>(seqn);
+               static_cast<uint8_t>(seqn);
   for (unsigned i = 0; i < MAX_PAYLOAD_LENGTH; ++i) {
     cs += raw_payload[i];
   }

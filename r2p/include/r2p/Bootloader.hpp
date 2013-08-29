@@ -66,9 +66,9 @@ public:
   Bootloader(Flasher::Data *flash_page_bufp);
 
 public:
-  static Bootloader instance;
-  static const volatile FlashLayout flash_layout;
-};
+  static Bootloader instance R2P_FLASH_ALIGNED;
+  static const volatile FlashLayout flash_layout R2P_FLASH_ALIGNED;
+} R2P_FLASH_ALIGNED;
 
 
 } // namespace r2p
