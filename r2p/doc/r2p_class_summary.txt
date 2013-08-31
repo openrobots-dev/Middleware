@@ -1,0 +1,357 @@
+@startuml
+
+!ifdef NO_MEMBERS
+hide members
+!endif
+
+
+class Middleware <<singleton>> {
+  - const char *const module_namep
+  - StaticList<Node> nodes
+  - StaticList<Topic> topics
+  - StaticList<Transport> transports
+  __
+  - Middleware(const char *module_namep, const char *bootloader_namep)
+  ..
+  + const char *get_module_name() const
+  + const StaticList<Node> &get_nodes() const
+  + const StaticList<Topic> &get_topics() const
+  + const StaticList<Transport> &get_transports() const
+  + bool is_stopped() const
+  ..
+  + void initialize(void *mgmt_boot_stackp, size_t mgmt_boot_stacklen, Thread::Priority mgmt_boot_priority)
+  + void stop()
+  + void reboot()
+  + void add(Node &node)
+  + void add(Transport &transport)
+  + void add(Topic &topic)
+  + bool advertise(LocalPublisher &pub, const char *namep, const Time &publish_timeout, size_t type_size)
+  + bool advertise(RemotePublisher &pub, const char *namep, const Time &publish_timeout, size_t type_size)
+  + bool subscribe(LocalSubscriber &sub, const char *namep, Message msgpool_buf[], size_t msgpool_buflen, size_t type_size)
+  + bool subscribe(RemoteSubscriber &sub, const char *namep, Message msgpool_buf[], size_t msgpool_buflen, size_t type_size)
+  + void confirm_stop(const Node &node)
+  + Topic *find_topic(const char *namep)
+  ..
+  - Topic *touch_topic(const char *namep, size_t type_size)
+  - static Thread::Return mgmt_threadf(Thread::Argument)
+  - static Thread::Return boot_threadf(Thread::Argument)
+}
+
+
+class Node {
+  - const char *const namep
+  - StaticList<LocalPublisher> publishers
+  - StaticList<LocalSubscriber> subscribers
+  - SpinEvent event
+  - Time timeout
+  ..
+  - mutable StaticList<Node>::Link by_middleware
+  __
+  + Node(const char *namep)
+  + ~Node()
+  ..
+  + const char *get_name() const
+  ..
+  + bool advertise<MessageType>(Publisher<MessageType> &pub, const char *namep, const Time &publish_timeout)
+  + bool subscribe<MessageType>(Subscriber<MessageType> &sub, const char *namep, MessageType msgpool_buf[])
+  + void publish_publishers(Publisher<MgmtMsg> &info_pub)
+  + void publish_subscribers(Publisher<MgmtMsg> &info_pub)
+  + void notify_unsafe(unsigned event_index)
+  + void notify_stop_unsafe()
+  + void notify(unsigned event_index)
+  + void notify_stop()
+  + bool spin(const Time &timeout = Time::INFINITE)
+  ..
+  - bool advertise(LocalPublisher &pub, const char *namep, const Time &publish_timeout, size_t msg_size)
+  - bool subscribe(LocalSubscriber &sub, const char *namep, Message msgpool_buf[], size_t msg_size)
+  ..
+  + {static} bool has_name(const Node &node, const char *namep)
+}
+
+
+class Topic {
+  - const char *const namep
+  - Time publish_timeout
+  - MemoryPool_ msg_pool
+  - size_t num_local_publishers
+  - size_t num_remote_publishers
+  - StaticList<LocalSubscriber> local_subscribers
+  - StaticList<RemoteSubscriber> remote_subscribers
+  - size_t max_queue_length
+  ..
+  - StaticList<Topic>::Link by_middleware
+  __
+  + Topic(const char *namep, size_t type_size)
+  ..
+  + const char *get_name() const
+  + const Time &get_publish_timeout() const
+  + size_t get_size() const
+  + size_t get_max_queue_length() const
+  + bool has_local_publishers() const
+  + bool has_remote_publishers() const
+  + bool has_local_subscribers() const
+  + bool has_remote_subscribers() const
+  + bool is_awaiting_advertisements() const
+  + bool is_awaiting_subscriptions() const
+  ..
+  + Message *alloc_unsafe()
+  + void free_unsafe(Message &msg)
+  + bool notify_locals_unsafe(Message &msg, const Time &timestamp)
+  + bool notify_remotes_unsafe(Message &msg, const Time &timestamp)
+  ..
+  + Message *alloc()
+  + void free(Message &msg)
+  + bool notify_locals(Message &msg, const Time &timestamp)
+  + bool notify_remotes(Message &msg, const Time &timestamp)
+  + void extend_pool(Message array[], size_t arraylen)
+  + void advertise(LocalPublisher &pub, const Time &publish_timeout)
+  + void advertise(RemotePublisher &pub, const Time &publish_timeout)
+  + void subscribe(LocalSubscriber &sub, size_t queue_length)
+  + void subscribe(RemoteSubscriber &sub, size_t queue_length)
+  ..
+  + {static} bool has_name(const Topic &topic, const char *namep)
+}
+
+
+abstract class Transport {
+  # StaticList<RemotePublisher> publishers
+  # StaticList<RemoteSubscriber> subscribers
+  # Mutex publishers_lock
+  # Mutex subscribers_lock
+  ..
+  - mutable StaticList<Transport>::Link by_middleware
+  __
+  # Transport()
+  # {abstract} ~Transport()
+  ..
+  + bool notify_advertisement(Topic &topic)
+  + bool notify_subscription(Topic &topic)
+  + bool notify_stop()
+  + bool notify_reboot()
+  ..
+  # bool touch_publisher(Topic &topic)
+  # bool touch_subscriber(Topic &topic, size_t queue_length)
+  # bool advertise(Topic &topic)
+  # bool subscribe(Topic &topic, size_t queue_length)
+  # bool advertise(RemotePublisher &pub, const char *namep, const Time &publish_timeout, size_t type_size)
+  # bool subscribe(RemoteSubscriber &sub, const char *namep, Message msgpool_buf[], size_t msgpool_buflen, size_t type_size)
+  ..
+  # {abstract} bool send_advertisement(const Topic &topic) = 0
+  # {abstract} bool send_subscription(const Topic &topic, size_t queue_length) = 0
+  # {abstract} bool send_stop() = 0
+  # {abstract} bool send_reboot() = 0
+  # {abstract} RemotePublisher *create_publisher(Topic &topic) const = 0
+  # {abstract} RemoteSubscriber *create_subscriber(Transport &transport, TimestampedMsgPtrQueue::Entry queue_buf[], size_t queue_length) const = 0
+}
+
+
+abstract class BasePublisher {
+  - Topic *topicp
+  __
+  # BasePublisher()
+  # {abstract} ~BasePublisher()
+  ..
+  + Topic *get_topic() const
+  + void notify_advertised(Topic &topic)
+  + bool alloc_unsafe(Message *&msgp)
+  + bool publish_unsafe(Message &msg)
+  + bool publish_locally_unsafe(Message &msg)
+  + bool publish_remotely_unsafe(Message &msg)
+  + bool alloc(Message *&msgp)
+  + bool publish(Message &msg)
+  + bool publish_locally(Message &msg)
+  + bool publish_remotely(Message &msg)
+  ..
+  + {static} bool has_topic(const BasePublisher &pub, const char *namep)
+}
+
+
+abstract class BaseSubscriber {
+  - Topic *topicp
+  __
+  # BaseSubscriber()
+  # {abstract} ~BaseSubscriber()
+  ..
+  + Topic *get_topic() const
+  + {abstract} size_t get_queue_length() const = 0
+  + void notify_subscribed(Topic &topic)
+  + {abstract} bool notify_unsafe(Message &msg, const Time &timestamp) = 0
+  + {abstract} bool fetch_unsafe(Message *&msgp, Time &timestamp) = 0
+  + bool release_unsafe(Message &msg)
+  + {abstract} bool notify(Message &msg, const Time &timestamp) = 0
+  + {abstract} bool fetch(Message *&msgp, Time &timestamp) = 0
+  + bool release(Message &msg)
+  ..
+  + {static} bool has_topic(const BaseSubscriber &sub, const char *namep)
+
+}
+
+
+abstract class LocalPublisher {
+  - mutable StaticList<LocalPublisher>::Link by_node
+  __
+  # LocalPublisher()
+  # {abstract} ~LocalPublisher()
+}
+
+
+abstract class LocalSubscriber {
+  + typedef bool (*Callback)(const Message &msg)
+  __
+  - Node *nodep
+  - const Callback callback
+  - MessagePtrQueue msgp_queue
+  - uint_least8_t event_index
+  ..
+  - mutable StaticList<LocalSubscriber>::Link by_node
+  - mutable StaticList<LocalSubscriber>::Link by_topic
+  __
+  # LocalSubscriber(Message *queue_buf[], size_t queue_length, Callback callback)
+  # {abstract} ~LocalSubscriber()
+  ..
+  + Callback get_callback() const
+  + size_t get_queue_length() const
+  ..
+  + bool fetch_unsafe(Message *&msgp, Time &timestamp)
+  + bool notify_unsafe(Message &msg, const Time &timestamp)
+  + bool fetch(Message *&msgp, Time &timestamp)
+  + bool notify(Message &msg, const Time &timestamp)
+}
+
+
+abstract class RemotePublisher {
+  - mutable StaticList<RemotePublisher>::Link by_transport
+  __
+  # RemotePublisher()
+  # {abstract} ~RemotePublisher()
+}
+
+
+abstract class RemoteSubscriber {
+  - Transport *transportp
+  ..
+  - mutable StaticList<RemoteSubscriber>::Link by_transport
+  - mutable StaticList<RemoteSubscriber>::Link by_topic
+  __
+  # RemoteSubscriber(Transport &transport)
+  # {abstract} ~RemoteSubscriber()
+  ..
+  + Transport *get_transport() const
+}
+
+
+class Publisher<MessageType> {
+  + bool alloc(MessageType *&msgp)
+  + bool publish(MessageType &msg)
+}
+
+
+class Subscriber<MessageType> {
+  typedef bool (*Callback)(const MessageType &msg)
+  __
+  + Subscriber(MessageType *queue_buf[], size_t queue_length, Callback callback)
+  + ~Subscriber()
+  ..
+  + Callback get_callback() const
+  + bool fetch(MessageType *&msgp, Time &timestamp)
+  + bool release(MessageType &msg)
+}
+
+
+abstract class Message {
+  + typedef uint8_t RefcountType;
+  + typedef uint8_t LengthType;
+  __
+  RefcountType refcount;
+  __
+  # Message()
+  ..
+  + const uint8_t *get_raw_data() const;
+  ..
+  + void acquire_unsafe();
+  + bool release_unsafe();
+  + void reset_unsafe();
+  ..
+  + void acquire();
+  + bool release();
+  + void reset();
+  ..
+  + {static} void copy(Message &to, const Message &from, size_t msg_size)
+}
+
+
+!ifdef MY_USER_TRANSPORT
+hide MyTransport
+hide MyRemotePublisher
+hide MyRemoteSubscriber
+!endif
+
+!ifndef NO_USER_TRANSPORT
+
+class MyTransport <<example>> {
+  + MyTransport()
+  + ~MyTransport()
+  ..
+  + bool send_advertisement(const Topic &topic)
+  + bool send_subscription(const Topic &topic, size_t queue_length)
+  + bool send_stop()
+  + bool send_reboot()
+  + RemotePublisher *create_publisher(Topic &topic) const
+  + RemoteSubscriber *create_subscriber(Transport &transport, TimestampedMsgPtrQueue::Entry queue_buf[], size_t queue_length) const
+}
+
+
+class MyRemotePublisher <<example>> {
+  + MyRemotePublisher()
+  + ~MyRemotePublisher()
+}
+
+
+class MyRemoteSubscriber <<example>>  {
+  + MyRemoteSubscriber(Transport &transport)
+  + ~MyRemoteSubscriber()
+  ..
+  + size_t get_queue_length() const
+  + bool notify_unsafe(Message &msg, const Time &timestamp)
+  + bool fetch_unsafe(Message *&msgp, Time &timestamp)
+  + bool notify(Message &msg, const Time &timestamp)
+  + bool fetch(Message *&msgp, Time &timestamp)
+}
+
+
+MyTransport -left-|> Transport
+MyTransport .up.> MyRemotePublisher
+MyTransport .down.> MyRemoteSubscriber
+MyRemotePublisher -left-|> RemotePublisher
+MyRemoteSubscriber -left-|> RemoteSubscriber
+
+!endif
+
+
+!ifndef NO_RELATIONSHIPS
+
+Publisher -right-|> LocalPublisher
+Subscriber -right-|> LocalSubscriber
+LocalPublisher -right-|> BasePublisher
+LocalSubscriber -right-|> BaseSubscriber
+RemotePublisher -left-|> BasePublisher
+RemoteSubscriber -left-|> BaseSubscriber
+
+Topic o-down-> "*" LocalSubscriber : local_subscribers
+Topic o-down-> "*" RemoteSubscriber : remote_subscribers
+Topic .left.> Message
+
+Middleware *-left-> "*" Node : nodes
+Middleware *-down-> "*" Topic : topics
+Middleware *-right-> "*" Transport : transports
+
+Node *-up-> "*" LocalPublisher : publishers
+Node *-down-> "*"  LocalSubscriber : subscribers
+
+Transport *-up-> "*" RemotePublisher : publishers
+Transport *-down-> "*" RemoteSubscriber : subscribers
+
+!endif
+
+@enduml
+
