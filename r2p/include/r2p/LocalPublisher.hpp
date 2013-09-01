@@ -15,7 +15,7 @@ private:
 
 protected:
   LocalPublisher();
-  virtual ~LocalPublisher();
+  virtual ~LocalPublisher() = 0;
 };
 
 

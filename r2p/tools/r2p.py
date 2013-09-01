@@ -39,6 +39,38 @@ def _uintsum(value):
 
 #==============================================================================
 
+class Checksummer:
+    def __init__(self):
+        self.__accumulator = 0
+        
+    def __int__(self):
+        return self.compute_checksum()
+        
+    def compute_checksum(self):
+        return 0x100 - (self.__accumulator)
+    
+    def add_uint(self, value):
+        value = int(value)
+        while value > 0:
+            self.__accumulator = (self.__accumulator + value) & 0xFF
+            value >>= 8
+    
+    def add_int(self, value, size=4):
+        assert size > 0
+        value = int(value) &  (1 << (8 * size)) - 1
+        self.add_uint(value)
+    
+    def add_bytes(self, chunk):
+        for b in chunk:
+            self.__accumulator = (self.__accumulator + ord(b)) & 0xFF
+            
+    def check(self, checksum):
+        if checksum != self.compute_checksum():
+            raise ValueError('Checksum is 0x%0.2X, expected 0x%0.2X',
+                             checksum, self.compute_checksum())
+    
+#==============================================================================
+
 class Serializable:
     
     def marshal(self):
@@ -258,50 +290,90 @@ class DebugTransport(Transport):
     def recv(self):
         line = self.__lineio.readln()
         parser = self.MsgParser(line)
+        cs = Checksummer()
         
         # Receive the incoming message
         parser.expect_char('@')
         deadline = parser.read_unsigned(4)
+        cs.add_uint(deadline)
+        
         parser.expect_char(':')
         length = parser.read_unsigned(1)
         topic = parser.read_string(length)
-        parser.expect_char(':')
+        cs.add_uint(length)
+        cs.add_bytes(topic)
         
+        parser.expect_char(':')
         if length > 0: # Normal message
             length = parser.read_unsigned(1)
             payload = parser.read_bytes(length)
+            cs.add_uint(length)
+            cs.add_bytes(payload)
+            
+            parser.expect_char(':')
+            checksum = parser.read_unsigned(1)
+            cs.check(checksum)
+            
             parser.check_eol()
             return (Transport.TypeEnum.MESSAGE, topic, payload)
         
         else: # Management message
-            typechar = parser.read_char()
+            typechar = parser.read_char().lower()
             
-            if typechar == 'p' or typechar == 'P':
+            if typechar == 'p':
                 parser.expect_char(':')
                 length = parser.read_unsigned(1)
                 module = parser.read_string(length)
+                cs.add_uint(length)
+                cs.add_bytes(module)
+                
                 parser.expect_char(':')
                 length = parser.read_unsigned(1)
                 topic = parser.read_string(length)
+                cs.add_uint(length)
+                cs.add_bytes(topic)
+                
+                parser.expect_char(':')
+                checksum = parser.read_unsigned(1)
+                cs.check(checksum)
+                
                 parser.check_eol()
                 return (Transport.TypeEnum.ADVERTISEMENT, topic)
             
-            elif typechar == 's' or typechar == 'S':
+            elif typechar == 's':
                 queue_length = parser.read_unsigned(1)
                 parser.expect_char(':')
                 length = parser.read_unsigned(1)
                 module = parser.read_string(length)
+                cs.add_uint(length)
+                cs.add_bytes(module)
+                
                 parser.expect_char(':')
                 length = parser.read_unsigned(1)
                 topic = parser.read_string(length)
+                cs.add_uint(length)
+                cs.add_bytes(topic)
+                
+                parser.expect_char(':')
+                checksum = parser.read_unsigned(1)
+                cs.check(checksum)
+                
                 parser.check_eol()
                 return (Transport.TypeEnum.SUBSCRIPTION, topic, queue_length)
             
-            elif typechar == 't' or typechar == 'T':
+            elif typechar == 't':
+                parser.expect_char(':')
+                checksum = parser.read_unsigned(1)
+                cs.check(checksum)
+                
                 parser.check_eol()
                 return (Transport.TypeEnum.STOP,)
             
-            elif typechar == 'r' or typechar == 'R':
+            elif typechar == 'r':
+                parser.expect_char(':')
+                checksum = parser.read_unsigned(1)
+                cs.check(checksum)
+                
                 parser.check_eol()
                 return (Transport.TypeEnum.RESET,)
             
@@ -326,14 +398,14 @@ class IhexRecord(Serializable):
         self.offset = 0
         self.type = -1
         self.data = ''
-        self.checksum = 0
+        self.compute_checksum = 0
         
     def __repr__(self):
         return str(self.__dict__)
         
     def __str__(self):
         return ':%0.2X%0.4X%0.2X%s%0.2X' % (self.count, self.offset, self.type,
-                                            _str2hexb(self.data), self.checksum)
+                                            _str2hexb(self.data), self.compute_checksum)
     
     def check_valid(self):
         if not (0 <= self.count <= 255):
@@ -342,8 +414,8 @@ class IhexRecord(Serializable):
             raise ValueError('count=%d != len(data)=%d' % (self.count, len(self.data)))
         if not (0 <= self.offset <= 0xFFFF):
             raise ValueError('not(0 <= offset=0x%0.8X <= 0xFFFF)' % self.offset)
-        if self.checksum != self.compute_checksum():
-            raise ValueError('checksum=%d != expected=%d', (self.checksum, self.compute_checksum()));
+        if self.compute_checksum != self.compute_checksum():
+            raise ValueError('compute_checksum=%d != expected=%d', (self.compute_checksum, self.compute_checksum()));
         
         if self.type == self.TypeEnum.DATA:
             pass
@@ -372,10 +444,10 @@ class IhexRecord(Serializable):
     
     def marshal(self):
         return struct.pack('<BHB%dsB' % self.MAX_DATA_LENGTH,
-                           self.count, self.offset, self.type, self.data, self.checksum)
+                           self.count, self.offset, self.type, self.data, self.compute_checksum)
     
     def unmarshal(self, data):
-        self.count, self.offset, self.type, self.data, self.checksum = \
+        self.count, self.offset, self.type, self.data, self.compute_checksum = \
             struct.unpack_from('<BHB%dsB' % self.MAX_DATA_LENGTH, data)
         self.data = self.data[:self.count]
     
@@ -389,7 +461,7 @@ class IhexRecord(Serializable):
         self.type = int(entry[7:9], 16)
         entry = entry[9:]
         self.data = str(bytearray([ int(entry[i : (i + 2)], 16) for i in range(0, 2 * self.count, 2) ]))
-        self.checksum = int(entry[(2 * self.count) : (2 * self.count + 2)], 16)
+        self.compute_checksum = int(entry[(2 * self.count) : (2 * self.count + 2)], 16)
         self.check_valid()
         return self
 
@@ -431,17 +503,17 @@ class BootloaderMsg(Serializable):
             self.datalen = 0
             self.stacklen = 0
             self.appname = ''
-            self.checksum = 0
+            self.compute_checksum = 0
             
         def __repr__(self):
             return str(self.__dict__)
         
         def marshal(self):
             return struct.pack('<LLLL%dsB' % NODE_NAME_MAX_LENGTH,
-                self.pgmlen, self.bsslen, self.datalen, self.stacklen, self.appname, self.checksum)
+                self.pgmlen, self.bsslen, self.datalen, self.stacklen, self.appname, self.compute_checksum)
         
         def unmarshal(self, data):
-            self.pgmlen, self.bsslen, self.datalen, self.stacklen, self.appname, self.checksum = \
+            self.pgmlen, self.bsslen, self.datalen, self.stacklen, self.appname, self.compute_checksum = \
                 struct.unpack_from('<LLLL%dsB' % NODE_NAME_MAX_LENGTH, data)
 
         def compute_checksum(self):
@@ -458,17 +530,17 @@ class BootloaderMsg(Serializable):
             self.bssadr = 0
             self.dataadr = 0
             self.datapgmadr = 0
-            self.checksum = 0
+            self.compute_checksum = 0
             
         def __repr__(self):
             return str(self.__dict__)
         
         def marshal(self):
             return struct.pack('<LLLLB', self.pgmadr, self.bssadr, self.dataadr,
-                               self.datapgmadr, self.checksum)
+                               self.datapgmadr, self.compute_checksum)
             
         def unmarshal(self, data):
-            self.pgmadr, self.bssadr, self.dataadr, self.datapgmadr, self.checksum = \
+            self.pgmadr, self.bssadr, self.dataadr, self.datapgmadr, self.compute_checksum = \
                 struct.unpack_from('<LLLLB', data)
             
         def compute_checksum(self):
@@ -478,7 +550,7 @@ class BootloaderMsg(Serializable):
 
 
     def __init__(self):
-        self.checksum = 0
+        self.compute_checksum = 0
         self.type = -1
         self.seqn = 0
         
@@ -513,7 +585,7 @@ class BootloaderMsg(Serializable):
         return (0x100 - cs) & 0xFF
     
     def update_checksum(self):
-        self.checksum = self.compute_checksum()
+        self.compute_checksum = self.compute_checksum()
     
     def set_nack(self, to_seqn):
         self.type = BootloaderMsg.TypeEnum.NACK
@@ -532,7 +604,7 @@ class BootloaderMsg(Serializable):
         self.setup_request.datalen = int(datalen)
         self.setup_request.stacklen = int(stacklen)
         self.setup_request.appname = str(appname)
-        self.setup_request.checksum = self.setup_request.compute_checksum()
+        self.setup_request.compute_checksum = self.setup_request.compute_checksum()
         self.update_checksum()
         
     def set_response(self, pgmadr, bssadr, dataadr, datapgmadr):
@@ -541,7 +613,7 @@ class BootloaderMsg(Serializable):
         self.bssadr = int(bssadr)
         self.dataadr = int(dataadr)
         self.datapgmadr = int(datapgmadr)
-        self.setup_response.checksum = self.setup_response.compute_checksum()
+        self.setup_response.compute_checksum = self.setup_response.compute_checksum()
         self.update_checksum()
         
     def set_ihex(self, ihex_entry_line):
@@ -564,12 +636,12 @@ class BootloaderMsg(Serializable):
         else:
             raise ValueError('Unknown bootloader message subtype %d' % self.type)
         return struct.pack('<BBH%ds' % self.MAX_PAYLOAD_LENGTH,
-                           self.checksum, self.type, self.seqn, payload)
+                           self.compute_checksum, self.type, self.seqn, payload)
     
     def unmarshal(self, data):
         if len(data) < (1 + 1 + 2 + self.MAX_PAYLOAD_LENGTH):
             raise ValueError("len('%s') < %d", data, len(data))
-        self.checksum, self.type, self.seqn, payload = \
+        self.compute_checksum, self.type, self.seqn, payload = \
             struct.unpack_from('<BBH%ds' % self.MAX_PAYLOAD_LENGTH, data)
         
         if   self.type == BootloaderMsg.TypeEnum.NACK or \
@@ -753,7 +825,7 @@ class SimpleBootloader:
         record.offset = 0
         record.type = IhexRecord.TypeEnum.START_LINEAR_ADDRESS
         record.data = struct.pack('>L', threadadr)
-        record.checksum = record.compute_checksum()
+        record.compute_checksum = record.compute_checksum()
         record.check_valid()
         logging.info('Adding app entry point record:')
         logging.info('  ' + str(record))

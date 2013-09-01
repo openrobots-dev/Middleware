@@ -42,7 +42,7 @@ public:
 protected:
   LocalSubscriber(Message *queue_buf[], size_t queue_length,
                   Callback callback = NULL);
-  virtual ~LocalSubscriber();
+  virtual ~LocalSubscriber() = 0;
 };
 
 

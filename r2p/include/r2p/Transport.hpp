@@ -60,9 +60,6 @@ protected:
 protected:
   Transport();
   virtual ~Transport() = 0;
-
-public:
-  static bool has_name(const Transport &transport);
 };
 
 

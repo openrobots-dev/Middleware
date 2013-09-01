@@ -67,8 +67,8 @@ SECTIONS
 
     .layout : ALIGN(4) SUBALIGN(4)
     {
-        *.o (.layout)
-        *.o (.layout.*)
+        *(.layout)
+        *(.layout.*)
     } > layout
 
     .text : ALIGN(16) SUBALIGN(16)

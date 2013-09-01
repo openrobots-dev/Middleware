@@ -10,7 +10,7 @@ namespace r2p {
 class DebugPublisher : public RemotePublisher {
 public:
   DebugPublisher();
-  virtual ~DebugPublisher();
+  ~DebugPublisher();
 };
 
 

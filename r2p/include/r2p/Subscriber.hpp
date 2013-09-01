@@ -22,6 +22,7 @@ public:
 public:
   Subscriber(MessageType *queue_buf[], size_t queue_length,
              Callback callback = NULL);
+  ~Subscriber();
 };
 
 
@@ -56,6 +57,10 @@ Subscriber<MessageType>::Subscriber(MessageType *queue_buf[],
   LocalSubscriber(reinterpret_cast<Message **>(queue_buf), queue_length,
                   reinterpret_cast<LocalSubscriber::Callback>(callback))
 {}
+
+
+template<typename MessageType> inline
+Subscriber<MessageType>::~Subscriber() {}
 
 
 } // namespace r2p

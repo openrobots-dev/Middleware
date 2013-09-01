@@ -182,7 +182,7 @@ bool Middleware::subscribe(RemoteSubscriber &sub, const char *namep,
 }
 
 
-void Middleware::confirm_stop(Node &node) {
+void Middleware::confirm_stop(const Node &node) {
 
   SysLock::acquire();
   R2P_ASSERT(num_running_nodes > 0);

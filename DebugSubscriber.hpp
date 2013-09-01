@@ -36,7 +36,7 @@ public:
   DebugSubscriber(DebugTransport &transport,
                   TimestampedMsgPtrQueue::Entry queue_buf[],
                   size_t queue_length);
-  virtual ~DebugSubscriber();
+  ~DebugSubscriber();
 };
 
 

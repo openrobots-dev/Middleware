@@ -79,7 +79,7 @@ public:
                  Message msgpool_buf[], size_t msgpool_buflen,
                  size_t type_size);
 
-  void confirm_stop(Node &node);
+  void confirm_stop(const Node &node);
 
   Topic *find_topic(const char *namep);
 

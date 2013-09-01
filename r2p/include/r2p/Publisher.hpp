@@ -13,6 +13,10 @@ class Publisher : public LocalPublisher {
 public:
   bool alloc(MessageType *&msgp);
   bool publish(MessageType &msg);
+
+public:
+  Publisher();
+  ~Publisher();
 };
 
 
@@ -28,6 +32,14 @@ bool Publisher<MessageType>::publish(MessageType &msg) {
 
   return BasePublisher::publish(static_cast<Message &>(msg));
 }
+
+
+template<typename MessageType> inline
+Publisher<MessageType>::Publisher() {}
+
+
+template<typename MessageType> inline
+Publisher<MessageType>::~Publisher() {}
 
 
 } // namespace r2p

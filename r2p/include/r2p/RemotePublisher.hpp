@@ -15,7 +15,7 @@ private:
 
 protected:
   RemotePublisher();
-  virtual ~RemotePublisher();
+  virtual ~RemotePublisher() = 0;
 
 };
 

@@ -30,7 +30,7 @@ public:
 
 protected:
   BasePublisher();
-  virtual ~BasePublisher();
+  virtual ~BasePublisher() = 0;
 
 public:
   static bool has_topic(const BasePublisher &pub, const char *namep);

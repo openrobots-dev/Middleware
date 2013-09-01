@@ -23,7 +23,7 @@ protected:
 
 protected:
   RemoteSubscriber(Transport &transport);
-  virtual ~RemoteSubscriber();
+  virtual ~RemoteSubscriber() = 0;
 };
 
 

@@ -39,6 +39,9 @@ protected:
 
 public:
   static void copy(Message &to, const Message &from, size_t msg_size);
+
+  template<typename MessageType>
+  static void clean(MessageType &msg);
 } R2P_PACKED;
 
 
@@ -77,6 +80,14 @@ Message::Message()
 :
   refcount(0)
 {}
+
+
+template<typename MessageType> inline
+void Message::clean(MessageType &msg) {
+
+  static_cast_check<Message>(msg);
+  memset(&msg.refcount + 1, 0, sizeof(MessageType) - sizeof(RefcountType));
+}
 
 
 } // namespace r2p

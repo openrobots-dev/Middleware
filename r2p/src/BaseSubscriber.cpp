@@ -6,20 +6,6 @@
 namespace r2p {
 
 
-void BaseSubscriber::notify_subscribed(Topic &topic) {
-
-  R2P_ASSERT(topicp == NULL);
-
-  topicp = &topic;
-}
-
-
-Topic *BaseSubscriber::get_topic() const {
-
-  return topicp;
-}
-
-
 bool BaseSubscriber::release_unsafe(Message &msg) {
 
   if (!msg.release_unsafe()) {
