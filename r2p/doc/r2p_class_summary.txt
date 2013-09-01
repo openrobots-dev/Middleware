@@ -1,286 +1,300 @@
 @startuml
 
+!define NO_FRIENDS
+
 !ifdef NO_MEMBERS
 hide members
 !endif
 
+skinparam class {
+  FontColor navy
+  FontStyle bold
+}
+
+!ifdef MONOCHROME
+skinparam monochrome true
+!endif
+
 
 class Middleware <<singleton>> {
-  - const char *const module_namep
-  - StaticList<Node> nodes
-  - StaticList<Topic> topics
+  - <font color="blue">const</font> char <font color="#006600">*</font><font color="blue">const</font> module_namep
+  - StaticList<font color="green"><</font>Node<font color="green">></font> nodes
+  - StaticList<font color="green"><</font>Topic<font color="green">></font> topics
   - StaticList<Transport> transports
   __
-  - Middleware(const char *module_namep, const char *bootloader_namep)
+  - Middleware<font color="#006600">(</font><font color="blue">const</font> char <font color="#006600">*</font>module_namep<font color="green">,</font> <font color="blue">const</font> char <font color="#006600">*</font>bootloader_namep<font color="#006600">)</font>
   ..
-  + const char *get_module_name() const
-  + const StaticList<Node> &get_nodes() const
-  + const StaticList<Topic> &get_topics() const
-  + const StaticList<Transport> &get_transports() const
-  + bool is_stopped() const
+  + <font color="blue">const</font> char <font color="#006600">*</font>get_module_name<font color="#006600">()</font> <font color="blue">const</font>
+  + <font color="blue">const</font> StaticList<font color="green"><</font>Node<font color="green">></font> <font color="#006600">&</font>get_nodes<font color="#006600">()</font> <font color="blue">const</font>
+  + <font color="blue">const</font> StaticList<font color="green"><</font>Topic<font color="green">></font> <font color="#006600">&</font>get_topics<font color="#006600">()</font> <font color="blue">const</font>
+  + <font color="blue">const</font> StaticList<Transport> <font color="#006600">&</font>get_transports<font color="#006600">()</font> <font color="blue">const</font>
+  + <font color="blue">bool</font> is_stopped<font color="#006600">()</font> <font color="blue">const</font>
   ..
-  + void initialize(void *mgmt_boot_stackp, size_t mgmt_boot_stacklen, Thread::Priority mgmt_boot_priority)
-  + void stop()
-  + void reboot()
-  + void add(Node &node)
-  + void add(Transport &transport)
-  + void add(Topic &topic)
-  + bool advertise(LocalPublisher &pub, const char *namep, const Time &publish_timeout, size_t type_size)
-  + bool advertise(RemotePublisher &pub, const char *namep, const Time &publish_timeout, size_t type_size)
-  + bool subscribe(LocalSubscriber &sub, const char *namep, Message msgpool_buf[], size_t msgpool_buflen, size_t type_size)
-  + bool subscribe(RemoteSubscriber &sub, const char *namep, Message msgpool_buf[], size_t msgpool_buflen, size_t type_size)
-  + void confirm_stop(const Node &node)
-  + Topic *find_topic(const char *namep)
+  + <font color="blue">bool</font> initialize<font color="#006600">(</font><font color="blue">bool</font> <font color="#006600">*</font>mgmt_boot_stackp<font color="green">,</font> size_t mgmt_boot_stacklen<font color="green">,</font> Thread<font color="green">::</font>Priority mgmt_boot_priority<font color="#006600">)</font>
+  + <font color="blue">bool</font> stop<font color="#006600">()</font>
+  + <font color="blue">bool</font> reboot<font color="#006600">()</font>
+  + <font color="blue">bool</font> add<font color="#006600">(</font>Node <font color="#006600">&</font>node<font color="#006600">)</font>
+  + <font color="blue">bool</font> add<font color="#006600">(</font>Transport <font color="#006600">&</font>transport<font color="#006600">)</font>
+  + <font color="blue">bool</font> add<font color="#006600">(</font>Topic <font color="#006600">&</font>topic<font color="#006600">)</font>
+  + <font color="blue">bool</font> advertise<font color="#006600">(</font>LocalPublisher <font color="#006600">&</font>pub<font color="green">,</font> <font color="blue">const</font> char <font color="#006600">*</font>namep<font color="green">,</font> <font color="blue">const</font> Time <font color="#006600">&</font>publish_timeout<font color="green">,</font> size_t type_size<font color="#006600">)</font>
+  + <font color="blue">bool</font> advertise<font color="#006600">(</font>RemotePublisher <font color="#006600">&</font>pub<font color="green">,</font> <font color="blue">const</font> char <font color="#006600">*</font>namep<font color="green">,</font> <font color="blue">const</font> Time <font color="#006600">&</font>publish_timeout<font color="green">,</font> size_t type_size<font color="#006600">)</font>
+  + <font color="blue">bool</font> subscribe<font color="#006600">(</font>LocalSubscriber <font color="#006600">&</font>sub<font color="green">,</font> <font color="blue">const</font> char <font color="#006600">*</font>namep<font color="green">,</font> Message msgpool_buf<font color="green">[]</font><font color="green">,</font> size_t msgpool_buflen<font color="green">,</font> size_t type_size<font color="#006600">)</font>
+  + <font color="blue">bool</font> subscribe<font color="#006600">(</font>RemoteSubscriber <font color="#006600">&</font>sub<font color="green">,</font> <font color="blue">const</font> char <font color="#006600">*</font>namep<font color="green">,</font> Message msgpool_buf<font color="green">[]</font><font color="green">,</font> size_t msgpool_buflen<font color="green">,</font> size_t type_size<font color="#006600">)</font>
+  + <font color="blue">bool</font> confirm_stop<font color="#006600">(</font><font color="blue">const</font> Node <font color="#006600">&</font>node<font color="#006600">)</font>
+  + Topic <font color="#006600">*</font>find_topic<font color="#006600">(</font><font color="blue">const</font> char <font color="#006600">*</font>namep<font color="#006600">)</font>
   ..
-  - Topic *touch_topic(const char *namep, size_t type_size)
-  - static Thread::Return mgmt_threadf(Thread::Argument)
-  - static Thread::Return boot_threadf(Thread::Argument)
+  - Topic <font color="#006600">*</font>touch_topic<font color="#006600">(</font><font color="blue">const</font> char <font color="#006600">*</font>namep<font color="green">,</font> size_t type_size<font color="#006600">)</font>
+  - {static} Thread<font color="green">::</font>Return mgmt_threadf<font color="#006600">(</font>Thread<font color="green">::</font>Argument<font color="#006600">)</font>
+  - {static} Thread<font color="green">::</font>Return boot_threadf<font color="#006600">(</font>Thread<font color="green">::</font>Argument<font color="#006600">)</font>
 }
 
 
 class Node {
-  - const char *const namep
-  - StaticList<LocalPublisher> publishers
-  - StaticList<LocalSubscriber> subscribers
+  - <font color="blue">const</font> char <font color="#006600">*</font><font color="blue">const</font> namep
+  - StaticList<font color="green"><</font>LocalPublisher<font color="green">></font> publishers
+  - StaticList<font color="green"><</font>LocalSubscriber<font color="green">></font> subscribers
   - SpinEvent event
   - Time timeout
   ..
-  - mutable StaticList<Node>::Link by_middleware
+  - <font color="blue">mutable</font> StaticList<font color="green"><</font>Node<font color="green">></font><font color="green">::</font>Link by_middleware
   __
-  + Node(const char *namep)
-  + ~Node()
+  + Node<font color="#006600">(</font><font color="blue">const</font> char <font color="#006600">*</font>namep<font color="#006600">)</font>
+  + ~Node<font color="#006600">()</font>
   ..
-  + const char *get_name() const
+  + <font color="blue">const</font> char <font color="#006600">*</font>get_name<font color="#006600">()</font> <font color="blue">const</font>
   ..
-  + bool advertise<MessageType>(Publisher<MessageType> &pub, const char *namep, const Time &publish_timeout)
-  + bool subscribe<MessageType>(Subscriber<MessageType> &sub, const char *namep, MessageType msgpool_buf[])
-  + void publish_publishers(Publisher<MgmtMsg> &info_pub)
-  + void publish_subscribers(Publisher<MgmtMsg> &info_pub)
-  + void notify_unsafe(unsigned event_index)
-  + void notify_stop_unsafe()
-  + void notify(unsigned event_index)
-  + void notify_stop()
-  + bool spin(const Time &timeout = Time::INFINITE)
+  + <font color="blue">bool</font> advertise<MessageType><font color="#006600">(</font>Publisher<MessageType> <font color="#006600">&</font>pub<font color="green">,</font> <font color="blue">const</font> char <font color="#006600">*</font>namep<font color="green">,</font> <font color="blue">const</font> Time <font color="#006600">&</font>publish_timeout<font color="#006600">)</font>
+  + <font color="blue">bool</font> subscribe<MessageType><font color="#006600">(</font>Subscriber<MessageType> <font color="#006600">&</font>sub<font color="green">,</font> <font color="blue">const</font> char <font color="#006600">*</font>namep<font color="green">,</font> MessageType msgpool_buf<font color="green">[]</font><font color="#006600">)</font>
+  + <font color="blue">bool</font> publish_publishers<font color="#006600">(</font>Publisher<MgmtMsg> <font color="#006600">&</font>info_pub<font color="#006600">)</font>
+  + <font color="blue">bool</font> publish_subscribers<font color="#006600">(</font>Publisher<MgmtMsg> <font color="#006600">&</font>info_pub<font color="#006600">)</font>
+  + <font color="blue">bool</font> notify_unsafe<font color="#006600">(</font>unsigned event_index<font color="#006600">)</font>
+  + <font color="blue">bool</font> notify_stop_unsafe<font color="#006600">()</font>
+  + <font color="blue">bool</font> notify<font color="#006600">(</font>unsigned event_index<font color="#006600">)</font>
+  + <font color="blue">bool</font> notify_stop<font color="#006600">()</font>
+  + <font color="blue">bool</font> spin<font color="#006600">(</font><font color="blue">const</font> Time <font color="#006600">&</font>timeout<font color="#006600">)</font>
   ..
-  - bool advertise(LocalPublisher &pub, const char *namep, const Time &publish_timeout, size_t msg_size)
-  - bool subscribe(LocalSubscriber &sub, const char *namep, Message msgpool_buf[], size_t msg_size)
+  - <font color="blue">bool</font> advertise<font color="#006600">(</font>LocalPublisher <font color="#006600">&</font>pub<font color="green">,</font> <font color="blue">const</font> char <font color="#006600">*</font>namep<font color="green">,</font> <font color="blue">const</font> Time <font color="#006600">&</font>publish_timeout<font color="green">,</font> size_t msg_size<font color="#006600">)</font>
+  - <font color="blue">bool</font> subscribe<font color="#006600">(</font>LocalSubscriber <font color="#006600">&</font>sub<font color="green">,</font> <font color="blue">const</font> char <font color="#006600">*</font>namep<font color="green">,</font> Message msgpool_buf<font color="green">[]</font><font color="green">,</font> size_t msg_size<font color="#006600">)</font>
   ..
-  + {static} bool has_name(const Node &node, const char *namep)
+  + {static} <font color="blue">bool</font> has_name<font color="#006600">(</font><font color="blue">const</font> Node <font color="#006600">&</font>node<font color="green">,</font> <font color="blue">const</font> char <font color="#006600">*</font>namep<font color="#006600">)</font>
 }
 
 
 class Topic {
-  - const char *const namep
+  - <font color="blue">const</font> char <font color="#006600">*</font><font color="blue">const</font> namep
   - Time publish_timeout
   - MemoryPool_ msg_pool
   - size_t num_local_publishers
   - size_t num_remote_publishers
-  - StaticList<LocalSubscriber> local_subscribers
-  - StaticList<RemoteSubscriber> remote_subscribers
+  - StaticList<font color="green"><</font>LocalSubscriber<font color="green">></font> local_subscribers
+  - StaticList<font color="green"><</font>RemoteSubscriber<font color="green">></font> remote_subscribers
   - size_t max_queue_length
   ..
-  - StaticList<Topic>::Link by_middleware
+  - StaticList<font color="green"><</font>Topic<font color="green">></font><font color="green">::</font>Link by_middleware
   __
-  + Topic(const char *namep, size_t type_size)
+  + Topic<font color="#006600">(</font><font color="blue">const</font> char <font color="#006600">*</font>namep<font color="green">,</font> size_t type_size<font color="#006600">)</font>
   ..
-  + const char *get_name() const
-  + const Time &get_publish_timeout() const
-  + size_t get_size() const
-  + size_t get_max_queue_length() const
-  + bool has_local_publishers() const
-  + bool has_remote_publishers() const
-  + bool has_local_subscribers() const
-  + bool has_remote_subscribers() const
-  + bool is_awaiting_advertisements() const
-  + bool is_awaiting_subscriptions() const
+  + <font color="blue">const</font> char <font color="#006600">*</font>get_name<font color="#006600">()</font> <font color="blue">const</font>
+  + <font color="blue">const</font> Time <font color="#006600">&</font>get_publish_timeout<font color="#006600">()</font> <font color="blue">const</font>
+  + size_t get_size<font color="#006600">()</font> <font color="blue">const</font>
+  + size_t get_max_queue_length<font color="#006600">()</font> <font color="blue">const</font>
+  + <font color="blue">bool</font> has_local_publishers<font color="#006600">()</font> <font color="blue">const</font>
+  + <font color="blue">bool</font> has_remote_publishers<font color="#006600">()</font> <font color="blue">const</font>
+  + <font color="blue">bool</font> has_local_subscribers<font color="#006600">()</font> <font color="blue">const</font>
+  + <font color="blue">bool</font> has_remote_subscribers<font color="#006600">()</font> <font color="blue">const</font>
+  + <font color="blue">bool</font> is_awaiting_advertisements<font color="#006600">()</font> <font color="blue">const</font>
+  + <font color="blue">bool</font> is_awaiting_subscriptions<font color="#006600">()</font> <font color="blue">const</font>
   ..
-  + Message *alloc_unsafe()
-  + void free_unsafe(Message &msg)
-  + bool notify_locals_unsafe(Message &msg, const Time &timestamp)
-  + bool notify_remotes_unsafe(Message &msg, const Time &timestamp)
+  + Message <font color="#006600">*</font>alloc_unsafe<font color="#006600">()</font>
+  + <font color="blue">bool</font> free_unsafe<font color="#006600">(</font>Message <font color="#006600">&</font>msg<font color="#006600">)</font>
+  + <font color="blue">bool</font> notify_locals_unsafe<font color="#006600">(</font>Message <font color="#006600">&</font>msg<font color="green">,</font> <font color="blue">const</font> Time <font color="#006600">&</font>timestamp<font color="#006600">)</font>
+  + <font color="blue">bool</font> notify_remotes_unsafe<font color="#006600">(</font>Message <font color="#006600">&</font>msg<font color="green">,</font> <font color="blue">const</font> Time <font color="#006600">&</font>timestamp<font color="#006600">)</font>
   ..
-  + Message *alloc()
-  + void free(Message &msg)
-  + bool notify_locals(Message &msg, const Time &timestamp)
-  + bool notify_remotes(Message &msg, const Time &timestamp)
-  + void extend_pool(Message array[], size_t arraylen)
-  + void advertise(LocalPublisher &pub, const Time &publish_timeout)
-  + void advertise(RemotePublisher &pub, const Time &publish_timeout)
-  + void subscribe(LocalSubscriber &sub, size_t queue_length)
-  + void subscribe(RemoteSubscriber &sub, size_t queue_length)
+  + Message <font color="#006600">*</font>alloc<font color="#006600">()</font>
+  + <font color="blue">bool</font> free<font color="#006600">(</font>Message <font color="#006600">&</font>msg<font color="#006600">)</font>
+  + <font color="blue">bool</font> notify_locals<font color="#006600">(</font>Message <font color="#006600">&</font>msg<font color="green">,</font> <font color="blue">const</font> Time <font color="#006600">&</font>timestamp<font color="#006600">)</font>
+  + <font color="blue">bool</font> notify_remotes<font color="#006600">(</font>Message <font color="#006600">&</font>msg<font color="green">,</font> <font color="blue">const</font> Time <font color="#006600">&</font>timestamp<font color="#006600">)</font>
+  + <font color="blue">bool</font> extend_pool<font color="#006600">(</font>Message array<font color="green">[]</font><font color="green">,</font> size_t arraylen<font color="#006600">)</font>
+  + <font color="blue">bool</font> advertise<font color="#006600">(</font>LocalPublisher <font color="#006600">&</font>pub<font color="green">,</font> <font color="blue">const</font> Time <font color="#006600">&</font>publish_timeout<font color="#006600">)</font>
+  + <font color="blue">bool</font> advertise<font color="#006600">(</font>RemotePublisher <font color="#006600">&</font>pub<font color="green">,</font> <font color="blue">const</font> Time <font color="#006600">&</font>publish_timeout<font color="#006600">)</font>
+  + <font color="blue">bool</font> subscribe<font color="#006600">(</font>LocalSubscriber <font color="#006600">&</font>sub<font color="green">,</font> size_t queue_length<font color="#006600">)</font>
+  + <font color="blue">bool</font> subscribe<font color="#006600">(</font>RemoteSubscriber <font color="#006600">&</font>sub<font color="green">,</font> size_t queue_length<font color="#006600">)</font>
   ..
-  + {static} bool has_name(const Topic &topic, const char *namep)
+  + {static} <font color="blue">bool</font> has_name<font color="#006600">(</font><font color="blue">const</font> Topic <font color="#006600">&</font>topic<font color="green">,</font> <font color="blue">const</font> char <font color="#006600">*</font>namep<font color="#006600">)</font>
 }
 
 
 abstract class Transport {
-  # StaticList<RemotePublisher> publishers
-  # StaticList<RemoteSubscriber> subscribers
+  # StaticList<font color="green"><</font>RemotePublisher<font color="green">></font> publishers
+  # StaticList<font color="green"><</font>RemoteSubscriber<font color="green">></font> subscribers
   # Mutex publishers_lock
   # Mutex subscribers_lock
   ..
-  - mutable StaticList<Transport>::Link by_middleware
+  - <font color="blue">mutable</font> StaticList<Transport><font color="green">::</font>Link by_middleware
   __
-  # Transport()
-  # {abstract} ~Transport()
+  # Transport<font color="#006600">()</font>
+  # {abstract} <b>~Transport<font color="#006600">()</font></b>
   ..
-  + bool notify_advertisement(Topic &topic)
-  + bool notify_subscription(Topic &topic)
-  + bool notify_stop()
-  + bool notify_reboot()
+  + <font color="blue">bool</font> notify_advertisement<font color="#006600">(</font>Topic <font color="#006600">&</font>topic<font color="#006600">)</font>
+  + <font color="blue">bool</font> notify_subscription<font color="#006600">(</font>Topic <font color="#006600">&</font>topic<font color="#006600">)</font>
+  + <font color="blue">bool</font> notify_stop<font color="#006600">()</font>
+  + <font color="blue">bool</font> notify_reboot<font color="#006600">()</font>
   ..
-  # bool touch_publisher(Topic &topic)
-  # bool touch_subscriber(Topic &topic, size_t queue_length)
-  # bool advertise(Topic &topic)
-  # bool subscribe(Topic &topic, size_t queue_length)
-  # bool advertise(RemotePublisher &pub, const char *namep, const Time &publish_timeout, size_t type_size)
-  # bool subscribe(RemoteSubscriber &sub, const char *namep, Message msgpool_buf[], size_t msgpool_buflen, size_t type_size)
+  # <font color="blue">bool</font> touch_publisher<font color="#006600">(</font>Topic <font color="#006600">&</font>topic<font color="#006600">)</font>
+  # <font color="blue">bool</font> touch_subscriber<font color="#006600">(</font>Topic <font color="#006600">&</font>topic<font color="green">,</font> size_t queue_length<font color="#006600">)</font>
+  # <font color="blue">bool</font> advertise<font color="#006600">(</font>Topic <font color="#006600">&</font>topic<font color="#006600">)</font>
+  # <font color="blue">bool</font> subscribe<font color="#006600">(</font>Topic <font color="#006600">&</font>topic<font color="green">,</font> size_t queue_length<font color="#006600">)</font>
+  # <font color="blue">bool</font> advertise<font color="#006600">(</font>RemotePublisher <font color="#006600">&</font>pub<font color="green">,</font> <font color="blue">const</font> char <font color="#006600">*</font>namep<font color="green">,</font> <font color="blue">const</font> Time <font color="#006600">&</font>publish_timeout<font color="green">,</font> size_t type_size<font color="#006600">)</font>
+  # <font color="blue">bool</font> subscribe<font color="#006600">(</font>RemoteSubscriber <font color="#006600">&</font>sub<font color="green">,</font> <font color="blue">const</font> char <font color="#006600">*</font>namep<font color="green">,</font> Message msgpool_buf<font color="green">[]</font><font color="green">,</font> size_t msgpool_buflen<font color="green">,</font> size_t type_size<font color="#006600">)</font>
   ..
-  # {abstract} bool send_advertisement(const Topic &topic) = 0
-  # {abstract} bool send_subscription(const Topic &topic, size_t queue_length) = 0
-  # {abstract} bool send_stop() = 0
-  # {abstract} bool send_reboot() = 0
-  # {abstract} RemotePublisher *create_publisher(Topic &topic) const = 0
-  # {abstract} RemoteSubscriber *create_subscriber(Transport &transport, TimestampedMsgPtrQueue::Entry queue_buf[], size_t queue_length) const = 0
+  # {abstract} <b><font color="blue">bool</font> send_advertisement<font color="#006600">(</font><font color="blue">const</font> Topic <font color="#006600">&</font>topic<font color="#006600">)</font></b>
+  # {abstract} <b><font color="blue">bool</font> send_subscription<font color="#006600">(</font><font color="blue">const</font> Topic <font color="#006600">&</font>topic<font color="green">,</font> size_t queue_length<font color="#006600">)</font></b>
+  # {abstract} <b><font color="blue">bool</font> send_stop<font color="#006600">()</font></b>
+  # {abstract} <b><font color="blue">bool</font> send_reboot<font color="#006600">()</font></b>
+  # {abstract} <b>RemotePublisher <font color="#006600">*</font>create_publisher<font color="#006600">(</font>Topic <font color="#006600">&</font>topic<font color="#006600">)</font> <font color="blue">const</font></b>
+  # {abstract} <b>RemoteSubscriber <font color="#006600">*</font>create_subscriber<font color="#006600">(</font>Transport <font color="#006600">&</font>transport<font color="green">,</font> TimestampedMsgPtrQueue<font color="green">::</font>Entry queue_buf<font color="green">[]</font><font color="green">,</font> size_t queue_length<font color="#006600">)</font> <font color="blue">const</font></b>
 }
 
 
 abstract class BasePublisher {
-  - Topic *topicp
+  - Topic <font color="#006600">*</font>topicp
   __
-  # BasePublisher()
-  # {abstract} ~BasePublisher()
+  # BasePublisher<font color="#006600">()</font>
+  # {abstract} <b>~BasePublisher<font color="#006600">()</font></b>
   ..
-  + Topic *get_topic() const
-  + void notify_advertised(Topic &topic)
-  + bool alloc_unsafe(Message *&msgp)
-  + bool publish_unsafe(Message &msg)
-  + bool publish_locally_unsafe(Message &msg)
-  + bool publish_remotely_unsafe(Message &msg)
-  + bool alloc(Message *&msgp)
-  + bool publish(Message &msg)
-  + bool publish_locally(Message &msg)
-  + bool publish_remotely(Message &msg)
+  + Topic <font color="#006600">*</font>get_topic<font color="#006600">()</font> <font color="blue">const</font>
+  + <font color="blue">bool</font> notify_advertised<font color="#006600">(</font>Topic <font color="#006600">&</font>topic<font color="#006600">)</font>
+  + <font color="blue">bool</font> alloc_unsafe<font color="#006600">(</font>Message <font color="#006600">*&</font>msgp<font color="#006600">)</font>
+  + <font color="blue">bool</font> publish_unsafe<font color="#006600">(</font>Message <font color="#006600">&</font>msg<font color="#006600">)</font>
+  + <font color="blue">bool</font> publish_locally_unsafe<font color="#006600">(</font>Message <font color="#006600">&</font>msg<font color="#006600">)</font>
+  + <font color="blue">bool</font> publish_remotely_unsafe<font color="#006600">(</font>Message <font color="#006600">&</font>msg<font color="#006600">)</font>
+  + <font color="blue">bool</font> alloc<font color="#006600">(</font>Message <font color="#006600">*&</font>msgp<font color="#006600">)</font>
+  + <font color="blue">bool</font> publish<font color="#006600">(</font>Message <font color="#006600">&</font>msg<font color="#006600">)</font>
+  + <font color="blue">bool</font> publish_locally<font color="#006600">(</font>Message <font color="#006600">&</font>msg<font color="#006600">)</font>
+  + <font color="blue">bool</font> publish_remotely<font color="#006600">(</font>Message <font color="#006600">&</font>msg<font color="#006600">)</font>
   ..
-  + {static} bool has_topic(const BasePublisher &pub, const char *namep)
+  + {static} <font color="blue">bool</font> has_topic<font color="#006600">(</font><font color="blue">const</font> BasePublisher <font color="#006600">&</font>pub<font color="green">,</font> <font color="blue">const</font> char <font color="#006600">*</font>namep<font color="#006600">)</font>
 }
 
 
 abstract class BaseSubscriber {
-  - Topic *topicp
+  - Topic <font color="#006600">*</font>topicp
   __
-  # BaseSubscriber()
-  # {abstract} ~BaseSubscriber()
+  # BaseSubscriber<font color="#006600">()</font>
+  # {abstract} <b>~BaseSubscriber<font color="#006600">()</font></b>
   ..
-  + Topic *get_topic() const
-  + {abstract} size_t get_queue_length() const = 0
-  + void notify_subscribed(Topic &topic)
-  + {abstract} bool notify_unsafe(Message &msg, const Time &timestamp) = 0
-  + {abstract} bool fetch_unsafe(Message *&msgp, Time &timestamp) = 0
-  + bool release_unsafe(Message &msg)
-  + {abstract} bool notify(Message &msg, const Time &timestamp) = 0
-  + {abstract} bool fetch(Message *&msgp, Time &timestamp) = 0
-  + bool release(Message &msg)
+  + Topic <font color="#006600">*</font>get_topic<font color="#006600">()</font> <font color="blue">const</font>
+  + {abstract} <b>size_t get_queue_length<font color="#006600">()</font> <font color="blue">const</font></b>
+  + <font color="blue">bool</font> notify_subscribed<font color="#006600">(</font>Topic <font color="#006600">&</font>topic<font color="#006600">)</font>
+  + {abstract} <b><font color="blue">bool</font> notify_unsafe<font color="#006600">(</font>Message <font color="#006600">&</font>msg<font color="green">,</font> <font color="blue">const</font> Time <font color="#006600">&</font>timestamp<font color="#006600">)</font></b>
+  + {abstract} <b><font color="blue">bool</font> fetch_unsafe<font color="#006600">(</font>Message <font color="#006600">*&</font>msgp<font color="green">,</font> Time <font color="#006600">&</font>timestamp<font color="#006600">)</font></b>
+  + <font color="blue">bool</font> release_unsafe<font color="#006600">(</font>Message <font color="#006600">&</font>msg<font color="#006600">)</font>
+  + {abstract} <b><font color="blue">bool</font> notify<font color="#006600">(</font>Message <font color="#006600">&</font>msg<font color="green">,</font> <font color="blue">const</font> Time <font color="#006600">&</font>timestamp<font color="#006600">)</font></b>
+  + {abstract} <b><font color="blue">bool</font> fetch<font color="#006600">(</font>Message <font color="#006600">*&</font>msgp<font color="green">,</font> Time <font color="#006600">&</font>timestamp<font color="#006600">)</font></b>
+  + <font color="blue">bool</font> release<font color="#006600">(</font>Message <font color="#006600">&</font>msg<font color="#006600">)</font>
   ..
-  + {static} bool has_topic(const BaseSubscriber &sub, const char *namep)
+  + {static} <font color="blue">bool</font> has_topic<font color="#006600">(</font><font color="blue">const</font> BaseSubscriber <font color="#006600">&</font>sub<font color="green">,</font> <font color="blue">const</font> char <font color="#006600">*</font>namep<font color="#006600">)</font>
 
 }
 
 
 abstract class LocalPublisher {
-  - mutable StaticList<LocalPublisher>::Link by_node
+  - <font color="blue">mutable</font> StaticList<font color="green"><</font>LocalPublisher<font color="green">></font><font color="green">::</font>Link by_node
   __
-  # LocalPublisher()
-  # {abstract} ~LocalPublisher()
+  # LocalPublisher<font color="#006600">()</font>
+  # {abstract} <b>~LocalPublisher<font color="#006600">()</font></b>
 }
 
 
 abstract class LocalSubscriber {
-  + typedef bool (*Callback)(const Message &msg)
+  + <font color="blue>typedef</font> <font color="blue">bool</font> <font color="#006600">(</font>*Callback<font color="#006600">)</font><font color="#006600">(</font><font color="blue">const</font> Message <font color="#006600">&</font>msg<font color="#006600">)</font>
   __
-  - Node *nodep
-  - const Callback callback
+  - Node <font color="#006600">*</font>nodep
+  - <font color="blue">const</font> Callback callback
   - MessagePtrQueue msgp_queue
   - uint_least8_t event_index
   ..
-  - mutable StaticList<LocalSubscriber>::Link by_node
-  - mutable StaticList<LocalSubscriber>::Link by_topic
+  - <font color="blue">mutable</font> StaticList<font color="green"><</font>LocalSubscriber<font color="green">></font><font color="green">::</font>Link by_node
+  - <font color="blue">mutable</font> StaticList<font color="green"><</font>LocalSubscriber<font color="green">></font><font color="green">::</font>Link by_topic
   __
-  # LocalSubscriber(Message *queue_buf[], size_t queue_length, Callback callback)
-  # {abstract} ~LocalSubscriber()
+  # LocalSubscriber<font color="#006600">(</font>Message <font color="#006600">*</font>queue_buf<font color="green">[]</font><font color="green">,</font> size_t queue_length<font color="green">,</font> Callback callback<font color="#006600">)</font>
+  # {abstract} <b>~LocalSubscriber<font color="#006600">()</font></b>
   ..
-  + Callback get_callback() const
-  + size_t get_queue_length() const
+  + Callback get_callback<font color="#006600">()</font> <font color="blue">const</font>
+  + size_t get_queue_length<font color="#006600">()</font> <font color="blue">const</font>
   ..
-  + bool fetch_unsafe(Message *&msgp, Time &timestamp)
-  + bool notify_unsafe(Message &msg, const Time &timestamp)
-  + bool fetch(Message *&msgp, Time &timestamp)
-  + bool notify(Message &msg, const Time &timestamp)
+  + <font color="blue">bool</font> fetch_unsafe<font color="#006600">(</font>Message <font color="#006600">*&</font>msgp<font color="green">,</font> Time <font color="#006600">&</font>timestamp<font color="#006600">)</font>
+  + <font color="blue">bool</font> notify_unsafe<font color="#006600">(</font>Message <font color="#006600">&</font>msg<font color="green">,</font> <font color="blue">const</font> Time <font color="#006600">&</font>timestamp<font color="#006600">)</font>
+  + <font color="blue">bool</font> fetch<font color="#006600">(</font>Message <font color="#006600">*&</font>msgp<font color="green">,</font> Time <font color="#006600">&</font>timestamp<font color="#006600">)</font>
+  + <font color="blue">bool</font> notify<font color="#006600">(</font>Message <font color="#006600">&</font>msg<font color="green">,</font> <font color="blue">const</font> Time <font color="#006600">&</font>timestamp<font color="#006600">)</font>
 }
 
 
 abstract class RemotePublisher {
-  - mutable StaticList<RemotePublisher>::Link by_transport
+  - <font color="blue">mutable</font> StaticList<font color="green"><</font>RemotePublisher<font color="green">></font><font color="green">::</font>Link by_transport
   __
-  # RemotePublisher()
-  # {abstract} ~RemotePublisher()
+  # RemotePublisher<font color="#006600">()</font>
+  # {abstract} ~RemotePublisher<font color="#006600">()</font>
 }
 
 
 abstract class RemoteSubscriber {
-  - Transport *transportp
+  - Transport <font color="#006600">*</font>transportp
   ..
-  - mutable StaticList<RemoteSubscriber>::Link by_transport
-  - mutable StaticList<RemoteSubscriber>::Link by_topic
+  - <font color="blue">mutable</font> StaticList<font color="green"><</font>RemoteSubscriber<font color="green">></font><font color="green">::</font>Link by_transport
+  - <font color="blue">mutable</font> StaticList<font color="green"><</font>RemoteSubscriber<font color="green">></font><font color="green">::</font>Link by_topic
   __
-  # RemoteSubscriber(Transport &transport)
-  # {abstract} ~RemoteSubscriber()
+  # RemoteSubscriber<font color="#006600">(</font>Transport <font color="#006600">&</font>transport<font color="#006600">)</font>
+  # {abstract} <b>~RemoteSubscriber<font color="#006600">()</font></b>
   ..
-  + Transport *get_transport() const
+  + Transport <font color="#006600">*</font>get_transport<font color="#006600">()</font> <font color="blue">const</font>
 }
 
 
 class Publisher<MessageType> {
-  + bool alloc(MessageType *&msgp)
-  + bool publish(MessageType &msg)
+  + Publisher<font color="#006600">()</font>
+  + ~Publisher<font color="#006600">()</font>
+  ..
+  + <font color="blue">bool</font> alloc<font color="#006600">(</font>MessageType <font color="#006600">*&</font>msgp<font color="#006600">)</font>
+  + <font color="blue">bool</font> publish<font color="#006600">(</font>MessageType <font color="#006600">&</font>msg<font color="#006600">)</font>
 }
 
 
 class Subscriber<MessageType> {
-  typedef bool (*Callback)(const MessageType &msg)
+  + <font color="blue">typedef</font> <font color="blue">bool</font> <font color="#006600">(</font>*Callback<font color="#006600">)</font><font color="#006600">(</font><font color="blue">const</font> MessageType <font color="#006600">&</font>msg<font color="#006600">)</font>
   __
-  + Subscriber(MessageType *queue_buf[], size_t queue_length, Callback callback)
-  + ~Subscriber()
+  + Subscriber<font color="#006600">(</font>MessageType <font color="#006600">*</font>queue_buf<font color="green">[]</font><font color="green">,</font> size_t queue_length<font color="green">,</font> Callback callback<font color="#006600">)</font>
+  + ~Subscriber<font color="#006600">()</font>
   ..
-  + Callback get_callback() const
-  + bool fetch(MessageType *&msgp, Time &timestamp)
-  + bool release(MessageType &msg)
+  + Callback get_callback<font color="#006600">()</font> <font color="blue">const</font>
+  + <font color="blue">bool</font> fetch<font color="#006600">(</font>MessageType <font color="#006600">*&</font>msgp<font color="green">,</font> Time <font color="#006600">&</font>timestamp<font color="#006600">)</font>
+  + <font color="blue">bool</font> release<font color="#006600">(</font>MessageType <font color="#006600">&</font>msg<font color="#006600">)</font>
 }
 
 
 abstract class Message {
-  + typedef uint8_t RefcountType;
-  + typedef uint8_t LengthType;
+  + <font color="blue">typedef</font> uint8_t RefcountType
+  + <font color="blue">typedef</font> uint8_t LengthType
   __
-  RefcountType refcount;
+  - RefcountType refcount
   __
-  # Message()
+  # Message<font color="#006600">()</font>
   ..
-  + const uint8_t *get_raw_data() const;
+  + <font color="blue">const</font> uint8_t <font color="#006600">*</font>get_raw_data<font color="#006600">()</font> <font color="blue">const</font>
   ..
-  + void acquire_unsafe();
-  + bool release_unsafe();
-  + void reset_unsafe();
+  + <font color="blue">bool</font> acquire_unsafe<font color="#006600">()</font>
+  + <font color="blue">bool</font> release_unsafe<font color="#006600">()</font>
+  + <font color="blue">bool</font> reset_unsafe<font color="#006600">()</font>
   ..
-  + void acquire();
-  + bool release();
-  + void reset();
+  + <font color="blue">bool</font> acquire<font color="#006600">()</font>
+  + <font color="blue">bool</font> release<font color="#006600">()</font>
+  + <font color="blue">bool</font> reset<font color="#006600">()</font>
   ..
-  + {static} void copy(Message &to, const Message &from, size_t msg_size)
+  + {static} <font color="blue">bool</font> copy<font color="#006600">(</font>Message <font color="#006600">&</font>to<font color="green">,</font> <font color="blue">const</font> Message <font color="#006600">&</font>from<font color="green">,</font> size_t msg_size<font color="#006600">)</font>
 }
 
 
-!ifdef MY_USER_TRANSPORT
+!ifdef NO_USER_TRANSPORT
 hide MyTransport
 hide MyRemotePublisher
 hide MyRemoteSubscriber
@@ -289,33 +303,33 @@ hide MyRemoteSubscriber
 !ifndef NO_USER_TRANSPORT
 
 class MyTransport <<example>> {
-  + MyTransport()
-  + ~MyTransport()
+  + MyTransport<font color="#006600">()</font>
+  + ~MyTransport<font color="#006600">()</font>
   ..
-  + bool send_advertisement(const Topic &topic)
-  + bool send_subscription(const Topic &topic, size_t queue_length)
-  + bool send_stop()
-  + bool send_reboot()
-  + RemotePublisher *create_publisher(Topic &topic) const
-  + RemoteSubscriber *create_subscriber(Transport &transport, TimestampedMsgPtrQueue::Entry queue_buf[], size_t queue_length) const
+  + <font color="blue">bool</font> send_advertisement<font color="#006600">(</font><font color="blue">const</font> Topic <font color="#006600">&</font>topic<font color="#006600">)</font>
+  + <font color="blue">bool</font> send_subscription<font color="#006600">(</font><font color="blue">const</font> Topic <font color="#006600">&</font>topic<font color="green">,</font> size_t queue_length<font color="#006600">)</font>
+  + <font color="blue">bool</font> send_stop<font color="#006600">()</font>
+  + <font color="blue">bool</font> send_reboot<font color="#006600">()</font>
+  + RemotePublisher <font color="#006600">*</font>create_publisher<font color="#006600">(</font>Topic <font color="#006600">&</font>topic<font color="#006600">)</font> <font color="blue">const</font>
+  + RemoteSubscriber <font color="#006600">*</font>create_subscriber<font color="#006600">(</font>Transport <font color="#006600">&</font>transport<font color="green">,</font> TimestampedMsgPtrQueue<font color="green">::</font>Entry queue_buf<font color="green">[]</font><font color="green">,</font> size_t queue_length<font color="#006600">)</font> <font color="blue">const</font>
 }
 
 
 class MyRemotePublisher <<example>> {
-  + MyRemotePublisher()
-  + ~MyRemotePublisher()
+  + MyRemotePublisher<font color="#006600">()</font>
+  + ~MyRemotePublisher<font color="#006600">()</font>
 }
 
 
 class MyRemoteSubscriber <<example>>  {
-  + MyRemoteSubscriber(Transport &transport)
-  + ~MyRemoteSubscriber()
+  + MyRemoteSubscriber<font color="#006600">(</font>Transport <font color="#006600">&</font>transport<font color="#006600">)</font>
+  + ~MyRemoteSubscriber<font color="#006600">()</font>
   ..
-  + size_t get_queue_length() const
-  + bool notify_unsafe(Message &msg, const Time &timestamp)
-  + bool fetch_unsafe(Message *&msgp, Time &timestamp)
-  + bool notify(Message &msg, const Time &timestamp)
-  + bool fetch(Message *&msgp, Time &timestamp)
+  + size_t get_queue_length<font color="#006600">()</font> <font color="blue">const</font>
+  + <font color="blue">bool</font> notify_unsafe<font color="#006600">(</font>Message <font color="#006600">&</font>msg<font color="green">,</font> <font color="blue">const</font> Time <font color="#006600">&</font>timestamp<font color="#006600">)</font>
+  + <font color="blue">bool</font> fetch_unsafe<font color="#006600">(</font>Message <font color="#006600">*&</font>msgp<font color="green">,</font> Time <font color="#006600">&</font>timestamp<font color="#006600">)</font>
+  + <font color="blue">bool</font> notify<font color="#006600">(</font>Message <font color="#006600">&</font>msg<font color="green">,</font> <font color="blue">const</font> Time <font color="#006600">&</font>timestamp<font color="#006600">)</font>
+  + <font color="blue">bool</font> fetch<font color="#006600">(</font>Message <font color="#006600">*&</font>msgp<font color="green">,</font> Time <font color="#006600">&</font>timestamp<font color="#006600">)</font>
 }
 
 
@@ -350,6 +364,19 @@ Node *-down-> "*"  LocalSubscriber : subscribers
 
 Transport *-up-> "*" RemotePublisher : publishers
 Transport *-down-> "*" RemoteSubscriber : subscribers
+
+!ifndef NO_FRIENDS
+RemoteSubscriber ..> Transport : <<friend>>
+RemoteSubscriber ..> Topic : <<friend>>
+Node ..> Middleware : <<friend>>
+RemotePublisher ..> Transport : <<friend>>
+Topic ..> Middleware : <<friend>>
+Transport ..> Middleware : <<friend>>
+LocalPublisher ..> Node : <<friend>>
+LocalSubscriber ..> Node : <<friend>>
+LocalSubscriber ..> Topic : <<friend>>
+!endif
+
 
 !endif
 
