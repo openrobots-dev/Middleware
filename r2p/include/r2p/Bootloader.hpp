@@ -61,6 +61,8 @@ private:
   bool process_ihex(const IhexRecord &record);
   bool compute_addresses();
   bool update_layout(const AppInfo *last_infop = NULL);
+  bool remove_last();
+  bool remove_all();
 
 public:
   Bootloader(Flasher::Data *flash_page_bufp);

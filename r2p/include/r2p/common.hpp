@@ -15,13 +15,12 @@ namespace r2p {
 #define R2P_PACKED  __attribute__((packed))
 
 
-template<typename ParentType, typename ChildType>
-__attribute__((always_inline))
-void static_cast_check(const ChildType &child) {
+template<typename Test, typename Base> inline
+void static_cast_check () {
 
-  // Should compile without errors
-  (void)static_cast<ParentType>(child);
-}
+  register Test *pd = 0; (void)pd;
+  register Base *pb = pd; (void)pb;
+};
 
 
 } // namespace r2p

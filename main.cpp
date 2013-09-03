@@ -36,7 +36,7 @@ void *__dso_handle;
 
 extern "C" void __cxa_pure_virtual() { chSysHalt(); }
 
-r2p::Bootloader r2p::Bootloader::instance(NULL);
+r2p::Bootloader r2p::Bootloader::instance(NULL); // TODO: No singleton, load onto the boot thread stack
 
 static WORKING_AREA(wa_info, 1024);
 
@@ -46,8 +46,6 @@ r2p::Middleware r2p::Middleware::instance(R2P_MODULE_NAME,
 static WORKING_AREA(wa1, 1024);
 static WORKING_AREA(wa2, 1024);
 static WORKING_AREA(wa3, 1024);
-
-static r2p::Mutex print_lock;
 
 static r2p::Topic test_topic("test", sizeof(Uint32Msg));
 

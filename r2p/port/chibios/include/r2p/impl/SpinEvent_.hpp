@@ -15,14 +15,25 @@ private:
   ::Thread *threadp;
 
 public:
+  void initialize();
+
   void signal_unsafe(unsigned event_index);
 
   void signal(unsigned event_index);
   Mask wait(const Time &timeout);
 
 public:
-  SpinEvent_();
+  SpinEvent_(bool initialize = true);
 };
+
+
+inline
+void SpinEvent_::initialize() {
+
+  R2P_ASSERT(threadp == NULL);
+
+  threadp = chThdSelf();
+}
 
 
 inline
@@ -53,10 +64,14 @@ SpinEvent_::Mask SpinEvent_::wait(const Time &timeout) {
 
 
 inline
-SpinEvent_::SpinEvent_()
+SpinEvent_::SpinEvent_(bool initialize)
 :
-  threadp(chThdSelf())
-{}
+  threadp(NULL)
+{
+  if (initialize) {
+    this->initialize();
+  }
+}
 
 
 } // namespace r2p

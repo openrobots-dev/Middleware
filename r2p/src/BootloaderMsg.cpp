@@ -16,26 +16,4 @@ uint8_t IhexRecord::compute_checksum() const {
 }
 
 
-void BootloaderMsg::cleanup() {
-
-  SysLock::acquire();
-  checksum = 0;
-  type = 0;
-  seqn = 0;
-  memset(raw_payload, 0, MAX_PAYLOAD_LENGTH);
-  SysLock::release();
-}
-
-
-uint8_t BootloaderMsg::compute_checksum() const {
-
-  uint8_t cs = type + static_cast<uint8_t>(seqn >> 8) +
-               static_cast<uint8_t>(seqn);
-  for (unsigned i = 0; i < MAX_PAYLOAD_LENGTH; ++i) {
-    cs += raw_payload[i];
-  }
-  return ~cs + 1;
-}
-
-
 } // namespace r2p

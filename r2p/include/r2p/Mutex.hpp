@@ -11,12 +11,25 @@ private:
   Mutex_ impl;
 
 public:
+  void initialize();
+
   void acquire_unsafe();
   void release_unsafe();
 
   void acquire();
   void release();
+
+public:
+  Mutex();
+  Mutex(bool initialize);
 };
+
+
+inline
+void Mutex::initialize() {
+
+  impl.initialize();
+}
 
 
 inline
@@ -41,6 +54,20 @@ inline
 void Mutex::release() {
   impl.release();
 }
+
+
+inline
+Mutex::Mutex()
+:
+  impl()
+{}
+
+
+inline
+Mutex::Mutex(bool initialize)
+:
+  impl(initialize)
+{}
 
 
 } // namespace r2p

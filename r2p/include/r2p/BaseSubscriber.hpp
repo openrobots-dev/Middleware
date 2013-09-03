@@ -17,7 +17,7 @@ private:
   Topic *topicp;
 
 public:
-  Topic *get_topic() const;
+  const Topic *get_topic() const;
   virtual size_t get_queue_length() const = 0;
   void notify_subscribed(Topic &topic);
 
@@ -39,7 +39,7 @@ public:
 
 
 inline
-Topic *BaseSubscriber::get_topic() const {
+const Topic *BaseSubscriber::get_topic() const {
 
   return topicp;
 }

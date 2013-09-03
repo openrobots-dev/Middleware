@@ -15,6 +15,8 @@ private:
   ::Semaphore impl;
 
 public:
+  void initialize(Count value = 0);
+
   void reset_unsafe(Count value = 0);
   void signal_unsafe();
   void wait_unsafe();
@@ -29,7 +31,15 @@ public:
 
 public:
   Semaphore_(Count value = 0);
+  Semaphore_(bool initialize, Count value = 0);
 };
+
+
+inline
+void Semaphore_::initialize(Count value) {
+
+  chSemInit(&impl, value);
+}
 
 
 inline
@@ -98,7 +108,16 @@ inline
 inline
 Semaphore_::Semaphore_(Count value) {
 
-  chSemInit(&impl, value);
+  initialize(value);
+}
+
+
+inline
+Semaphore_::Semaphore_(bool initialize, Count value) {
+
+  if (initialize) {
+    this->initialize(value);
+  }
 }
 
 

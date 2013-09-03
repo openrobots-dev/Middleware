@@ -14,6 +14,8 @@ private:
   Semaphore_ impl;
 
 public:
+  void initialize(Count value = 0);
+
   void reset_unsafe(Count value = 0);
   void signal_unsafe();
   void wait_unsafe();
@@ -26,7 +28,15 @@ public:
 
 public:
   Semaphore(Count value = 0);
+  Semaphore(bool initialize, Count value = 0);
 };
+
+
+inline
+void Semaphore::initialize(Count value) {
+
+  impl.initialize(value);
+}
 
 
 inline
@@ -89,6 +99,13 @@ inline
 Semaphore::Semaphore(Count value)
 :
   impl(value)
+{}
+
+
+inline
+Semaphore::Semaphore(bool initialize, Count value)
+:
+  impl(initialize, value)
 {}
 
 

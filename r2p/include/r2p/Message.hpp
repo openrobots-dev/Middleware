@@ -48,7 +48,7 @@ public:
 inline
 const uint8_t *Message::get_raw_data() const {
 
-  return reinterpret_cast<const uint8_t *>(&refcount + 1); // FIXME: does not work without packed attribute (and maybe without gcc -O3)
+  return reinterpret_cast<const uint8_t *>(&refcount + 1);
 }
 
 
@@ -85,7 +85,7 @@ Message::Message()
 template<typename MessageType> inline
 void Message::clean(MessageType &msg) {
 
-  static_cast_check<Message>(msg);
+  static_cast_check<MessageType, Message>();
   memset(&msg.refcount + 1, 0, sizeof(MessageType) - sizeof(RefcountType));
 }
 

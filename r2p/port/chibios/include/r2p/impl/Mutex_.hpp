@@ -11,6 +11,8 @@ private:
   ::Mutex impl;
 
 public:
+  void initialize();
+
   void acquire_unsafe();
   void release_unsafe();
 
@@ -21,7 +23,15 @@ public:
 
 public:
   Mutex_();
+  Mutex_(bool initialize);
 };
+
+
+inline
+void Mutex_::initialize() {
+
+  chMtxInit(&impl);
+}
 
 
 inline
@@ -62,7 +72,16 @@ inline
 inline
 Mutex_::Mutex_() {
 
-  chMtxInit(&impl);
+  this->initialize();
+}
+
+
+inline
+Mutex_::Mutex_(bool initialize) {
+
+  if (initialize) {
+    this->initialize();
+  }
 }
 
 

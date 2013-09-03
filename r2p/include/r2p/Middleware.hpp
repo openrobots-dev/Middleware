@@ -9,6 +9,7 @@
 #include <r2p/Subscriber.hpp>
 #include <r2p/Node.hpp>
 #include <r2p/Bootloader.hpp>
+#include <r2p/ReMutex.hpp>
 
 namespace r2p {
 
@@ -28,6 +29,7 @@ private:
   StaticList<Node> nodes;
   StaticList<Topic> topics;
   StaticList<Transport> transports;
+  ReMutex lists_lock;
 
   void *mgmt_boot_stackp;
   size_t mgmt_boot_stacklen;

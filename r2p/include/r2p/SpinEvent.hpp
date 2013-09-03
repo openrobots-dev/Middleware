@@ -17,11 +17,23 @@ private:
   SpinEvent_ impl;
 
 public:
+  void initialize();
+
   void signal_unsafe(unsigned event_index);
 
   void signal(unsigned event_index);
   Mask wait(const Time &timeout);
+
+public:
+  SpinEvent(bool initialize = true);
 };
+
+
+inline
+void SpinEvent::initialize() {
+
+  impl.initialize();
+}
 
 
 inline
@@ -43,6 +55,13 @@ SpinEvent::Mask SpinEvent::wait(const Time &timeout) {
 
   return impl.wait(timeout);
 }
+
+
+inline
+SpinEvent::SpinEvent(bool initialize)
+:
+  impl(initialize)
+{}
 
 
 } // namespace r2p

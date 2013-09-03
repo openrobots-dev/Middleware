@@ -44,11 +44,15 @@ public:
   bool is_awaiting_subscriptions() const;
 
   Message *alloc_unsafe();
+  template<typename MessageType> bool alloc_unsafe(MessageType *&msgp);
+  bool release_unsafe(Message &msg);
   void free_unsafe(Message &msg);
   bool notify_locals_unsafe(Message &msg, const Time &timestamp);
   bool notify_remotes_unsafe(Message &msg, const Time &timestamp);
 
   Message *alloc();
+  template<typename MessageType> bool alloc(MessageType *&msgp);
+  bool release(Message &msg);
   void free(Message &msg);
   bool notify_locals(Message &msg, const Time &timestamp);
   bool notify_remotes(Message &msg, const Time &timestamp);
@@ -156,6 +160,25 @@ Message *Topic::alloc_unsafe() {
 }
 
 
+template<typename MessageType> inline
+bool Topic::alloc_unsafe(MessageType *&msgp) {
+
+  static_cast_check<MessageType, Message>();
+  return (msgp = reinterpret_cast<MessageType *>(alloc_unsafe())) != NULL;
+}
+
+
+inline
+bool Topic::release_unsafe(Message &msg) {
+
+  if (!msg.release_unsafe()) {
+    free_unsafe(msg);
+    return true;
+  }
+  return false;
+}
+
+
 inline
 void Topic::free_unsafe(Message &msg) {
 
@@ -167,6 +190,24 @@ inline
 Message *Topic::alloc() {
 
   return reinterpret_cast<Message *>(msg_pool.alloc());
+}
+
+
+template<typename MessageType> inline
+bool Topic::alloc(MessageType *&msgp) {
+
+  static_cast_check<MessageType, Message>();
+  return (msgp = reinterpret_cast<MessageType *>(alloc())) != NULL;
+}
+
+
+inline
+bool Topic::release(Message &msg) {
+
+  SysLock::acquire();
+  bool freed = release_unsafe(msg);
+  SysLock::release();
+  return freed;
 }
 
 

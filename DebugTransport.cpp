@@ -311,6 +311,9 @@ void DebugTransport::initialize(void *rx_stackp, size_t rx_stacklen,
                                 void *tx_stackp, size_t tx_stacklen,
                                 Thread::Priority tx_priority) {
 
+  subp_sem.initialize();
+  send_lock.initialize();
+
   // Create the transmission pump thread
   tx_threadp = Thread::create_static(tx_stackp, tx_stacklen, tx_priority,
                                      tx_threadf, this, "DEBUG_TX");
@@ -390,6 +393,7 @@ bool DebugTransport::spin_rx() {
 
   // Skip the deadline
   if (!skip_after_char('@')) return false;
+  Thread::sleep(Time::ms(100)); // XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX
   { Time deadline;
   if (!recv_value(deadline.raw)) return false;
   cs.add(deadline.raw); }
@@ -487,7 +491,8 @@ bool DebugTransport::spin_rx() {
       }
 
       // Get the checksum
-      if (!expect_char(':') || !recv_value(length) || length != cs) {
+      if (!expect_char(':') || !recv_value(length) ||
+          length != cs.compute_checksum()) {
         mgmt_rsub.release(*msgp);
         return false;
       }
@@ -495,17 +500,19 @@ bool DebugTransport::spin_rx() {
     }
     case 't': {
       // Get the checksum
-      if (!expect_char(':') || !recv_value(length) || length != cs) {
-        return false;
-      }
+      if (!expect_char(':')) return false;
+      if (!recv_value(length)) return false;
+      if (length != cs.compute_checksum()) return false;
+
       Middleware::instance.stop();
       return true;
     }
     case 'r': {
       // Get the checksum
-      if (!expect_char(':') || !recv_value(length) || length != cs) {
-        return false;
-      }
+      if (!expect_char(':')) return false;
+      if (!recv_value(length)) return false;
+      if (length != cs.compute_checksum()) return false;
+
       Middleware::instance.reboot();
       return true;
     }
@@ -521,7 +528,9 @@ Thread::Return DebugTransport::rx_threadf(Thread::Argument arg) {
 
   // Reception pump
   for (;;) {
-    reinterpret_cast<DebugTransport *>(arg)->spin_rx();
+    register bool ok;
+    ok = reinterpret_cast<DebugTransport *>(arg)->spin_rx();
+    (void)ok;
   }
   return static_cast<Thread::Return>(0);
 }
@@ -546,6 +555,8 @@ DebugTransport::DebugTransport(BaseChannel *channelp, char namebuf[])
   tx_threadp(NULL),
   channelp(channelp),
   namebufp(namebuf),
+  subp_sem(false),
+  send_lock(false),
   mgmt_rsub(*this, mgmt_msgqueue_buf, MGMT_BUFFER_LENGTH),
   mgmt_rpub()
 {

@@ -39,8 +39,8 @@ public:
     SETUP_REQUEST,
     SETUP_RESPONSE,
     IHEX_RECORD,
-    REMOVE_ALL, // TODO
-    REMOVE_LAST, // TODO
+    REMOVE_ALL,
+    REMOVE_LAST,
   };
 
   enum { MAX_PAYLOAD_LENGTH = 26 };
@@ -70,28 +70,17 @@ public:
   } R2P_PACKED;
 
 public:
-  uint8_t checksum;
-  uint8_t type;
-  uint16_t seqn;
   union {
     uint8_t         raw_payload[MAX_PAYLOAD_LENGTH];
     SetupRequest    setup_request;
     SetupResponse   setup_response;
     IhexRecord      ihex_record;
   };
+  uint8_t type;
+  uint16_t seqn; // TODO: Handle sequence numbers
 
-public:
-  void cleanup();
-  uint8_t compute_checksum() const;
-  void update_checksum();
 } R2P_PACKED;
 
-
-inline
-void BootloaderMsg::update_checksum() {
-
-  checksum = compute_checksum();
-}
 
 
 } // namespace r2p

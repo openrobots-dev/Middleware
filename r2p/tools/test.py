@@ -15,7 +15,6 @@ def _main(appname, boot_topic, hexpath, stacklen, ldexe, ldscript, ldoself, ldma
     logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
     lineio = r2p.SerialLineIO('/dev/ttyUSB0', 115200) # TODO: by command line
-    #lineio = r2p.StdLineIO()
     transport = r2p.DebugTransport(lineio)
     bootloader = r2p.SimpleBootloader(transport, boot_topic)
 

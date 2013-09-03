@@ -9,6 +9,7 @@
 #include <r2p/Transport.hpp>
 #include <r2p/Publisher.hpp>
 #include <r2p/Subscriber.hpp>
+#include <r2p/ScopedLock.hpp>
 
 namespace r2p {
 
@@ -18,6 +19,8 @@ void Middleware::initialize(void *mgmt_boot_stackp, size_t mgmt_boot_stacklen,
 
   R2P_ASSERT(mgmt_boot_stackp != NULL);
   R2P_ASSERT(mgmt_boot_stacklen > 0);
+
+  lists_lock.initialize();
 
   this->mgmt_boot_stackp = mgmt_boot_stackp;
   this->mgmt_boot_stacklen = mgmt_boot_stacklen;
@@ -65,30 +68,29 @@ void Middleware::stop() {
     R2P_ASSERT(success);
   }
 
+  // Don't enter bootloader mode again
+  if (!trigger) return;
+
+  // Stop all nodes
   SysLock::acquire();
   while (num_running_nodes > 0) {
     SysLock::release();
-
-    // Stop all nodes
     for (StaticList<Node>::Iterator i = nodes.begin(); i != nodes.end(); ++i) {
       i->notify_stop();
     }
-
     Thread::sleep(Time::ms(500)); // TODO: Configure delay
     SysLock::acquire();
   }
   SysLock::release();
 
   // Enter bootloader mode
-  if (trigger) {
-    trigger = Thread::join(*mgmt_boot_threadp);
-    R2P_ASSERT(trigger);
-    mgmt_boot_threadp = Thread::create_static(
-      mgmt_boot_stackp,mgmt_boot_stacklen, mgmt_boot_priority,
-      boot_threadf, NULL, "R2P_BOOT"
-    );
-    R2P_ASSERT(mgmt_boot_threadp != NULL);
-  }
+  trigger = Thread::join(*mgmt_boot_threadp);
+  R2P_ASSERT(trigger);
+  mgmt_boot_threadp = Thread::create_static(
+    mgmt_boot_stackp,mgmt_boot_stacklen, mgmt_boot_priority,
+    boot_threadf, NULL, "R2P_BOOT"
+  );
+  R2P_ASSERT(mgmt_boot_threadp != NULL);
 }
 
 
@@ -118,10 +120,12 @@ void Middleware::add(Topic &topic) {
 bool Middleware::advertise(LocalPublisher &pub, const char *namep,
                            const Time &publish_timeout, size_t type_size) {
 
+  lists_lock.acquire();
   Topic *topicp = touch_topic(namep, type_size);
   if (topicp == NULL) return false;
   pub.notify_advertised(*topicp);
   topicp->advertise(pub, publish_timeout);
+  lists_lock.release();
 
   for (StaticList<Transport>::Iterator i = transports.begin();
        i != transports.end(); ++i) {
@@ -135,10 +139,12 @@ bool Middleware::advertise(LocalPublisher &pub, const char *namep,
 bool Middleware::advertise(RemotePublisher &pub, const char *namep,
                            const Time &publish_timeout, size_t type_size) {
 
+  lists_lock.acquire();
   Topic *topicp = touch_topic(namep, type_size);
   if (topicp == NULL) return false;
   pub.notify_advertised(*topicp);
   topicp->advertise(pub, publish_timeout);
+  lists_lock.release();
 
   for (StaticList<Transport>::Iterator i = transports.begin();
        i != transports.end(); ++i) {
@@ -153,11 +159,13 @@ bool Middleware::subscribe(LocalSubscriber &sub, const char *namep,
                            Message msgpool_buf[], size_t msgpool_buflen,
                            size_t type_size) {
 
+  lists_lock.acquire();
   Topic *topicp = touch_topic(namep, type_size);
   if (topicp == NULL) return false;
   topicp->extend_pool(msgpool_buf, msgpool_buflen);
   sub.notify_subscribed(*topicp);
   topicp->subscribe(sub, msgpool_buflen);
+  lists_lock.release();
 
   for (StaticList<Transport>::Iterator i = transports.begin();
        i != transports.end(); ++i) {
@@ -172,11 +180,15 @@ bool Middleware::subscribe(RemoteSubscriber &sub, const char *namep,
                            Message msgpool_buf[], size_t msgpool_buflen,
                            size_t type_size) {
 
-  Topic *topicp = touch_topic(namep, type_size);// ce l'ho già
-  if (topicp == NULL) return false;
+  (void)type_size; // FIXME
+
+  lists_lock.acquire();
+  Topic *topicp = find_topic(namep);
+  R2P_ASSERT(topicp != NULL);
   topicp->extend_pool(msgpool_buf, msgpool_buflen);
   sub.notify_subscribed(*topicp);
   topicp->subscribe(sub, msgpool_buflen);
+  lists_lock.release();
 
   return true;
 }
@@ -195,15 +207,21 @@ void Middleware::confirm_stop(const Node &node) {
 
 Topic *Middleware::find_topic(const char *namep) {
 
-  return topics.find_first(Topic::has_name, namep);
+  lists_lock.acquire();
+  Topic *topicp = topics.find_first(Topic::has_name, namep);
+  lists_lock.release();
+  return topicp;
 }
 
 
 Topic *Middleware::touch_topic(const char *namep, size_t type_size) {
 
-  // Check if a topic exists with the given name
+  lists_lock.acquire();
+
+  // Check if there is a topic with the desired name
   Topic *topicp = find_topic(namep);
   if (topicp != NULL) {
+    lists_lock.release();
     return topicp;
   }
 
@@ -212,6 +230,8 @@ Topic *Middleware::touch_topic(const char *namep, size_t type_size) {
   if (topicp != NULL) {
     topics.link(topicp->by_middleware);
   }
+
+  lists_lock.release();
   return topicp;
 }
 
@@ -303,7 +323,7 @@ void Middleware::do_mgmt_thread() {
     }
     if (topic_iter != topics.end()) {
       Time now = Time::now();
-      if (now >= topic_lastiter_time + TOPIC_CHECK_TIMEOUT_MS) {
+      if (now >= topic_lastiter_time + Time::ms(TOPIC_CHECK_TIMEOUT_MS)) {
         topic_lastiter_time = now; // TODO: Add random time
         SysLock::acquire();
         if (topic_iter->is_awaiting_advertisements()) {
@@ -354,7 +374,7 @@ void Middleware::do_boot_thread() {
       Time deadline;
       while (sub.fetch(requestp, deadline)) {
         if (pub.alloc(responsep)) {
-          responsep->cleanup();
+          Message::clean(*responsep);
           if (Bootloader::instance.process(*requestp, *responsep)) {
             sub.release(*requestp);
             while (!pub.publish_remotely(*responsep)) {
@@ -362,6 +382,7 @@ void Middleware::do_boot_thread() {
             }
           } else {
             sub.release(*requestp);
+            responsep->acquire();
             sub.release(*responsep);
           }
         } else {
@@ -375,9 +396,10 @@ void Middleware::do_boot_thread() {
     } else {
       BootloaderMsg *heartbeatp = NULL;
       if (pub.alloc(heartbeatp)) {
-        heartbeatp->cleanup();
+        Message::clean(*heartbeatp);
         heartbeatp->type = BootloaderMsg::HEARTBEAT;
         if (!pub.publish_remotely(*heartbeatp)) {
+          heartbeatp->acquire();
           sub.release(*heartbeatp);
         }
       }
@@ -389,6 +411,7 @@ void Middleware::do_boot_thread() {
 Middleware::Middleware(const char *module_namep, const char *bootloader_namep)
 :
   module_namep(module_namep),
+  lists_lock(false),
   mgmt_boot_stackp(NULL),
   mgmt_boot_stacklen(0),
   mgmt_boot_priority(Thread::LOWEST),

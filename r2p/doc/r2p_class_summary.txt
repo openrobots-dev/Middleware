@@ -20,14 +20,14 @@ class Middleware <<singleton>> {
   - <font color="blue">const</font> char <font color="#006600">*</font><font color="blue">const</font> module_namep
   - StaticList<font color="green"><</font>Node<font color="green">></font> nodes
   - StaticList<font color="green"><</font>Topic<font color="green">></font> topics
-  - StaticList<Transport> transports
+  - StaticList<font color="green"><</font>Transport<font color="green">></font> transports
   __
   - Middleware<font color="#006600">(</font><font color="blue">const</font> char <font color="#006600">*</font>module_namep<font color="green">,</font> <font color="blue">const</font> char <font color="#006600">*</font>bootloader_namep<font color="#006600">)</font>
   ..
   + <font color="blue">const</font> char <font color="#006600">*</font>get_module_name<font color="#006600">()</font> <font color="blue">const</font>
   + <font color="blue">const</font> StaticList<font color="green"><</font>Node<font color="green">></font> <font color="#006600">&</font>get_nodes<font color="#006600">()</font> <font color="blue">const</font>
   + <font color="blue">const</font> StaticList<font color="green"><</font>Topic<font color="green">></font> <font color="#006600">&</font>get_topics<font color="#006600">()</font> <font color="blue">const</font>
-  + <font color="blue">const</font> StaticList<Transport> <font color="#006600">&</font>get_transports<font color="#006600">()</font> <font color="blue">const</font>
+  + <font color="blue">const</font> StaticList<font color="green"><</font>Transport<font color="green">></font> <font color="#006600">&</font>get_transports<font color="#006600">()</font> <font color="blue">const</font>
   + <font color="blue">bool</font> is_stopped<font color="#006600">()</font> <font color="blue">const</font>
   ..
   + <font color="blue">bool</font> initialize<font color="#006600">(</font><font color="blue">bool</font> <font color="#006600">*</font>mgmt_boot_stackp<font color="green">,</font> size_t mgmt_boot_stacklen<font color="green">,</font> Thread<font color="green">::</font>Priority mgmt_boot_priority<font color="#006600">)</font>
@@ -130,7 +130,7 @@ abstract class Transport {
   # Mutex publishers_lock
   # Mutex subscribers_lock
   ..
-  - <font color="blue">mutable</font> StaticList<Transport><font color="green">::</font>Link by_middleware
+  - <font color="blue">mutable</font> StaticList<font color="green"><</font>Transport<font color="green">></font><font color="green">::</font>Link by_middleware
   __
   # Transport<font color="#006600">()</font>
   # {abstract} <b>~Transport<font color="#006600">()</font></b>

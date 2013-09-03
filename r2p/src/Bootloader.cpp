@@ -20,6 +20,7 @@ void Bootloader::set_page_buffer(Flasher::Data flash_page_buf[]) {
 bool Bootloader::process(const BootloaderMsg &request_msg,
                          BootloaderMsg &response_msg) {
 
+  response_msg.type = BootloaderMsg::NACK;
   switch (request_msg.type) {
   case BootloaderMsg::NACK:
   case BootloaderMsg::ACK:
@@ -30,10 +31,10 @@ bool Bootloader::process(const BootloaderMsg &request_msg,
     if (state == RECEIVING_IHEX) {
       flasher.end();
       state = AWAITING_REQUEST;
-      return false;
+      return true;
     } else if (state != AWAITING_REQUEST) {
       state = AWAITING_REQUEST;
-      return false;
+      return true;
     }
 
     tempinfo.pgmlen = request_msg.setup_request.pgmlen;
@@ -52,18 +53,36 @@ bool Bootloader::process(const BootloaderMsg &request_msg,
 
       state = RECEIVING_IHEX;
       flasher.begin();
-    } else {
-      response_msg.type = BootloaderMsg::NACK;
     }
     return true;
   }
   case BootloaderMsg::IHEX_RECORD: {
-    if (state == RECEIVING_IHEX && process_ihex(request_msg.ihex_record)) {
-      response_msg.type = BootloaderMsg::ACK;
+    if (state == RECEIVING_IHEX) {
+      if (process_ihex(request_msg.ihex_record)) {
+        response_msg.type = BootloaderMsg::ACK;
+      } else {
+        flasher.end();
+      }
     } else {
       state = AWAITING_REQUEST;
+    }
+    return true;
+  }
+  case BootloaderMsg::REMOVE_LAST: {
+    if (state == AWAITING_REQUEST && remove_last()) {
+      response_msg.type = BootloaderMsg::ACK;
+    } else if (state == RECEIVING_IHEX) {
       flasher.end();
-      response_msg.type = BootloaderMsg::NACK;
+      state = AWAITING_REQUEST;
+    }
+    return true;
+  }
+  case BootloaderMsg::REMOVE_ALL: {
+    if (state == AWAITING_REQUEST && remove_all()) {
+      response_msg.type = BootloaderMsg::ACK;
+    } else if (state == RECEIVING_IHEX) {
+      flasher.end();
+      state = AWAITING_REQUEST;
     }
     return true;
   }
@@ -72,7 +91,6 @@ bool Bootloader::process(const BootloaderMsg &request_msg,
       flasher.end();
     }
     state = AWAITING_REQUEST;
-    response_msg.type = BootloaderMsg::NACK;
     return true;
   }
   }
@@ -235,6 +253,31 @@ bool Bootloader::update_layout(const AppInfo *last_infop) {
   }
 
   return flasher.end();
+}
+
+
+bool Bootloader::remove_last() {
+
+  numapps = flash_layout.numapps;
+  if (numapps == 0) {
+    freeadr = Flasher::align_next(Flasher::get_program_start());
+    return true;
+  }
+
+  if (--numapps > 0) {
+    freeadr = Flasher::align_next(flash_layout.freeadr);
+  } else {
+    freeadr = Flasher::align_next(Flasher::get_program_start());
+  }
+  return update_layout(NULL);
+}
+
+
+bool Bootloader::remove_all() {
+
+  numapps = 0;
+  freeadr = Flasher::align_next(Flasher::get_program_start());
+  return update_layout(NULL);
 }
 
 
