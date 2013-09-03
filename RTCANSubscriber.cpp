@@ -47,8 +47,7 @@ RTCANSubscriber::RTCANSubscriber(RTCANTransport &transport,
                                  size_t queue_length)
 :
   RemoteSubscriber(transport),
-  queue_free(queue_length),
-  rtcan_id(111 << 8)
+  queue_free(queue_length)
 {}
 
 

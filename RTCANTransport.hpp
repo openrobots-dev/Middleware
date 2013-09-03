@@ -54,6 +54,8 @@ public:
   bool send_reboot();
   bool send(Message * msgp, RTCANSubscriber * rsubp);
 
+  rtcan_id_t topic_id(const char * namep) const; // FIXME
+
   void initialize(const RTCANConfig &rtcan_config);
 
 private:
@@ -61,6 +63,7 @@ private:
   void recv_adv_msg(const adv_msg_t &adv_msg);
   RemotePublisher *create_publisher(Topic &topic) const;
   RemoteSubscriber *create_subscriber(
+    Topic &topic,
     Transport &transport,
     TimestampedMsgPtrQueue::Entry queue_buf[], // TODO: remove
     size_t queue_length

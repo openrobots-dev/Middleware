@@ -77,7 +77,7 @@ bool RTCANTransport::send_advertisement(const Topic &topic) {
   adv_tx_msg.type = 'P';
   adv_tx_msg.queue_length = 0;
   ::strncpy(adv_tx_msg.topic, topic.get_name(), NamingTraits<Topic>::MAX_LENGTH);
-  adv_tx_msg.rtcan_id = 111 << 8; // FIXME the transport-dependent id comes from the rsub, should we move to send_advertisement(rsub *) ?
+  adv_tx_msg.rtcan_id = topic_id(topic.get_name()); // FIXME the transport-dependent id comes from the rsub, should we move to send_advertisement(rsub *) ?
 
   return send_adv_msg(adv_tx_msg);
 }
@@ -172,7 +172,7 @@ void RTCANTransport::initialize(const RTCANConfig &rtcan_config) {
 
 RemotePublisher *RTCANTransport::create_publisher(Topic &topic) const {
   RTCANPublisher * rpubp = new RTCANPublisher();
-  rpubp->rtcan_header.id = 111 << 8; //FIXME
+  rpubp->rtcan_header.id = topic_id(topic.get_name());
   rpubp->rtcan_header.callback = reinterpret_cast<rtcan_msgcallback_t>(recv_cb);
   rpubp->rtcan_header.params = rpubp;
   rpubp->rtcan_header.size = 4; // FIXME
@@ -184,11 +184,27 @@ RemotePublisher *RTCANTransport::create_publisher(Topic &topic) const {
 
 
 RemoteSubscriber *RTCANTransport::create_subscriber(
+  Topic &topic,
   Transport &transport,
   TimestampedMsgPtrQueue::Entry queue_buf[],
   size_t queue_length) const {
+  RTCANSubscriber * rsubp = new RTCANSubscriber(static_cast<RTCANTransport &>(transport), queue_buf, queue_length);
 
-  return new RTCANSubscriber(static_cast<RTCANTransport &>(transport), queue_buf, queue_length);
+  rsubp->rtcan_id = topic_id(topic.get_name());
+
+  return rsubp;
+}
+
+// FIXME: to implement
+rtcan_id_t RTCANTransport::topic_id(const char * namep) const {
+	if (strcmp(namep, "led2") == 0)
+		return 112 << 8;
+	if (strcmp(namep, "led3") == 0)
+		return 113 << 8;
+	if (strcmp(namep, "ledall") == 0)
+		return 114 << 8;
+
+	return 255 << 8;
 }
 
 /*

@@ -16,6 +16,7 @@ public:
 
 public:
   Callback get_callback() const;
+  bool fetch(MessageType *&msgp);
   bool fetch(MessageType *&msgp, Time &timestamp);
   bool release(MessageType &msg);
 
@@ -25,6 +26,12 @@ public:
   ~Subscriber();
 };
 
+template<typename MessageType> inline
+bool Subscriber<MessageType>::fetch(MessageType *&msgp) {
+
+  return LocalSubscriber::fetch(
+    reinterpret_cast<Message *&>(msgp));
+}
 
 template<typename MessageType> inline
 bool Subscriber<MessageType>::fetch(MessageType *&msgp, Time &timestamp) {
@@ -39,7 +46,7 @@ template<typename MessageType> inline
 typename Subscriber<MessageType>::Callback
 Subscriber<MessageType>::get_callback() const {
 
-  return reinterpret_cast<const Callback>(LocalSubscriber::get_callback());
+  return reinterpret_cast<Callback>(LocalSubscriber::get_callback());
 }
 
 

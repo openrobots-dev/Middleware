@@ -51,7 +51,8 @@ protected:
   virtual bool send_reboot() = 0;
 
   virtual RemotePublisher *create_publisher(Topic &topic) const = 0;
-  virtual RemoteSubscriber *create_subscriber( // FIXME: Aggiungere topic pure qua?
+  virtual RemoteSubscriber *create_subscriber(
+    Topic &topic,
     Transport &transport,
     TimestampedMsgPtrQueue::Entry queue_buf[], // TODO: Make as generic <const void *> argument
     size_t queue_length
