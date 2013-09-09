@@ -110,6 +110,10 @@ ifeq ($(TEST),rtcan_sub_test)
          chnew.cpp main_rtcan_sub_test.cpp
 endif
 
+ifeq ($(TEST),pubsub_test)
+  CPPSRC += main_pubsub_test.cpp chnew.cpp
+endif
+
 ifeq ($(TEST),)
   CPPSRC += DebugTransport.cpp DebugPublisher.cpp DebugSubscriber.cpp \
             main.cpp chnew.cpp

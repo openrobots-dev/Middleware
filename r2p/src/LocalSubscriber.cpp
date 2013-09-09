@@ -4,6 +4,19 @@
 namespace r2p {
 
 
+bool LocalSubscriber::fetch(Message *&msgp) {
+
+  SysLock::acquire();
+  if (msgp_queue.fetch_unsafe(msgp)) {
+    SysLock::release();
+    return true;
+  } else {
+    SysLock::release();
+    return false;
+  }
+}
+
+
 bool LocalSubscriber::fetch(Message *&msgp, Time &timestamp) {
 
   SysLock::acquire();

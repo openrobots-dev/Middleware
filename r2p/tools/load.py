@@ -14,13 +14,19 @@ def _readint(value):
 def _main(appname, boot_topic, hexpath, stacklen, ldexe, ldscript, ldoself, ldmap, ldobjelf, *ldobjs):
     logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
+    stacklen = _readint(stacklen)
     lineio = r2p.SerialLineIO('/dev/ttyUSB0', 115200) # TODO: by command line
     transport = r2p.DebugTransport(lineio)
-    bootloader = r2p.SimpleBootloader(transport, boot_topic)
-
-    stacklen = _readint(stacklen)
-    bootloader.run(appname, hexpath, stacklen, ldexe, ldscript, ldoself, ldmap, ldobjelf, ldobjs)
-
+    bootloader = r2p.Bootloader(transport, boot_topic)
+    
+    try:
+        transport.open()
+        bootloader.stop()
+        bootloader.load(appname, hexpath, stacklen, ldexe, ldscript, ldoself, ldmap, ldobjelf, ldobjs)
+        transport.close()
+    except:
+        transport.close()
+        raise
 
 if __name__ == '__main__':
     if len(sys.argv) < 8:

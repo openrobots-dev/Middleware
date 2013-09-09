@@ -23,7 +23,7 @@ public:
 
 public:
   Mutex_();
-  Mutex_(bool initialize);
+  explicit Mutex_(bool initialize);
 };
 
 

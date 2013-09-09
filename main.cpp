@@ -36,9 +36,7 @@ void *__dso_handle;
 
 extern "C" void __cxa_pure_virtual() { chSysHalt(); }
 
-r2p::Bootloader r2p::Bootloader::instance(NULL); // TODO: No singleton, load onto the boot thread stack
-
-static WORKING_AREA(wa_info, 1024);
+static WORKING_AREA(wa_info, 2048);
 
 r2p::Middleware r2p::Middleware::instance(R2P_MODULE_NAME,
                                           "BOOT_"R2P_MODULE_NAME);
@@ -151,7 +149,7 @@ int main(void) {
 
   r2p::Thread::set_priority(r2p::Thread::HIGHEST);
   r2p::Middleware::instance.initialize(wa_info, sizeof(wa_info),
-                                       r2p::Thread::IDLE);
+                                       r2p::Thread::LOWEST);
   r2p::Middleware::instance.add(test_topic);
 
   dbgtra.initialize(wa_rx_dbgtra, sizeof(wa_rx_dbgtra), r2p::Thread::LOWEST + 11,

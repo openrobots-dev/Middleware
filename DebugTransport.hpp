@@ -53,6 +53,7 @@ public:
 private:
   RemotePublisher *create_publisher(Topic &topic) const;
   RemoteSubscriber *create_subscriber(
+    Topic &topic,
     Transport &transport,
     TimestampedMsgPtrQueue::Entry queue_buf[],
     size_t queue_length
@@ -120,10 +121,12 @@ RemotePublisher *DebugTransport::create_publisher(Topic &topic) const {
 
 inline
 RemoteSubscriber *DebugTransport::create_subscriber(
+  Topic &topic,
   Transport &transport,
   TimestampedMsgPtrQueue::Entry queue_buf[],
   size_t queue_length) const {
 
+  (void)topic;
   return new DebugSubscriber(static_cast<DebugTransport &>(transport),
                              queue_buf, queue_length);
 }

@@ -8,8 +8,8 @@ namespace r2p {
 
 class ReMutex : private Uncopyable {
 private:
-  Mutex mutex;
   size_t counter;
+  Mutex mutex;
 
 public:
   void initialize();
@@ -22,15 +22,15 @@ public:
 
 public:
   ReMutex();
-  ReMutex(bool initialize);
+  explicit ReMutex(bool initialize);
 };
 
 
 inline
 void ReMutex::initialize() {
 
-//  mutex.initialize();
   counter = 0;
+  mutex.initialize();
 }
 
 
@@ -38,7 +38,7 @@ inline
 void ReMutex::acquire_unsafe() {
 
   if (counter++ == 0) {
-//    mutex.acquire_unsafe();
+    mutex.acquire_unsafe();
   }
 }
 
@@ -49,7 +49,7 @@ void ReMutex::release_unsafe() {
   R2P_ASSERT(counter > 0);
 
   if (--counter == 0) {
-//    mutex.release_unsafe();
+    mutex.release_unsafe();
   }
 }
 
@@ -75,16 +75,16 @@ void ReMutex::release() {
 inline
 ReMutex::ReMutex()
 :
-//  mutex(),
-  counter(0)
+  counter(0),
+  mutex()
 {}
 
 
 inline
 ReMutex::ReMutex(bool initialize)
 :
-  mutex(initialize),
-  counter(0)
+  counter(0),
+  mutex(initialize)
 {}
 
 

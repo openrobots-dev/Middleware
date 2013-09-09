@@ -35,10 +35,6 @@ __ram_start__           = ORIGIN(ram);
 __ram_size__            = LENGTH(ram);
 __ram_end__             = __ram_start__ + __ram_size__;
 
-__layout_start__        = ORIGIN(layout);
-__layout_size__         = LENGTH(layout);
-__layout_end__          = __layout_start__ + __layout_size__;
-
 SECTIONS
 {
     . = 0;
@@ -64,12 +60,6 @@ SECTIONS
         KEEP(*(SORT(.fini_array.*)))
         PROVIDE(__fini_array_end = .);
     } > flash
-
-    .layout : ALIGN(4) SUBALIGN(4)
-    {
-        *(.layout)
-        *(.layout.*)
-    } > layout
 
     .text : ALIGN(16) SUBALIGN(16)
     {
@@ -162,6 +152,6 @@ __heap_base__   = _end;
 __heap_end__    = __ram_end__;
 
 __program_start__   = _textdata + (_edata - _data);
-__program_end__     = __layout_start__;
+__program_end__     = ORIGIN(flash) + LENGTH(flash);
 __program_size__    = __program_end__ - __program_start__;
 

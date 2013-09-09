@@ -97,7 +97,7 @@ Topic::Topic(const char *namep, size_t type_size)
   max_queue_length(0),
   by_middleware(*this)
 {
-  R2P_ASSERT(is_identifier(namep));
+  R2P_ASSERT(is_identifier(namep, NamingTraits<Topic>::MAX_LENGTH));
 }
 
 

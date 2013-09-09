@@ -22,16 +22,11 @@
 #define WA_SIZE_1K        THD_WA_SIZE(1024)
 #define WA_SIZE_2K        THD_WA_SIZE(2048)
 
-
-struct Uint32Msg : public r2p::Message {
-  uint32_t value;
+struct LedMsg : public r2p::Message {
+	uint32_t led;
+	uint32_t value;
+	uint32_t cnt;
 } R2P_PACKED;
-
-
-struct FloatMsg : public r2p::Message {
-  float value;
-} R2P_PACKED;
-
 
 void *__dso_handle;
 
@@ -39,11 +34,8 @@ extern "C" void __cxa_pure_virtual() {}
 
 static WORKING_AREA(wa_info, 1024);
 
+r2p::Bootloader r2p::Bootloader::instance(NULL);
 r2p::Middleware r2p::Middleware::instance("IMU_0", "BOOT_IMU_0");
-
-static r2p::Mutex print_lock;
-
-static r2p::Topic test_topic("test", sizeof(Uint32Msg));
 
 static char dbgtra_namebuf[64];
 
@@ -57,32 +49,28 @@ static WORKING_AREA(wa_tx_dbgtra, 1024);
 // RTCAN transport
 static r2p::RTCANTransport rtcantra(RTCAND1);
 
-size_t num_msgs = 0;
-systime_t start_time, cur_time;
 
-
-bool callback_2(const Uint32Msg &msg) const {
-  (void)msg;
-  palTogglePad(LED_GPIO, LED2);
-  ++num_msgs;
-  return true;
+bool callback(const LedMsg &msg) {
+	if (msg.value) {
+		palClearPad(LED_GPIO, msg.led);
+	} else {
+		palSetPad(LED_GPIO, msg.led);
+	}
+	return true;
 }
 
+msg_t LedSub(void * arg) {
+  LedMsg sub_msgbuf[5], *sub_queue[5];
+  r2p::Node node("LedSub");
+  r2p::Subscriber<LedMsg> sub(sub_queue, 5, callback);
+  char * tn = (char *)arg;
 
-msg_t SubThd(void *) {
+  chRegSetThreadName("LedSub");
 
-  chRegSetThreadName("SubThd");
-
-  Uint32Msg sub2_msgbuf[5], *sub2_queue[5];
-  r2p::Node node("Sub");
-  r2p::Subscriber<Uint32Msg> sub2(sub2_queue, 5, callback_2);
-
-  node.subscribe(sub2, "test", sub2_msgbuf);
+  node.subscribe(sub, tn, sub_msgbuf);
 
   for (;;) {
-    if (!node.spin(1000)) {
-//      palTogglePad(LED_GPIO, LED4);
-    }
+    node.spin(1000);
   }
   return CH_SUCCESS;
 }
@@ -149,7 +137,6 @@ int main(void) {
   chThdSetPriority(HIGHPRIO);
   r2p::Middleware::instance.initialize(wa_info, sizeof(wa_info),
                                        r2p::Thread::IDLE);
-  r2p::Middleware::instance.add(test_topic);
 
   rtcantra.initialize(rtcan_config);
 
@@ -158,7 +145,9 @@ int main(void) {
                     wa_tx_dbgtra, sizeof(wa_tx_dbgtra), r2p::Thread::LOWEST + 10);
 */
 
-  chThdCreateFromHeap(NULL, WA_SIZE_1K, NORMALPRIO + 1, SubThd, NULL);
+//  chThdCreateFromHeap(NULL, WA_SIZE_1K, NORMALPRIO + 1, LedSub, (void*)"led2");
+//  chThdCreateFromHeap(NULL, WA_SIZE_1K, NORMALPRIO + 1, LedSub, (void*)"led3");
+  chThdCreateFromHeap(NULL, WA_SIZE_1K, NORMALPRIO + 1, LedSub, (void*)"led2");
 
   chThdSetPriority(IDLEPRIO);
   for (;;) {

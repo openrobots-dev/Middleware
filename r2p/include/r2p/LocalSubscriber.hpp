@@ -36,6 +36,7 @@ public:
   bool fetch_unsafe(Message *&msgp, Time &timestamp);
   bool notify_unsafe(Message &msg, const Time &timestamp);
 
+  bool fetch(Message *&msgp);
   bool fetch(Message *&msgp, Time &timestamp);
   bool notify(Message &msg, const Time &timestamp);
 

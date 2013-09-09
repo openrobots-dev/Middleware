@@ -70,11 +70,7 @@ namespace r2p {
 inline
 const char *Thread_::get_name() const {
 
-#if CH_USE_REGISTRY
   return chRegGetThreadName(&impl);
-#else
-  return NULL;
-#endif
 }
 
 

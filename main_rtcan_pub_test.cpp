@@ -1,4 +1,3 @@
-
 #include "ch.h"
 #include "hal.h"
 
@@ -22,38 +21,31 @@
 #define WA_SIZE_1K        THD_WA_SIZE(1024)
 #define WA_SIZE_2K        THD_WA_SIZE(2048)
 
-
-struct Uint32Msg : public r2p::Message {
-  uint32_t value;
-} R2P_PACKED;
-
-
-struct FloatMsg : public r2p::Message {
-  float value;
-} R2P_PACKED;
-
+struct LedMsg: public r2p::Message {
+	uint32_t led;
+	uint32_t value;
+	uint32_t cnt;
+}R2P_PACKED;
 
 void *__dso_handle;
 
-extern "C" void __cxa_pure_virtual() {}
+extern "C" void __cxa_pure_virtual() {
+}
 
 static WORKING_AREA(wa_info, 1024);
 
+r2p::Bootloader r2p::Bootloader::instance(NULL);
 r2p::Middleware r2p::Middleware::instance("IMU_0", "BOOT_IMU_0");
 
 static WORKING_AREA(wa1, 1024);
 static WORKING_AREA(wa2, 1024);
 static WORKING_AREA(wa3, 1024);
 
-static r2p::Mutex print_lock;
-
-static r2p::Topic test_topic("test", sizeof(Uint32Msg));
-
 static char dbgtra_namebuf[64];
 
 // Debug transport
 static r2p::DebugTransport dbgtra(reinterpret_cast<BaseChannel *>(&SD2),
-  dbgtra_namebuf);
+		dbgtra_namebuf);
 
 static WORKING_AREA(wa_rx_dbgtra, 1024);
 static WORKING_AREA(wa_tx_dbgtra, 1024);
@@ -61,64 +53,132 @@ static WORKING_AREA(wa_tx_dbgtra, 1024);
 // RTCAN transport
 static r2p::RTCANTransport rtcantra(RTCAND1);
 
-size_t num_msgs = 0;
-systime_t start_time, cur_time;
+msg_t Led2Pub(void *) {
+	r2p::Node node("Led2Pub");
+	r2p::Publisher<LedMsg> pub;
+	LedMsg *msgp;
+	uint32_t toggle = 0;
+	uint32_t cnt = 0;
 
-r2p::Middleware * mw;
+	chRegSetThreadName("Led2Pub");
+	node.advertise(pub, "led2");
 
+	for (;;) {
+		chThdSleepMilliseconds(250);
 
-msg_t PubThd(void *) {
+		if (pub.alloc(msgp)) {
+			msgp->led = LED2;
+			msgp->value = toggle;
+			msgp->cnt = cnt++;
 
-  chRegSetThreadName("PubThd");
+			if (!pub.publish(*msgp)) {
+				chSysHalt();
+			}
 
-  r2p::Node node("Pub");
-  r2p::Publisher<Uint32Msg> pub1;
+		} else {
+			palTogglePad(LED_GPIO, LED4);
+		}
 
-  node.advertise(pub1, "test");
-
-  chThdSleepMilliseconds(1000);
-  start_time = chTimeNow();
-
-  for (;;) {
-    chThdSleepMilliseconds(250);
-    cur_time = chTimeNow();
-    Uint32Msg *msgp;
-    if (pub1.alloc(msgp)) {
-      msgp->value = 0xAAAAAAAA;
-      if (!pub1.publish(*msgp)) {
-        chSysHalt();
-      }
-    } else {
-      palTogglePad(LED_GPIO, LED4);
-    }
-  }
-  return CH_SUCCESS;
+		toggle ^= 1;
+	}
+	return CH_SUCCESS;
 }
 
+msg_t Led3Pub(void *) {
+	r2p::Node node("Led3Pub");
+	r2p::Publisher<LedMsg> pub;
+	LedMsg *msgp;
+	uint32_t toggle = 0;
+	uint32_t cnt = 0;
 
-bool callback_2(const Uint32Msg &msg) const {
-  (void)msg;
-  palTogglePad(LED_GPIO, LED2);
-  return true;
+	chRegSetThreadName("Led3Pub");
+	node.advertise(pub, "led3");
+
+	for (;;) {
+		chThdSleepMilliseconds(250);
+
+		if (pub.alloc(msgp)) {
+			msgp->led = LED3;
+			msgp->value = toggle;
+			msgp->cnt = cnt++;
+
+			if (!pub.publish(*msgp)) {
+				chSysHalt();
+			}
+
+		} else {
+			palTogglePad(LED_GPIO, LED4);
+		}
+
+		toggle ^= 1;
+	}
+	return CH_SUCCESS;
 }
 
+msg_t Led23Pub(void *) {
+	r2p::Node node("Led23Pub");
+	r2p::Publisher<LedMsg> pub;
+	LedMsg *msgp;
+	uint32_t led = LED2;
+	uint32_t toggle = 0;
+	uint32_t cnt = 0;
 
-msg_t SubThd(void *) {
+	chRegSetThreadName("Led23Pub");
+	node.advertise(pub, "led23");
 
-  chRegSetThreadName("SubThd");
+	for (;;) {
+		chThdSleepMilliseconds(250);
 
-  Uint32Msg sub2_msgbuf[5], *sub2_queue[5];
-  r2p::Node node("Sub");
-  r2p::Subscriber<Uint32Msg> sub2(sub2_queue, 5, callback_2);
+		if (pub.alloc(msgp)) {
+			msgp->led = led;
+			msgp->value = toggle;
+			msgp->cnt = cnt++;
 
-  node.subscribe(sub2, "test", sub2_msgbuf);
+			if (!pub.publish(*msgp)) {
+				chSysHalt();
+			}
 
-  for (;;) {
-    if (!node.spin()) {
-      palTogglePad(LED_GPIO, LED4);
-    }
-  }
-  return CH_SUCCESS;
+		} else {
+			palTogglePad(LED_GPIO, LED4);
+		}
+
+		if (toggle && (led == LED2)) {
+			led = LED3;
+		} else if (toggle && (led == LED3)) {
+			led = LED2;
+		}
+
+		toggle ^= 1;
+	}
+	return CH_SUCCESS;
+}
+
+bool callback(const LedMsg &msg) {
+	if (msg.value) {
+		palClearPad(LED_GPIO, msg.led);
+	} else {
+		palSetPad(LED_GPIO, msg.led);
+	}
+	return true;
+}
+
+msg_t LedSub(void * arg) {
+	LedMsg sub_msgbuf[5], *sub_queue[5];
+	r2p::Node node("LedSub");
+	r2p::Subscriber<LedMsg> sub(sub_queue, 5, callback);
+	char * tn = (char *) arg;
+
+	chRegSetThreadName("LedSub");
+
+	node.subscribe(sub, tn, sub_msgbuf);
+
+	int cnt = sizeof(sub);
+
+	for (;;) {
+		node.spin(1000);
+		cnt++;
+	}
+	return CH_SUCCESS;
 }
 
 /*
@@ -163,40 +223,45 @@ static msg_t blinker_thread(void *arg) {
 	return 0;
 }
 
-
 extern "C" {
 int main(void) {
-  static const RTCANConfig rtcan_config = {1000000, 100, 60};
+	static const RTCANConfig rtcan_config = { 1000000, 100, 60 };
 
-  halInit();
-  chSysInit();
+	halInit();
+	chSysInit();
 
-  sdStart(&SD2, NULL);
+	sdStart(&SD2, NULL);
 
-  /*
-   * Creates the blinker thread.
-   */
-  chThdCreateStatic(wa_blinker_thread, sizeof(wa_blinker_thread), NORMALPRIO, blinker_thread, NULL);
+	/*
+	 * Creates the blinker thread.
+	 */
+	chThdCreateStatic(wa_blinker_thread, sizeof(wa_blinker_thread), NORMALPRIO,
+			blinker_thread, NULL);
 
+	r2p::Thread::set_priority(r2p::Thread::HIGHEST);
+	r2p::Middleware::instance.initialize(wa_info, sizeof(wa_info),
+			r2p::Thread::IDLE);
 
-  r2p::Thread::set_priority(r2p::Thread::HIGHEST);
-  r2p::Middleware::instance.initialize(wa_info, sizeof(wa_info),
-                                       r2p::Thread::IDLE);
-  r2p::Middleware::instance.add(test_topic);
+	rtcantra.initialize(rtcan_config);
 
-  rtcantra.initialize(rtcan_config);
+	dbgtra.initialize(wa_rx_dbgtra, sizeof(wa_rx_dbgtra),
+			r2p::Thread::LOWEST + 11, wa_tx_dbgtra, sizeof(wa_tx_dbgtra),
+			r2p::Thread::LOWEST + 10);
 
-  dbgtra.initialize(wa_rx_dbgtra, sizeof(wa_rx_dbgtra), r2p::Thread::LOWEST + 11,
-                    wa_tx_dbgtra, sizeof(wa_tx_dbgtra), r2p::Thread::LOWEST + 10);
+	chThdCreateFromHeap(NULL, WA_SIZE_1K, NORMALPRIO + 0, Led2Pub, NULL);
+	chThdCreateFromHeap(NULL, WA_SIZE_1K, NORMALPRIO + 0, Led3Pub, NULL);
+	chThdCreateFromHeap(NULL, WA_SIZE_1K, NORMALPRIO + 0, Led23Pub, NULL);
 
-  chThdCreateFromHeap(NULL, WA_SIZE_1K, NORMALPRIO + 0, PubThd, NULL);
-  chThdCreateFromHeap(NULL, WA_SIZE_1K, NORMALPRIO + 1, SubThd, NULL);
+	chThdSleepMilliseconds(100);
 
-  r2p::Thread::set_priority(r2p::Thread::IDLE);
-  for (;;) {
+	chThdCreateFromHeap(NULL, WA_SIZE_1K, NORMALPRIO + 1, LedSub,
+			(void*) "led2");
+
+	r2p::Thread::set_priority(r2p::Thread::IDLE);
+	for (;;) {
 //    r2p::Thread::yield();
-    r2p::Thread::sleep(100);
-  }
-  return CH_SUCCESS;
+		r2p::Thread::sleep(100);
+	}
+	return CH_SUCCESS;
 }
 }

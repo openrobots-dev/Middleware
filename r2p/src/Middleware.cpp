@@ -345,66 +345,26 @@ void Middleware::do_mgmt_thread() {
 
 Thread::Return Middleware::boot_threadf(Thread::Argument) {
 
-  instance.do_boot_thread();
-  return Thread::OK;
-}
+  Flasher::Data *flash_page_bufp = new Flasher::Data[BOOT_PAGE_LENGTH];
+  R2P_ASSERT(flash_page_bufp != NULL);
 
+  BootMsg msgbuf[BOOT_BUFFER_LENGTH];
+  BootMsg *msgqueue_buf[BOOT_BUFFER_LENGTH];
+  Subscriber<BootMsg> sub(msgqueue_buf, BOOT_BUFFER_LENGTH);
+  Publisher<BootMsg> pub;
 
-void Middleware::do_boot_thread() {
-
-  BootloaderMsg msgbuf[BOOT_BUFFER_LENGTH];
-  BootloaderMsg *msgqueue_buf[BOOT_BUFFER_LENGTH];
-  Subscriber<BootloaderMsg> sub(msgqueue_buf, BOOT_BUFFER_LENGTH);
-  Publisher<BootloaderMsg> pub;
   Node node("R2P_BOOT");
-
-  Bootloader::instance.set_page_buffer(
-    new Flasher::Data[BOOT_PAGE_LENGTH]
-  );
-
-  bool success; (void)success;
-  success = node.advertise(pub, boot_topic.get_name(), Time::INFINITE);
+  { bool success; (void)success;
+  success = node.advertise(pub, instance.boot_topic.get_name());
   R2P_ASSERT(success);
-  success = node.subscribe(sub, boot_topic.get_name(), msgbuf);
-  R2P_ASSERT(success);
+  success = node.subscribe(sub, instance.boot_topic.get_name(), msgbuf);
+  R2P_ASSERT(success); }
 
-  for (;;) {
-    if (node.spin(Time::ms(1000))) { // TODO: Configuration
-      BootloaderMsg *requestp = NULL, *responsep = NULL;
-      Time deadline;
-      while (sub.fetch(requestp, deadline)) {
-        if (pub.alloc(responsep)) {
-          Message::clean(*responsep);
-          if (Bootloader::instance.process(*requestp, *responsep)) {
-            sub.release(*requestp);
-            while (!pub.publish_remotely(*responsep)) {
-              Thread::sleep(Time::ms(100)); // TODO: Configuration
-            }
-          } else {
-            sub.release(*requestp);
-            responsep->acquire();
-            sub.release(*responsep);
-          }
-        } else {
-          requestp->type = BootloaderMsg::NACK;
-          while (!pub.publish_remotely(*requestp)) {
-            Thread::sleep(Time::ms(100)); // TODO: Configuration
-          }
-        }
-        Thread::yield();
-      }
-    } else {
-      BootloaderMsg *heartbeatp = NULL;
-      if (pub.alloc(heartbeatp)) {
-        Message::clean(*heartbeatp);
-        heartbeatp->type = BootloaderMsg::HEARTBEAT;
-        if (!pub.publish_remotely(*heartbeatp)) {
-          heartbeatp->acquire();
-          sub.release(*heartbeatp);
-        }
-      }
-    }
-  }
+  Bootloader bootloader(flash_page_bufp, pub, sub);
+  bootloader.spin_loop();
+
+  R2P_ASSERT(false);
+  return Thread::OK;
 }
 
 
@@ -417,15 +377,15 @@ Middleware::Middleware(const char *module_namep, const char *bootloader_namep)
   mgmt_boot_priority(Thread::LOWEST),
   mgmt_topic("R2P", sizeof(MgmtMsg)),
   mgmt_boot_threadp(NULL),
-  boot_topic(bootloader_namep, sizeof(BootloaderMsg)),
+  boot_topic(bootloader_namep, sizeof(BootMsg)),
   topic_iter(topics.end()),
   stopped(false),
   num_running_nodes(0)
 {
-  R2P_ASSERT(is_identifier(module_namep));
+  R2P_ASSERT(is_identifier(module_namep, NamingTraits<Middleware>::MAX_LENGTH));
 
-  add(mgmt_topic);
-  add(boot_topic);
+  topics.link(mgmt_topic.by_middleware);
+  topics.link(boot_topic.by_middleware);
 }
 
 

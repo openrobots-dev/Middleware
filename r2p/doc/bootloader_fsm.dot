@@ -1,0 +1,188 @@
+digraph {
+rankdir=TB
+ratio=compress
+
+node [ shape=oval, style=filled, color="#000000", fillcolor="#EEEEEE" ]
+edge [ color="#808080" ]
+graph [ style="rounded, dashed", color="#CCCCCC" ]
+
+
+// Notes
+subgraph cluster_NOTES {
+    style=invisible
+    
+    node [ shape=note, color="#000000", fillcolor="#FFFFCC" ]
+    
+    note1 [ label="Message directions:\n>MESSAGE = master >>> slave\n<MESSAGE = master <<< slave" ]
+    note2 [label= "Ownership:\nred, box = master\nblue, oval = slave" ]
+}
+
+
+// Errors
+subgraph cluster_errors {
+    label="Error handling"
+    
+    node [ shape=doublecircle ]
+    IDLE_errors [ label="IDLE" ]
+    
+    node [ shape=Mdiamond, color="#FF0000" ]
+    any
+    
+    node [ shape=box, color="#800000" ]
+    ERROR_SLAVE
+    
+    node [ shape=oval, color="#000080" ]
+    ERROR_MASTER
+    
+    node [ shape=pentagon, color="#FF00FF", fillcolor="#FF00FF" ]
+
+    edge [ fontcolor="#800000", color="#CC6666" ]
+    any -> ERROR_MASTER [ label=">unmanaged" ]
+    ERROR_SLAVE -> ERROR_MASTER [ label=">NACK" ]
+
+    edge [ fontcolor="#000080", color="#6666CC" ]
+    any -> ERROR_SLAVE [ label="<unmanaged" ]
+    ERROR_MASTER -> IDLE_errors [ label="<NACK" ]
+    
+    edge [ style=invisible, dir=none ]
+    any -> IDLE_errors
+    note1 -> any
+    note2 -> any
+}
+
+    
+// Application loading
+subgraph cluster_loader {
+    label="App loader"
+    
+    node [ shape=doublecircle ]
+    IDLE_loader [ label="IDLE" ]
+    
+    node [ shape=box, color="#800000" ]
+    LOADER_BEGINNING
+    LOADER_LINKING
+    LOADER_IHEX_RECORD_RECEIVED
+    LOADER_IHEX_EOF_RECEIVED
+    LOADER_ENDING
+    
+    node [ shape=oval, color="#000080" ]
+    LOADER_READY
+    LOADER_RECEIVING_IHEX
+    
+    node [ shape=pentagon, color="#FF00FF", fillcolor="#FF00FF" ]
+    
+    edge [ fontcolor="#800000", color="#CC6666" ]
+    IDLE_loader -> LOADER_BEGINNING [ label=">BEGIN_LOADER" ]
+    LOADER_READY -> LOADER_LINKING [ label=">LINKING_PARAMS" ]
+    LOADER_RECEIVING_IHEX -> LOADER_IHEX_RECORD_RECEIVED [ label=">IHEX_RECORD(!EOF)" ]
+    LOADER_RECEIVING_IHEX -> LOADER_IHEX_EOF_RECEIVED [ label=">IHEX_RECORD(EOF)" ]
+    LOADER_READY -> LOADER_ENDING [ label=">END_LOADER" ]
+    
+    edge [ fontcolor="#000080", color="#6666CC" ]
+    LOADER_BEGINNING -> LOADER_READY [ label="<ACK" ]
+    LOADER_LINKING -> LOADER_RECEIVING_IHEX [ label="<LINKING_OUTCOME" ]
+    LOADER_IHEX_RECORD_RECEIVED -> LOADER_RECEIVING_IHEX [ label="<ACK" ]
+    LOADER_IHEX_EOF_RECEIVED -> LOADER_READY [ label="<ACK" ]
+    LOADER_ENDING -> IDLE_loader [ label="<ACK" ]
+}
+
+
+// Application info
+subgraph cluster_appinfo {
+    label="App info"
+    
+    node [ shape=doublecircle ]
+    IDLE_appinfo [ label="IDLE" ]
+
+    node [ shape=box, color="#800000" ]
+    APPINFO_BEGINNING
+    APPINFO_ITERATING_APPS
+    APPINFO_SENDING_LINKING_PARAMS_WAIT
+    APPINFO_ENDING_WAIT_ACK
+    
+    node [ shape=oval, color="#000080" ]
+    APPINFO_SUMMARIZING
+    APPINFO_SENDING_LINKING_PARAMS
+    APPINFO_SENDING_LINKING_OUTCOME
+    APPINFO_ENDING
+    
+    node [ shape=pentagon, color="#FF00FF", fillcolor="#FF00FF" ]
+    
+    edge [ fontcolor="#800000", color="#CC6666" ]
+    IDLE_appinfo -> APPINFO_BEGINNING [ label=">BEGIN_APPINFO" ]
+    APPINFO_SUMMARIZING -> APPINFO_ITERATING_APPS [ label=">ACK" ]
+    APPINFO_SENDING_LINKING_PARAMS -> APPINFO_SENDING_LINKING_PARAMS_WAIT [ label=">ACK" ]
+    APPINFO_SENDING_LINKING_OUTCOME -> APPINFO_ITERATING_APPS [ label=">ACK" ]
+    APPINFO_ENDING -> APPINFO_ENDING_WAIT_ACK [ label=">ACK" ]
+    
+    edge [ fontcolor="#000080", color="#6666CC" ]
+    APPINFO_BEGINNING -> APPINFO_SUMMARIZING [ label="<APPINFO_SUMMARY" ]
+    APPINFO_ITERATING_APPS -> APPINFO_SENDING_LINKING_PARAMS [ label="<LINKING_PARAMS" ]
+    APPINFO_SENDING_LINKING_PARAMS_WAIT -> APPINFO_SENDING_LINKING_OUTCOME [ label="<LINKING_OUTCOME" ]
+    APPINFO_ITERATING_APPS -> APPINFO_ENDING [ label="<END_APPINFO" ]
+    APPINFO_ENDING_WAIT_ACK -> IDLE_appinfo [ label="<ACK" ]
+}
+
+// Parameter set
+subgraph cluster_setparam {
+    label="Set parameter"
+
+    node [ shape=doublecircle ]
+    IDLE_setparam [ label="IDLE" ]
+    
+    node [ shape=box, color="#800000" ]
+    SETPARAM_BEGINNING
+    SETPARAM_ADDRESSING
+    SETPARAM_WRITING
+    SETPARAM_ENDING
+    
+    node [ shape=oval, color="#000080" ]
+    SETPARAM_READY
+    SETPARAM_RECEIVING_CHUNK
+    
+    node [ shape=pentagon, color="#FF00FF", fillcolor="#FF00FF" ]
+    
+    edge [ fontcolor="#800000", color="#CC6666" ]
+    IDLE_setparam -> SETPARAM_BEGINNING [ label=">BEGIN_SETPARAM" ]
+    SETPARAM_READY -> SETPARAM_ADDRESSING [ label=">PARAM_REQUEST" ]
+    SETPARAM_RECEIVING_CHUNK -> SETPARAM_WRITING [ label=">PARAM_CHUNK" ]
+    SETPARAM_READY -> SETPARAM_ENDING [ label=">END_SETPARAM" ]
+    
+    edge [ fontcolor="#000080", color="#6666CC" ]
+    SETPARAM_BEGINNING -> SETPARAM_READY [ label="<ACK" ]
+    SETPARAM_ADDRESSING -> SETPARAM_RECEIVING_CHUNK [ label="<ACK" ]
+    SETPARAM_WRITING -> SETPARAM_READY [ label="<ACK" ]
+    SETPARAM_ENDING -> IDLE_setparam [ label="<ACK" ]
+}
+
+
+// Parameter get
+subgraph cluster_getparam {
+    label="Get parameter"
+    
+    node [ shape=doublecircle ]
+    IDLE_getparam [ label="IDLE" ]
+
+    node [ shape=box, color="#800000" ]
+    GETPARAM_BEGINNING
+    GETPARAM_READING
+    GETPARAM_ENDING
+    
+    node [ shape=oval, color="#000080" ]
+    GETPARAM_READY
+    
+    node [ shape=pentagon, color="#FF00FF", fillcolor="#FF00FF" ]
+    
+    edge [ fontcolor="#800000", color="#CC6666" ]
+    IDLE_getparam -> GETPARAM_BEGINNING [ label=">BEGIN_GETPARAM" ]
+    GETPARAM_READY -> GETPARAM_READING [ label="<PARAM_REQUEST" ]
+    GETPARAM_READY -> GETPARAM_ENDING [ label=">END_GETPARAM" ]
+    
+    edge [ fontcolor="#000080", color="#6666CC" ]
+    GETPARAM_BEGINNING -> GETPARAM_READY [ label="<ACK" ]
+    GETPARAM_READING -> GETPARAM_READY [ label="<PARAM_CHUNK" ]
+    GETPARAM_ENDING -> IDLE_getparam [ label="<ACK" ]
+}
+
+
+}

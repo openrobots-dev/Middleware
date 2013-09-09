@@ -43,14 +43,14 @@ void Flasher_::set_page_buffer(Data page_buf[]) {
 
 bool Flasher_::is_erased(PageID page) {
 
-  const uint32_t *const startp =
-    reinterpret_cast<const uint32_t *>(address_of(page));
-  const uint32_t *const stopp =
-    reinterpret_cast<const uint32_t *>(address_of(page + 1));
+  const Data *const startp =
+    reinterpret_cast<const Data *>(address_of(page));
+  const Data *const stopp =
+    reinterpret_cast<const Data *>(address_of(page + 1));
 
   // Cycle through the whole page and check for default set bits
-  for (const uint32_t *datap = startp; datap < stopp; ++datap) {
-    if (*datap != ~0u) return false;
+  for (const Data *datap = startp; datap < stopp; ++datap) {
+    if (*datap != static_cast<Data>(~0u)) return false;
   }
   return true;
 }
@@ -64,7 +64,7 @@ bool Flasher_::erase(PageID page) {
 
   // Start deletion of page.
   FLASH->CR |= FLASH_CR_PER;
-  FLASH->AR = address_of(page);
+  FLASH->AR = reinterpret_cast<uint32_t>(address_of(page));
   FLASH->CR |= FLASH_CR_STRT;
   flash_busy_wait();
 
@@ -76,22 +76,20 @@ bool Flasher_::erase(PageID page) {
 }
 
 
-int Flasher_::compare(PageID page, const Data *bufp) {
+int Flasher_::compare(PageID page, volatile const Data *bufp) {
 
-  const uint32_t *const flashp =
-    reinterpret_cast<const uint32_t *>(address_of(page));
-  const uint32_t *const fastbufp =
-    reinterpret_cast<const uint32_t *>(bufp);
+  volatile const Data *const flashp =
+    reinterpret_cast<volatile const Data *>(address_of(page));
 
   bool identical = true;
 
-  for (size_t pos = 0; pos < PAGE_SIZE / sizeof(uint32_t); ++pos) {
-    if (flashp[pos] != fastbufp[pos]) {
+  for (size_t pos = 0; pos < PAGE_SIZE / sizeof(Data); ++pos) {
+    if (flashp[pos] != bufp[pos]) {
       // Keep track if the buffer is identical to page -> mark not identical
       identical = false;
 
       // Not identical, and not erased, needs erase
-      if (flashp[pos] != ~0u) return -1;
+      if (flashp[pos] != static_cast<Data>(~0u)) return -1;
     }
   }
 
@@ -112,12 +110,20 @@ bool Flasher_::read(PageID page, Data *bufp) {
 }
 
 
-bool Flasher_::write(PageID page, const Data *bufp) {
+bool Flasher_::write(PageID page, volatile const Data *bufp) {
 
-  volatile Data *const flashp = reinterpret_cast<Data *>(address_of(page));
+  volatile Data *const flashp = reinterpret_cast<volatile Data *>(
+    reinterpret_cast<uintptr_t>(address_of(page))
+  );
 
-  /* Unlock flash for write access */
-  if (!flash_unlock()) return false;
+  chSysDisable();
+
+  // Unlock flash for write access
+  if (!flash_unlock()) {
+    chSysEnable();
+    flash_lock();
+    return false;
+  }
   flash_busy_wait();
 
   for (size_t pos = 0; pos < PAGE_SIZE / sizeof(Data); ++pos) {
@@ -132,16 +138,21 @@ bool Flasher_::write(PageID page, const Data *bufp) {
     FLASH->CR &= ~FLASH_CR_PG;
 
     // Check for flash error
-    if (flashp[pos] != bufp[pos]) return false;
+    if (flashp[pos] != bufp[pos]) {
+      chSysEnable();
+      flash_lock();
+      return false;
+    }
   }
 
   flash_lock();
+  chSysEnable();
   return true;
 
 }
 
 
-bool Flasher_::write_if_needed(PageID page, const Data *bufp) {
+bool Flasher_::write_if_needed(PageID page, volatile const Data *bufp) {
 
   // TODO: Only write on pages in the user area
 
@@ -182,7 +193,8 @@ bool Flasher_::flash(Address address, const Data *bufp, size_t buflen) {
   while (buflen > 0) {
     PageID old_page = page;
     page = page_of(address);
-    Address offset = address - address_of(page);
+    ptrdiff_t offset = reinterpret_cast<ptrdiff_t>(address) -
+                       reinterpret_cast<ptrdiff_t>(address_of(page));
     size_t length = (PAGE_SIZE - offset);
 
     // Read back new page if page has changed
@@ -226,7 +238,9 @@ void Flasher_::jump_to(Address address) {
   typedef void (*Proc)(void);
 
   // Load jump address into function pointer
-  Proc proc = reinterpret_cast<Proc>(reinterpret_cast<uint32_t *>(address)[1]);
+  Proc proc = reinterpret_cast<Proc>(
+    reinterpret_cast<const uint32_t *>(address)[1]
+  );
 
   // Reset all interrupts to default
   chSysDisable();
@@ -240,7 +254,7 @@ void Flasher_::jump_to(Address address) {
   }
 
   // Set stack pointer as in application's vector table
-  __set_MSP((reinterpret_cast<uint32_t *>(address))[0]);
+  __set_MSP((reinterpret_cast<const uint32_t *>(address))[0]);
   proc();
 }
 

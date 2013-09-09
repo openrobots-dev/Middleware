@@ -21,7 +21,7 @@ public:
 
 public:
   Mutex();
-  Mutex(bool initialize);
+  explicit Mutex(bool initialize);
 };
 
 

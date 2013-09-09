@@ -46,13 +46,17 @@ public:
   static PageID page_of(Address address);
   static Address align_prev(Address address);
   static Address align_next(Address address);
+  static Length align_prev(Length length);
+  static Length align_next(Length length);
 
   static Address get_program_start();
   static Address get_program_end();
   static Address get_ram_start();
   static Address get_ram_end();
-  static Address get_layout_start();
-  static Address get_layout_end();
+  static Address get_layout_start(); // TODO: remove
+  static Address get_layout_end(); // TODO: remove
+  static bool is_program(Address address);
+  static bool is_ram(Address address);
 
   static void jump_to(Address address);
 };
@@ -164,6 +168,24 @@ Flasher::Address Flasher::align_next(Address address) {
 
 
 inline
+Flasher::Length Flasher::align_prev(Length length) {
+
+  return reinterpret_cast<Length>(
+    Flasher_::align_prev(reinterpret_cast<Address>(length))
+  );
+}
+
+
+inline
+Flasher::Length Flasher::align_next(Length length) {
+
+  return reinterpret_cast<Length>(
+    Flasher_::align_next(reinterpret_cast<Address>(length))
+  );
+}
+
+
+inline
 Flasher::Address Flasher::get_program_start() {
 
   return Flasher_::get_program_start();
@@ -202,6 +224,20 @@ inline
 Flasher::Address Flasher::get_layout_end() {
 
   return Flasher_::get_layout_end();
+}
+
+
+inline
+bool Flasher::is_program(Address address) {
+
+  return address >= get_program_start() && address < get_program_end();
+}
+
+
+inline
+bool Flasher::is_ram(Address address) {
+
+  return address >= get_ram_start() && address < get_ram_end();
 }
 
 

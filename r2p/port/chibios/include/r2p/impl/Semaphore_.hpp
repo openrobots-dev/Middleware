@@ -31,7 +31,7 @@ public:
 
 public:
   Semaphore_(Count value = 0);
-  Semaphore_(bool initialize, Count value = 0);
+  explicit Semaphore_(bool initialize, Count value = 0);
 };
 
 

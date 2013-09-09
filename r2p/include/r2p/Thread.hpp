@@ -81,8 +81,7 @@ Thread *Thread::create_static(void *stackp, size_t stacklen,
                               const char *namep) {
 
   return reinterpret_cast<Thread *>(
-    Thread_::create_static(stackp, stacklen, priority, threadf, argp,
-                               namep)
+    Thread_::create_static(stackp, stacklen, priority, threadf, argp, namep)
   );
 }
 

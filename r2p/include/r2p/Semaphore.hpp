@@ -28,7 +28,7 @@ public:
 
 public:
   Semaphore(Count value = 0);
-  Semaphore(bool initialize, Count value = 0);
+  explicit Semaphore(bool initialize, Count value = 0);
 };
 
 
