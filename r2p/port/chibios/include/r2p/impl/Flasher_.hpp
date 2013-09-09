@@ -52,6 +52,7 @@ public:
   Flasher_(Data page_buf[]);
 
 public:
+  static bool is_valid(Address address);
   static bool is_erased(PageID page);
   static bool erase(PageID page);
   static int compare(PageID page, volatile const Data *bufp);
@@ -73,6 +74,13 @@ public:
 
   static void jump_to(Address address);
 };
+
+
+inline
+bool Flasher_::is_valid(Address address) {
+
+  return address >= get_program_start() && address < get_program_end();
+}
 
 
 inline
@@ -112,7 +120,10 @@ Flasher_::Address Flasher_::align_next(Address address) {
 inline
 Flasher_::Address Flasher_::get_program_start() {
 
-  return reinterpret_cast<Address>(__program_start__);
+  // Align to the next page, to avoid overwriting of the static firmware
+  return reinterpret_cast<Address>((reinterpret_cast<uintptr_t>(
+    __program_start__) + (PAGE_SIZE - 1)) & ~(PAGE_SIZE - 1)
+  );
 }
 
 

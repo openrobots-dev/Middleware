@@ -120,8 +120,8 @@ bool Flasher_::write(PageID page, volatile const Data *bufp) {
 
   // Unlock flash for write access
   if (!flash_unlock()) {
-    chSysEnable();
     flash_lock();
+    chSysEnable();
     return false;
   }
   flash_busy_wait();
@@ -139,8 +139,8 @@ bool Flasher_::write(PageID page, volatile const Data *bufp) {
 
     // Check for flash error
     if (flashp[pos] != bufp[pos]) {
-      chSysEnable();
       flash_lock();
+      chSysEnable();
       return false;
     }
   }

@@ -35,6 +35,7 @@ public:
   Flasher(Data page_buf[]);
 
 public:
+  static bool is_valid(Address address);
   static bool is_erased(PageID page);
   static bool erase(PageID page);
   static int compare(PageID page, const Data *bufp);
@@ -60,6 +61,13 @@ public:
 
   static void jump_to(Address address);
 };
+
+
+inline
+bool Flasher::is_valid(Address address) {
+
+  return Flasher_::is_valid(address);
+}
 
 
 inline

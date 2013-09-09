@@ -159,6 +159,7 @@ int main(void) {
   //r2p::Thread::create_static(wa2, sizeof(wa2), r2p::Thread::NORMAL + 1, Thread2, NULL, "Thread2");
   //r2p::Thread::create_static(wa1, sizeof(wa1), r2p::Thread::NORMAL + 0, Thread1, NULL, "Thread1");
 
+  r2p::Thread::set_priority(r2p::Thread::NORMAL);
   for (;;) {
     palTogglePad(LED_GPIO, LED1);
     r2p::Thread::sleep(r2p::Time::ms(500));

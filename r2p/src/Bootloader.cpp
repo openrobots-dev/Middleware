@@ -4,13 +4,39 @@
 #include <r2p/Publisher.hpp>
 #include <r2p/Subscriber.hpp>
 
-extern const uint8_t __program_start__[];
-
 namespace r2p {
 
 
-const Bootloader::FlashSummary Bootloader::app_summary
-R2P_FLASH_ALIGNED = { __program_start__, NULL };
+const uint32_t Bootloader::an_invalid_signature R2P_FLASH_ALIGNED =
+  static_cast<uint32_t>(~SIGNATURE);
+
+
+bool Bootloader::remove_last() {
+
+  Iterator i = begin();
+  if (!i->is_valid()) return false;
+  for (; i->is_valid() && i->get_next()->is_valid(); ++i) {}
+
+  unreserve_ram(i->bsslen);
+  unreserve_ram(i->datalen);
+
+  begin_write();
+  write(&*i, &an_invalid_signature, sizeof(an_invalid_signature));
+  end_write();
+  return true;
+}
+
+
+bool Bootloader::remove_all() {
+
+  const FlashAppInfo *headp = &*begin();
+  if (!headp->is_valid()) return false;
+
+  begin_write();
+  write(headp, &an_invalid_signature, sizeof(an_invalid_signature));
+  end_write();
+  return true;
+}
 
 
 void Bootloader::spin_loop() {
@@ -129,9 +155,6 @@ void Bootloader::do_loader() {
     slave_msgp->linking_addresses = addresses;
     publish();
 
-    const FlashAppInfo *flashinfop =
-      reinterpret_cast<const FlashAppInfo *>(addresses.infoadr);
-
     // Receive the linking outcome
     if (!fetch(BootMsg::LINKING_OUTCOME)) {
       do_release_error();
@@ -162,44 +185,14 @@ void Bootloader::do_loader() {
     do_ack();
 
     // Flash the new application information
-    if (!write_appinfo(flashinfop, setup, addresses, outcome)) {
+    if (!write_appinfo(
+          reinterpret_cast<const FlashAppInfo *>(addresses.infoadr),
+          setup, addresses, outcome)) {
       do_error();
       return;
     }
 
-    // Update the flash layout
-    if (app_summary.headp != NULL) {
-      // Update the last application information in the list
-      const FlashAppInfo *lastp = get_last_app();
-      if (!write(&lastp->nextp, flashinfop, sizeof(flashinfop))) {
-        do_error();
-        return;
-      }
-
-      FlashSummary summary;
-      summary.headp = app_summary.headp;
-      summary.freep = addresses.freeadr;
-      write_summary(summary);
-    } else {
-      // First app to be loaded
-      if (!write(&app_summary.headp, flashinfop,
-                 sizeof(const FlashAppInfo *))) {
-        do_error();
-        return;
-      }
-
-      FlashSummary summary;
-      summary.headp = flashinfop;
-      summary.freep = addresses.freeadr;
-      if (!write(const_cast<const FlashSummary *>(&app_summary),
-                 &summary, sizeof(FlashSummary))) {
-        do_error();
-        return;
-      }
-    }
     do_ack();
-
-    end_write();//XXX
   }
 }
 
@@ -209,8 +202,8 @@ void Bootloader::do_appinfo() {
   alloc(BootMsg::APPINFO_SUMMARY);
   {
     BootMsg::AppInfoSummary &summary = slave_msgp->appinfo_summary;
-    summary.freeadr = app_summary.freep;
-    summary.headadr = reinterpret_cast<BootMsg::Address>(app_summary.headp);
+    summary.numapps = get_num_apps();
+    summary.freeadr = get_free_address();
   }
   publish();
 
@@ -219,16 +212,15 @@ void Bootloader::do_appinfo() {
     return;
   }
 
-  for (const FlashAppInfo *infop = app_summary.headp;
-       infop != NULL; infop = infop->nextp) {
+  for (Iterator i = begin(); i->is_valid(); ++i) {
     alloc(BootMsg::LINKING_SETUP);
     {
       BootMsg::LinkingSetup &setup = slave_msgp->linking_setup;
-      setup.pgmlen = infop->pgmlen;
-      setup.bsslen = infop->bsslen;
-      setup.datalen = infop->datalen;
-      setup.stacklen = infop->stacklen;
-      strncpy(setup.name, infop->name, NamingTraits<Node>::MAX_LENGTH);
+      setup.pgmlen = i->pgmlen;
+      setup.bsslen = i->bsslen;
+      setup.datalen = i->datalen;
+      setup.stacklen = i->stacklen;
+      strncpy(setup.name, i->name, NamingTraits<Node>::MAX_LENGTH);
     }
     publish();
 
@@ -240,12 +232,12 @@ void Bootloader::do_appinfo() {
     alloc(BootMsg::LINKING_ADDRESSES);
     {
       BootMsg::LinkingAddresses &addresses = slave_msgp->linking_addresses;
-      addresses.infoadr = reinterpret_cast<const uint8_t *>(infop);
-      addresses.pgmadr = infop->pgmp;
-      addresses.bssadr = infop->bssp;
-      addresses.dataadr = infop->datap;
-      addresses.datapgmadr = infop->datapgmp;
-      addresses.freeadr = infop->datapgmp + Flasher::align_next(infop->datalen);
+      addresses.infoadr = reinterpret_cast<const uint8_t *>(&*i);
+      addresses.pgmadr = i->get_program();
+      addresses.bssadr = i->bssp;
+      addresses.dataadr = i->datap;
+      addresses.datapgmadr = i->get_data_program();
+      addresses.freeadr = get_free_address();
     }
     publish();
 
@@ -257,9 +249,9 @@ void Bootloader::do_appinfo() {
     alloc(BootMsg::LINKING_OUTCOME);
     {
       BootMsg::LinkingOutcome &outcome = slave_msgp->linking_outcome;
-      outcome.threadadr = reinterpret_cast<BootMsg::Address>(infop->threadf);
-      outcome.cfgadr = infop->cfgp;
-      outcome.appinfoadr = reinterpret_cast<BootMsg::Address>(infop);
+      outcome.threadadr = reinterpret_cast<BootMsg::Address>(i->threadf);
+      outcome.cfgadr = i->cfgp;
+      outcome.appinfoadr = reinterpret_cast<BootMsg::Address>(&*i);
     }
     publish();
 
@@ -303,7 +295,9 @@ void Bootloader::do_getparam() {
 
     // Receive the parameter identifier
     BootMsg::ParamRequest &request = master_msgp->param_request;
-    const uint8_t *sourcep = get_app_cfg(request.appname);
+    const FlashAppInfo *infop = get_app(request.appname);
+    R2P_ASSERT(infop != NULL);
+    const uint8_t *sourcep = infop->cfgp;
     if (!Flasher::is_program(sourcep)) {
       do_release_error();
       return;
@@ -356,7 +350,9 @@ void Bootloader::do_setparam() {
 
     // Receive the parameter identifier
     BootMsg::ParamRequest &request = master_msgp->param_request;
-    const uint8_t *sourcep = get_app_cfg(request.appname);
+    const FlashAppInfo *infop = get_app(request.appname);
+    R2P_ASSERT(infop != NULL);
+    const uint8_t *sourcep = infop->cfgp;
     if (!Flasher::is_program(sourcep)) {
       do_release_error();
       return;
@@ -411,6 +407,37 @@ void Bootloader::do_release_error() {
   release();
   alloc(BootMsg::NACK);
   publish();
+}
+
+
+bool Bootloader::write_appinfo(const FlashAppInfo *flashinfop,
+                               const BootMsg::LinkingSetup &setup,
+                               const BootMsg::LinkingAddresses &addresses,
+                               const BootMsg::LinkingOutcome &outcome) {
+
+#define WRITE_(dstfield, srcvalue) \
+  if (!write(reinterpret_cast<const void *>(&flashinfop->dstfield), \
+             reinterpret_cast<const void *>(&srcvalue), \
+             sizeof(flashinfop->dstfield))) return false;
+
+  uint32_t signature = SIGNATURE;
+  WRITE_(signature, signature);
+  WRITE_(pgmlen, setup.pgmlen);
+  WRITE_(bsslen, setup.bsslen);
+  WRITE_(datalen, setup.datalen);
+  WRITE_(bssp, addresses.bssadr);
+  WRITE_(datap, addresses.dataadr);
+  WRITE_(cfgp, outcome.cfgadr);
+  WRITE_(stacklen, setup.stacklen);
+  WRITE_(threadf, outcome.threadadr);
+
+  if (!write(flashinfop->name, setup.name, NamingTraits<Node>::MAX_LENGTH)) {
+    return false;
+  }
+
+  return true;
+
+#undef WRITE_
 }
 
 
@@ -477,6 +504,58 @@ bool Bootloader::process_ihex(const IhexRecord &record,
 }
 
 
+Bootloader::Bootloader(Flasher::Data *flash_page_bufp,
+                       Publisher<BootMsg> &pub,
+                       Subscriber<BootMsg> &sub)
+:
+  basep(NULL),
+  flasher(flash_page_bufp),
+  pubp(&pub),
+  subp(&sub),
+  master_msgp(NULL),
+  slave_msgp(NULL)
+{
+  R2P_ASSERT(flash_page_bufp != NULL);
+}
+
+
+const Bootloader::Iterator Bootloader::end() {
+
+  Iterator i = begin();
+  while (i->is_valid()) {
+    ++i;
+  }
+  return i;
+}
+
+
+size_t Bootloader::get_num_apps() {
+
+  size_t total = 0;
+  for (Iterator i = begin(); i->is_valid(); ++i) {
+    ++total;
+  }
+  return total;
+}
+
+
+const uint8_t *Bootloader::get_free_address() {
+
+  return reinterpret_cast<const uint8_t *>(&*end());
+}
+
+
+const Bootloader::FlashAppInfo *Bootloader::get_app(const char *appname) {
+
+  for (Iterator i = begin(); i->is_valid(); ++i) {
+    if (i->has_name(appname)) {
+      return &*i;
+    }
+  }
+  return NULL;
+}
+
+
 bool Bootloader::compute_addresses(const BootMsg::LinkingSetup &setup,
                                    BootMsg::LinkingAddresses &addresses) {
 
@@ -487,11 +566,13 @@ bool Bootloader::compute_addresses(const BootMsg::LinkingSetup &setup,
 
   // Allocate the program memory parts:
   // (previous/OS) | app_info | .text | .data[const] | (free)
-  addresses.infoadr = Flasher::align_next(app_summary.freep);
-  addresses.pgmadr = Flasher::align_next(addresses.infoadr + sizeof(FlashAppInfo));
-  addresses.datapgmadr = addresses.pgmadr + Flasher::align_next(setup.pgmlen);
-  addresses.freeadr = addresses.datapgmadr + Flasher::align_next(setup.datalen);
-  if (addresses.freeadr > Flasher::align_prev(Flasher::get_program_end())) {
+  const FlashAppInfo *newp = &*end();
+  addresses.infoadr = reinterpret_cast<const uint8_t *>(newp);
+  addresses.pgmadr = newp->get_program();
+  addresses.datapgmadr = newp->get_data_program();
+  addresses.freeadr = reinterpret_cast<const uint8_t *>(newp->get_next());
+  if (addresses.infoadr >= Flasher::align_prev(Flasher::get_program_end()) ||
+      addresses.freeadr >  Flasher::align_prev(Flasher::get_program_end())) {
     return false;
   }
 
@@ -515,114 +596,6 @@ bool Bootloader::compute_addresses(const BootMsg::LinkingSetup &setup,
     memset(datap, 0xCC, setup.datalen);
   }
   return true;
-}
-
-
-const uint8_t *Bootloader::get_app_cfg(const char *appname) const {
-
-  const FlashAppInfo *infop = app_summary.headp;
-  while (infop != NULL && !infop->has_name(appname)) {
-    infop = infop->nextp;
-  }
-  return (infop != NULL) ? infop->cfgp : NULL;
-}
-
-
-bool Bootloader::write_appinfo(const FlashAppInfo *flashinfop,
-                               const BootMsg::LinkingSetup &setup,
-                               const BootMsg::LinkingAddresses &addresses,
-                               const BootMsg::LinkingOutcome &outcome) {
-
-#define WRITE_(dstfield, srcvalue) \
-  if (!write(reinterpret_cast<const void *>(&flashinfop->dstfield), \
-             reinterpret_cast<const void *>(&srcvalue), \
-             sizeof(flashinfop->dstfield))) return false;
-
-  const FlashAppInfo *nextp = NULL;
-  WRITE_(nextp, nextp);
-  WRITE_(pgmlen, setup.pgmlen);
-  WRITE_(bsslen, setup.bsslen);
-  WRITE_(datalen, setup.datalen);
-  WRITE_(pgmp, addresses.pgmadr);
-  WRITE_(bssp, addresses.bssadr);
-  WRITE_(datap, addresses.dataadr);
-  WRITE_(datapgmp, addresses.datapgmadr);
-  WRITE_(cfgp, outcome.cfgadr);
-  WRITE_(stacklen, setup.stacklen);
-  WRITE_(threadf, outcome.threadadr);
-  WRITE_(name, setup.name)
-  return true;
-
-#undef WRITE_
-}
-
-
-bool Bootloader::remove_last() {
-
-  const FlashAppInfo *lastp = app_summary.headp, *prevp = NULL;
-  if (lastp == NULL) return false;
-
-  while (lastp->nextp != NULL) {
-    prevp = lastp;
-    lastp = lastp->nextp;
-  }
-
-  if (prevp != NULL) {
-    unreserve_ram(lastp->bsslen);
-    unreserve_ram(lastp->datalen);
-
-    begin_write();
-
-    FlashSummary summary;
-    summary.freep = reinterpret_cast<Flasher::Address>(lastp);
-    summary.headp = prevp;
-    write_summary(summary);
-
-    lastp = NULL;
-    bool success; (void)success;
-    success = write(&prevp->nextp, &lastp, sizeof(lastp));
-    R2P_ASSERT(success);
-
-    end_write();
-  } else {
-
-  }
-
-  return true;
-}
-
-
-bool Bootloader::remove_all() {
-
-  FlashSummary summary;
-  summary.headp = NULL;
-  summary.freep = Flasher::align_next(Flasher::get_program_start());
-  return write_summary(summary);
-}
-
-
-Bootloader::Bootloader(Flasher::Data *flash_page_bufp,
-                       Publisher<BootMsg> &pub,
-                       Subscriber<BootMsg> &sub)
-:
-  basep(NULL),
-  flasher(flash_page_bufp),
-  pubp(&pub),
-  subp(&sub),
-  master_msgp(NULL),
-  slave_msgp(NULL)
-{
-  R2P_ASSERT(flash_page_bufp != NULL);
-}
-
-
-const Bootloader::FlashAppInfo *Bootloader::get_last_app() {
-
-  const FlashAppInfo *infop = app_summary.headp;
-  while (infop->nextp != NULL) {
-    infop = infop->nextp;
-  }
-  return infop;
 }
 
 

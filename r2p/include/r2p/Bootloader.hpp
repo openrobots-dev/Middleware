@@ -13,47 +13,58 @@ template<typename MessageType> class Subscriber;
 
 
 class Bootloader : private Uncopyable {
+private:
+  enum { SIGNATURE = 0x1D2C5A69 };
+
 public:
 
+  class Iterator;
+
   struct FlashAppInfo {
-    const FlashAppInfo  *nextp      R2P_FLASH_ALIGNED;
+    uint32_t            signature   R2P_FLASH_ALIGNED;
     size_t              pgmlen      R2P_FLASH_ALIGNED;
     size_t              bsslen      R2P_FLASH_ALIGNED;
     size_t              datalen     R2P_FLASH_ALIGNED;
-    const uint8_t       *pgmp       R2P_FLASH_ALIGNED;
     const uint8_t       *bssp       R2P_FLASH_ALIGNED;
     const uint8_t       *datap      R2P_FLASH_ALIGNED;
-    const uint8_t       *datapgmp   R2P_FLASH_ALIGNED;
     const uint8_t       *cfgp       R2P_FLASH_ALIGNED;
     size_t              stacklen    R2P_FLASH_ALIGNED;
     Thread::Function    threadf     R2P_FLASH_ALIGNED;
-    char                name[NamingTraits<Node>::MAX_LENGTH]
+    const char          name[NamingTraits<Node>::MAX_LENGTH]
                         R2P_FLASH_ALIGNED;
+
+    const uint8_t *get_program() const {
+      return reinterpret_cast<const uint8_t *>(this) +
+             Flasher::align_next(sizeof(FlashAppInfo));
+    }
+
+    const uint8_t *get_data_program() const {
+      return reinterpret_cast<const uint8_t *>(this) +
+             Flasher::align_next(sizeof(FlashAppInfo)) +
+             Flasher::align_next(pgmlen);
+    }
+
+    bool is_valid() const {
+      return signature == SIGNATURE &&
+             reinterpret_cast<Flasher::Address>(this) >=
+             Flasher::get_program_start() &&
+             reinterpret_cast<Flasher::Address>(this) <=
+             (Flasher::get_program_end() - sizeof(FlashAppInfo));
+    }
 
     bool has_name(const char *namep) const {
       return 0 == strncmp(name, namep, NamingTraits<Node>::MAX_LENGTH);
     }
-  } R2P_FLASH_ALIGNED;
 
-  struct FlashSummary {
-    const uint8_t       *freep      R2P_FLASH_ALIGNED;
-    const FlashAppInfo  *headp      R2P_FLASH_ALIGNED;
+    const FlashAppInfo *get_next() const {
+      return reinterpret_cast<const FlashAppInfo *>(
+        reinterpret_cast<const uint8_t *>(this) +
+        Flasher::align_next(sizeof(FlashAppInfo)) +
+        Flasher::align_next(pgmlen) +
+        Flasher::align_next(datalen)
+      );
+    }
   } R2P_FLASH_ALIGNED;
-
-  struct FullAppInfo {
-    const FlashAppInfo  *nextp;
-    size_t              pgmlen;
-    size_t              bsslen;
-    size_t              datalen;
-    const uint8_t       *pgmp;
-    const uint8_t       *bssp;
-    const uint8_t       *datap;
-    const uint8_t       *datapgmp;
-    const uint8_t       *cfgp;
-    size_t              stacklen;
-    Thread::Function    threadf;
-    char                name[NamingTraits<Node>::MAX_LENGTH];
-  };
 
 private:
   const uint8_t *basep;
@@ -64,7 +75,13 @@ private:
   BootMsg *master_msgp;
   BootMsg *slave_msgp;
 
+private:
+  static const uint32_t an_invalid_signature;
+
 public:
+  bool remove_last();
+  bool remove_all();
+
   void spin_loop();
 
 private:
@@ -83,38 +100,83 @@ private:
   void do_error();
   void do_release_error();
 
-  bool process_ihex(const IhexRecord &record,
-                    const BootMsg::LinkingSetup &setup,
-                    const BootMsg::LinkingAddresses &addresses);
-  bool compute_addresses(const BootMsg::LinkingSetup &setup,
-                         BootMsg::LinkingAddresses &addresses);
-
-  const uint8_t *get_app_cfg(const char *appname) const;
-  uint8_t *reserve_ram(size_t length);
-  uint8_t *unreserve_ram(size_t length);
   void begin_write();
   void end_write();
   bool write(const void *dstp, const void *srcp, size_t length);
-  bool write_summary(const FlashSummary &summary);
   bool write_appinfo(const FlashAppInfo *flashinfop,
                      const BootMsg::LinkingSetup &setup,
                      const BootMsg::LinkingAddresses &addresses,
                      const BootMsg::LinkingOutcome &outcome);
-  bool remove_last();
-  bool remove_all();
-  bool spawn(const char *appname);
-  bool spawn_all();
+  bool process_ihex(const IhexRecord &record,
+                    const BootMsg::LinkingSetup &setup,
+                    const BootMsg::LinkingAddresses &addresses);
 
 public:
   Bootloader(Flasher::Data *flash_page_bufp,
-             Publisher<BootMsg> &pub,
-             Subscriber<BootMsg> &sub);
+             Publisher<BootMsg> &pub, Subscriber<BootMsg> &sub);
+
+private:
+  static const Iterator begin();
+  static const Iterator end();
+  static size_t get_num_apps();
+  static const uint8_t *get_free_address();
+  static const FlashAppInfo *get_app(const char *appname);
+  static bool compute_addresses(const BootMsg::LinkingSetup &setup,
+                                BootMsg::LinkingAddresses &addresses);
+  static uint8_t *reserve_ram(size_t length);
+  static uint8_t *unreserve_ram(size_t length);
+  static bool launch(const char *appname);
+  static bool launch_all();
 
 public:
-  static const FlashAppInfo *get_last_app();
 
-public:
-  static const FlashSummary app_summary R2P_FLASH_ALIGNED;
+  class Iterator {
+    friend class Bootloader;
+
+  private:
+    const FlashAppInfo *curp;
+
+  public:
+    Iterator(const Iterator &rhs) : curp(rhs.curp) {}
+
+  private:
+    Iterator(const FlashAppInfo *beginp) : curp(beginp) {}
+
+  private:
+    Iterator &operator = (const Iterator &rhs) {
+      curp = rhs.curp;
+      return *this;
+    }
+
+  public:
+    const FlashAppInfo *operator -> () const {
+      return curp;
+    }
+
+    const FlashAppInfo &operator * () const {
+      return *curp;
+    }
+
+    Iterator &operator ++ () {
+      curp = curp->get_next();
+      return *this;
+    }
+
+    const Iterator operator ++ (int) {
+      Iterator old(*this);
+      curp = curp->get_next();
+      return old;
+    }
+
+    bool operator == (const Iterator &rhs) const {
+      return this->curp->is_valid() == rhs.curp->is_valid();
+    }
+
+    bool operator != (const Iterator &rhs) const {
+      return this->curp->is_valid() != rhs.curp->is_valid();
+    }
+  };
+
 } R2P_FLASH_ALIGNED;
 
 
@@ -151,19 +213,20 @@ void Bootloader::end_write() {
 
 
 inline
-bool Bootloader::write_summary(const FlashSummary &summary) {
-
-  return write(const_cast<FlashSummary *>(&app_summary), &summary,
-               sizeof(FlashSummary));
-}
-
-
-inline
 bool Bootloader::write(const void *dstp, const void *srcp, size_t length) {
 
   return flasher.flash(reinterpret_cast<Flasher::Address>(dstp),
                        reinterpret_cast<const Flasher::Data *>(srcp),
                        length);
+}
+
+
+inline
+const Bootloader::Iterator Bootloader::begin() {
+
+  return Iterator(reinterpret_cast<const FlashAppInfo *>(
+    Flasher::get_program_start()
+  ));
 }
 
 

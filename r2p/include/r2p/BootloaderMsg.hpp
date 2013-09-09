@@ -86,8 +86,8 @@ public:
   } R2P_PACKED;
 
   struct AppInfoSummary {
+    Length  numapps;
     Address freeadr;
-    Address headadr;
   } R2P_PACKED;
 
   struct ParamRequest {
