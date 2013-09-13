@@ -11,7 +11,6 @@ namespace r2p {
 
 class Flasher : private Uncopyable {
 public:
-  typedef Flasher_::Address Address;
   typedef Flasher_::Data    Data;
   typedef Flasher_::PageID  PageID;
   typedef Flasher_::Length  Length;
@@ -29,13 +28,14 @@ public:
 
   void begin();
   bool end();
-  bool flash(Address address, const Data *bufp, size_t buflen);
+  bool flash(const uint8_t *address, const Data *bufp, size_t buflen);
+  bool erase(const uint8_t *address, size_t length);
 
 public:
   Flasher(Data page_buf[]);
 
 public:
-  static bool is_valid(Address address);
+  static bool is_within_bounds(const void *ptr);
   static bool is_erased(PageID page);
   static bool erase(PageID page);
   static int compare(PageID page, const Data *bufp);
@@ -43,30 +43,30 @@ public:
   static bool write(PageID page, const Data *bufp);
   static bool write_if_needed(PageID page, const Data *bufp);
 
-  static Address address_of(PageID page);
-  static PageID page_of(Address address);
-  static Address align_prev(Address address);
-  static Address align_next(Address address);
+  static const uint8_t *address_of(PageID page);
+  static PageID page_of(const uint8_t *address);
+  static const uint8_t *align_prev(const uint8_t *address);
+  static const uint8_t *align_next(const uint8_t *address);
   static Length align_prev(Length length);
   static Length align_next(Length length);
 
-  static Address get_program_start();
-  static Address get_program_end();
-  static Address get_ram_start();
-  static Address get_ram_end();
-  static Address get_layout_start(); // TODO: remove
-  static Address get_layout_end(); // TODO: remove
-  static bool is_program(Address address);
-  static bool is_ram(Address address);
+  static const uint8_t *get_program_start();
+  static const uint8_t *get_program_end();
+  static const uint8_t *get_ram_start();
+  static const uint8_t *get_ram_end();
+  static size_t get_program_length();
+  static size_t get_ram_length();
+  static bool is_program(const uint8_t *address);
+  static bool is_ram(const uint8_t *address);
 
-  static void jump_to(Address address);
+  static void jump_to(const uint8_t *address);
 };
 
 
 inline
-bool Flasher::is_valid(Address address) {
+bool Flasher::is_within_bounds(const void *ptr) {
 
-  return Flasher_::is_valid(address);
+  return Flasher_::is_within_bounds(ptr);
 }
 
 
@@ -92,9 +92,16 @@ bool Flasher::end() {
 
 
 inline
-bool Flasher::flash(Address address, const Data *bufp, size_t buflen) {
+bool Flasher::flash(const uint8_t *address, const Data *bufp, size_t buflen) {
 
   return impl.flash(address, bufp, buflen);
+}
+
+
+inline
+bool Flasher::erase(const uint8_t *address, size_t length) {
+
+  return impl.erase(address, length);
 }
 
 
@@ -148,28 +155,28 @@ bool Flasher::write_if_needed(PageID page, const Data *bufp) {
 
 
 inline
-Flasher::Address Flasher::address_of(PageID page) {
+const uint8_t *Flasher::address_of(PageID page) {
 
   return Flasher_::address_of(page);
 }
 
 
 inline
-Flasher::PageID Flasher::page_of(Address address) {
+Flasher::PageID Flasher::page_of(const uint8_t *address) {
 
   return Flasher_::page_of(address);
 }
 
 
 inline
-Flasher::Address Flasher::align_prev(Address address) {
+const uint8_t *Flasher::align_prev(const uint8_t *address) {
 
   return Flasher_::align_prev(address);
 }
 
 
 inline
-Flasher::Address Flasher::align_next(Address address) {
+const uint8_t *Flasher::align_next(const uint8_t *address) {
 
   return Flasher_::align_next(address);
 }
@@ -179,7 +186,7 @@ inline
 Flasher::Length Flasher::align_prev(Length length) {
 
   return reinterpret_cast<Length>(
-    Flasher_::align_prev(reinterpret_cast<Address>(length))
+    Flasher_::align_prev(reinterpret_cast<const uint8_t *>(length))
   );
 }
 
@@ -188,69 +195,69 @@ inline
 Flasher::Length Flasher::align_next(Length length) {
 
   return reinterpret_cast<Length>(
-    Flasher_::align_next(reinterpret_cast<Address>(length))
+    Flasher_::align_next(reinterpret_cast<const uint8_t *>(length))
   );
 }
 
 
 inline
-Flasher::Address Flasher::get_program_start() {
+const uint8_t *Flasher::get_program_start() {
 
   return Flasher_::get_program_start();
 }
 
 
 inline
-Flasher::Address Flasher::get_program_end() {
+const uint8_t *Flasher::get_program_end() {
 
   return Flasher_::get_program_end();
 }
 
 
 inline
-Flasher::Address Flasher::get_ram_start() {
+const uint8_t *Flasher::get_ram_start() {
 
   return Flasher_::get_ram_start();
 }
 
 
 inline
-Flasher::Address Flasher::get_ram_end() {
+const uint8_t *Flasher::get_ram_end() {
 
   return Flasher_::get_ram_end();
 }
 
 
 inline
-Flasher::Address Flasher::get_layout_start() {
+size_t Flasher::get_program_length() {
 
-  return Flasher_::get_layout_start();
+  return compute_chunk_size(get_program_start(), get_program_end());
 }
 
 
 inline
-Flasher::Address Flasher::get_layout_end() {
+size_t Flasher::get_ram_length() {
 
-  return Flasher_::get_layout_end();
+  return compute_chunk_size(get_ram_start(), get_ram_end());
 }
 
 
 inline
-bool Flasher::is_program(Address address) {
+bool Flasher::is_program(const uint8_t *address) {
 
   return address >= get_program_start() && address < get_program_end();
 }
 
 
 inline
-bool Flasher::is_ram(Address address) {
+bool Flasher::is_ram(const uint8_t *address) {
 
   return address >= get_ram_start() && address < get_ram_end();
 }
 
 
 inline
-void Flasher::jump_to(Address address) {
+void Flasher::jump_to(const uint8_t *address) {
 
   Flasher_::jump_to(address);
 }

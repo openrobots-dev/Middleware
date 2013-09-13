@@ -1,7 +1,7 @@
 
-#include <r2p/impl/Flasher_.hpp>
 #include <ch.h>
 #include <hal.h>
+#include <r2p/impl/Flasher_.hpp>
 
 namespace r2p {
 
@@ -43,14 +43,14 @@ void Flasher_::set_page_buffer(Data page_buf[]) {
 
 bool Flasher_::is_erased(PageID page) {
 
-  const Data *const startp =
-    reinterpret_cast<const Data *>(address_of(page));
-  const Data *const stopp =
-    reinterpret_cast<const Data *>(address_of(page + 1));
+  volatile const Data *const startp =
+    reinterpret_cast<volatile const Data *>(address_of(page));
+  volatile const Data *const stopp =
+    reinterpret_cast<volatile const Data *>(address_of(page + 1));
 
   // Cycle through the whole page and check for default set bits
-  for (const Data *datap = startp; datap < stopp; ++datap) {
-    if (*datap != static_cast<Data>(~0u)) return false;
+  for (volatile const Data *datap = startp; datap < stopp; ++datap) {
+    if (*datap != ERASED_WORD) return false;
   }
   return true;
 }
@@ -89,7 +89,7 @@ int Flasher_::compare(PageID page, volatile const Data *bufp) {
       identical = false;
 
       // Not identical, and not erased, needs erase
-      if (flashp[pos] != static_cast<Data>(~0u)) return -1;
+      if (flashp[pos] != ERASED_WORD) return -1;
     }
   }
 
@@ -156,11 +156,14 @@ bool Flasher_::write_if_needed(PageID page, volatile const Data *bufp) {
 
   // TODO: Only write on pages in the user area
 
-  // Don't do anything in case of error or if pages are identical
-  if (compare(page, bufp) >= 0) return true;
+  // Don't do anything if pages are identical
+  register int comparison = compare(page, bufp);
+  if (comparison == 0) return true;
 
   // Page needs erase
-  if (!erase(page)) return false;
+  if (comparison < 0) {
+    if (!erase(page)) return false;
+  }
 
   // Write data
   return write(page, bufp);
@@ -185,7 +188,7 @@ bool Flasher_::end() {
 }
 
 
-bool Flasher_::flash(Address address, const Data *bufp, size_t buflen) {
+bool Flasher_::flash(const uint8_t *address, const Data *bufp, size_t buflen) {
 
   bool writeback = false;
 
@@ -225,6 +228,24 @@ bool Flasher_::flash(Address address, const Data *bufp, size_t buflen) {
 }
 
 
+bool Flasher_::erase(const uint8_t *address, size_t length) {
+
+  static const Data erased_word_value = ERASED_WORD;
+
+  // const uint8_t *and length must be aligned
+  R2P_ASSERT((reinterpret_cast<uintptr_t>(address) &
+             bit_mask(sizeof(Data))) == 0);
+  R2P_ASSERT((length & bit_mask(sizeof(Data))) == 0);
+
+  while (length > 0) {
+    flash(address, &erased_word_value, sizeof(Data));
+    address += sizeof(Data);
+    length -= sizeof(Data);
+  }
+  return true;
+}
+
+
 Flasher_::Flasher_(Data page_buf[])
 :
   page_bufp(page_buf),
@@ -233,7 +254,7 @@ Flasher_::Flasher_(Data page_buf[])
 {}
 
 
-void Flasher_::jump_to(Address address) {
+void Flasher_::jump_to(const uint8_t *address) {
 
   typedef void (*Proc)(void);
 

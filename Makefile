@@ -20,7 +20,7 @@ endif
 
 # Enable this if you want the linker to remove unused code and data
 ifeq ($(USE_LINK_GC),)
-  USE_LINK_GC = yes
+  USE_LINK_GC = no
 endif
 
 # If enabled, this option allows to compile the application in THUMB mode.
@@ -59,8 +59,7 @@ PROJECT = ch
 
 # Imported source files and paths
 include ./paths.mk
-
-include ./board.mk
+include $(BOARD)/board.mk
 include $(CHIBIOS)/os/hal/platforms/STM32F1xx/platform.mk
 include $(CHIBIOS)/os/hal/hal.mk
 include $(CHIBIOS)/os/ports/GCC/ARMCMx/STM32F1xx/port.mk
@@ -81,12 +80,10 @@ CSRC = $(PORTSRC) \
        $(HALSRC) \
        $(PLATFORMSRC) \
        $(BOARDSRC) \
-       $(CHIBIOS)/os/various/chprintf.c \
        $(CHIBIOS)/os/various/evtimer.c \
-       $(CHIBIOS)/os/various/shell.c \
        $(CHIBIOS)/os/various/syscalls.c \
-       $(RTCANSRC) \
-       $(RTCANPLATFORMSRC)
+#       $(RTCANSRC) \
+#       $(RTCANPLATFORMSRC)
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.

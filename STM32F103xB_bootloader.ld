@@ -26,23 +26,31 @@ __process_stack_size__  = 0x0400;
 
 MEMORY
 {
-    flash   : org = 0x08000000, len = 127k
-    layout  : org = 0x08000000 + (128k - 1k), len = 1k
+    flash   : org = 0x08000000, len = 128k
     ram     : org = 0x20000000, len = 20k
 }
-
-__ram_start__           = ORIGIN(ram);
-__ram_size__            = LENGTH(ram);
-__ram_end__             = __ram_start__ + __ram_size__;
 
 SECTIONS
 {
     . = 0;
-    _text = .;
 
     startup : ALIGN(16) SUBALIGN(16)
     {
         KEEP(*(vectors))
+    } > flash
+
+    .text : ALIGN(16) SUBALIGN(16)
+    {
+        _text = .;
+        __text_start__ = .;
+        *(.text.startup.*)
+        *(.text)
+        *(.text.*)
+        *(.rodata)
+        *(.rodata.*)
+        *(.glue_7t)
+        *(.glue_7)
+        *(.gcc*)
     } > flash
 
     constructors : ALIGN(4) SUBALIGN(4)
@@ -59,18 +67,6 @@ SECTIONS
         KEEP(*(.fini_array))
         KEEP(*(SORT(.fini_array.*)))
         PROVIDE(__fini_array_end = .);
-    } > flash
-
-    .text : ALIGN(16) SUBALIGN(16)
-    {
-        *(.text.startup.*)
-        *(.text)
-        *(.text.*)
-        *(.rodata)
-        *(.rodata.*)
-        *(.glue_7t)
-        *(.glue_7)
-        *(.gcc*)
     } > flash
 
     .ARM.extab :
@@ -101,6 +97,7 @@ SECTIONS
     } > flash
     
     _etext = .;
+    __text_end__ = .;
     _textdata = _etext;
 
     .stacks :
@@ -122,6 +119,7 @@ SECTIONS
     {
         . = ALIGN(4);
         PROVIDE(_data = .);
+        __data_start__ = .;
         *(.data)
         . = ALIGN(4);
         *(.data.*)
@@ -129,12 +127,14 @@ SECTIONS
         *(.ramtext)
         . = ALIGN(4);
         PROVIDE(_edata = .);
+        __data_end__  = .;
     } > ram AT > flash
 
     .bss :
     {
         . = ALIGN(4);
         PROVIDE(_bss_start = .);
+        __bss_start__ = .;
         *(.bss)
         . = ALIGN(4);
         *(.bss.*)
@@ -142,16 +142,23 @@ SECTIONS
         *(COMMON)
         . = ALIGN(4);
         PROVIDE(_bss_end = .);
+        __bss_end__ = .;
     } > ram
 }
 
 PROVIDE(end = .);
 _end            = .;
 
-__heap_base__   = _end;
-__heap_end__    = __ram_end__;
+
+__flash_start__     = ORIGIN(flash);
+__flash_end__       = ORIGIN(flash) + LENGTH(flash);
+
+__ram_start__       = ORIGIN(ram);
+__ram_end__         = ORIGIN(ram) + LENGTH(ram);
+
+__heap_base__       = _end;
+__heap_end__        = __ram_end__;
 
 __program_start__   = _textdata + (_edata - _data);
 __program_end__     = ORIGIN(flash) + LENGTH(flash);
-__program_size__    = __program_end__ - __program_start__;
 

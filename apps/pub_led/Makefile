@@ -5,7 +5,7 @@
 
 # Compiler options here.
 ifeq ($(USE_OPT),)
-  USE_OPT = -O0 -ggdb
+  USE_OPT = -O0 -ggdb -fomit-frame-pointer -falign-functions=16
 endif
 
 # C specific options here (added to USE_OPT).
@@ -15,7 +15,7 @@ endif
 
 # C++ specific options here (added to USE_OPT).
 ifeq ($(USE_CPPOPT),)
-  USE_CPPOPT = -fno-rtti
+  USE_CPPOPT = -fno-rtti -fno-exceptions -fno-threadsafe-statics
 endif
 
 # Enable this if you want the linker to remove unused code and data
@@ -31,6 +31,10 @@ endif
 # Enable this if you want to see the full log while compiling.
 ifeq ($(USE_VERBOSE_COMPILE),)
   USE_VERBOSE_COMPILE = no
+endif
+
+ifeq ($(VERBOSITY),)
+  VERBOSITY = -vvv
 endif
 
 #
@@ -55,73 +59,85 @@ endif
 #
 
 # Define project name here
-PROJECT = app1
+PROJECT = pub_led
 
 # Imported source files and paths
-CHIBIOS = /home/texzk/ChibiStudio/chibios
+include ./paths.mk
 include $(CHIBIOS)/os/hal/platforms/STM32F1xx/platform.mk
 include $(CHIBIOS)/os/hal/hal.mk
 include $(CHIBIOS)/os/ports/GCC/ARMCMx/STM32F1xx/port.mk
 include $(CHIBIOS)/os/kernel/kernel.mk
-MODULE = /home/texzk/openrobots/R2P_IMU_test_mw
-include $(MODULE)/board.mk
-R2P = /home/texzk/openrobots/MiddlewareV2-dev/r2p
+include $(BOARD)/board.mk
+include $(R2P)/r2p.mk
+include $(R2P)/port/chibios/port.mk
 
 # Define linker script file here
-LDSCRIPT= $(MODULE)/STM32F103xB_bootloader.ld
+LDSCRIPT= $(BOARD)/STM32F103xB_bootloader.ld
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
-CSRC = app1.c
+CSRC = #pub_led.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
-CPPSRC =
+CPPSRC = pub_led.cpp
 
 # C sources to be compiled in ARM mode regardless of the global setting.
 # NOTE: Mixing ARM and THUMB mode enables the -mthumb-interwork compiler
-#       option that results in lower performance and larger code size.
+#	   option that results in lower performance and larger code size.
 ACSRC =
 
 # C++ sources to be compiled in ARM mode regardless of the global setting.
 # NOTE: Mixing ARM and THUMB mode enables the -mthumb-interwork compiler
-#       option that results in lower performance and larger code size.
+#	   option that results in lower performance and larger code size.
 ACPPSRC =
 
 # C sources to be compiled in THUMB mode regardless of the global setting.
 # NOTE: Mixing ARM and THUMB mode enables the -mthumb-interwork compiler
-#       option that results in lower performance and larger code size.
+#	   option that results in lower performance and larger code size.
 TCSRC =
 
 # C sources to be compiled in THUMB mode regardless of the global setting.
 # NOTE: Mixing ARM and THUMB mode enables the -mthumb-interwork compiler
-#       option that results in lower performance and larger code size.
+#	   option that results in lower performance and larger code size.
 TCPPSRC =
 
 # List ASM source files here
 ASMSRC = $(PORTASM)
 
 INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
-         $(HALINC) $(PLATFORMINC) $(BOARDINC) \
-         $(CHIBIOS)/os/various \
-         $(R2PINC) \
-         $(MODULE)
+		 $(HALINC) $(PLATFORMINC) $(R2PINC) \
+		 $(BOARD)/$(BOARDINC) \
+		 $(CHIBIOS)/os/various
 
-OSELF = $(MODULE)/build/ch.elf
+SYS_ELF = $(BOARD)/build/ch.elf
 
 # Application (R2P Node) name
-ifeq ($(APPNAME),)
-  APPNAME = $(PROJECT)
+ifeq ($(APP_NAME),)
+	APP_NAME = $(PROJECT)
 endif
 
 # Bootloader topic name
-ifeq ($(BOOTTOPIC),)
-  BOOTTOPIC = BOOT_$(R2P_MODULE_NAME)
+ifeq ($(BOOT_TOPIC),)
+	BOOT_TOPIC = BOOT_$(R2P_MODULE_NAME)
 endif
 
 # Application stack length
-ifeq ($(APPSTACKLEN),)
-  APPSTACKLEN = 256
+ifeq ($(APP_STACK_SIZE),)
+	APP_STACK_SIZE = 256
+endif
+
+# Parameter default (invalid) values
+ifeq ($(PARAM_OFFSET),)
+	PARAM_OFFSET = 0
+endif
+
+ifeq ($(PARAM_LENGTH),)
+	PARAM_LENGTH = 0
+endif
+
+ifeq ($(PARAM_BYTES),)
+	PARAM_BYTES = "" # Hex byte string
 endif
 
 #
@@ -140,9 +156,9 @@ CC   = $(TRGT)gcc
 CPPC = $(TRGT)g++
 # Enable loading with g++ only if you need C++ runtime support.
 # NOTE: You can use C++ even without C++ support if you are careful. C++
-#       runtime support makes code size explode.
-LD   = $(TRGT)gcc -Wl,--just-symbols=$(OSELF)
-#LD   = $(TRGT)g++ -Wl,--just-symbols=$(OSELF)
+#	   runtime support makes code size explode.
+LD   = $(TRGT)gcc -Wl,--just-symbols=$(SYS_ELF)
+#LD   = $(TRGT)g++ -Wl,--just-symbols=$(SYS_ELF)
 CP   = $(TRGT)objcopy
 AS   = $(TRGT)gcc -x assembler-with-cpp
 OD   = $(TRGT)objdump
@@ -170,7 +186,7 @@ CPPWARN = -Wall -Wextra
 #
 
 # List all default C defines here, like -D_DEBUG=1
-DDEFS = -Dstrcasecmp=strcmp -DPORT_INT_REQUIRED_STACK=32
+DDEFS = -DPORT_INT_REQUIRED_STACK=32
 
 # List all default ASM defines here, like -D_DEBUG=1
 DADEFS =
@@ -193,19 +209,19 @@ DLIBS = -lm
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS =
+UDEFS +=
 
 # Define ASM defines here
-UADEFS =
+UADEFS +=
 
 # List all user directories here
-UINCDIR =
+UINCDIR +=
 
 # List the user directory to look for the libraries here
-ULIBDIR =
+ULIBDIR +=
 
 # List all user libraries here
-ULIBS =
+ULIBS +=
 
 #
 # End of user defines
@@ -224,18 +240,45 @@ include $(CHIBIOS)/os/ports/GCC/ARMCMx/rules.mk
 
 load: $(OBJS) $(LDSCRIPT) all
 	@rm -f $(BUILDDIR)/$(PROJECT).hex $(BUILDDIR)/$(PROJECT).bin $(BUILDDIR)/$(PROJECT).dmp
-	@echo Installing $(BUILDDIR)/$(PROJECT).hex ...
 	
-	$(R2P)/tools/load.py \
-		$(APPNAME) \
-		$(BOOTTOPIC) \
-		$(BUILDDIR)/$(PROJECT).hex \
-		$(APPSTACKLEN) \
-		$(TRGT)ld \
-		$(LDSCRIPT) \
-		$(OSELF) \
-		$(BUILDDIR)/$(PROJECT).map \
-		$(BUILDDIR)/$(PROJECT).elf \
-		$(OBJS)
+	@"$(R2P)/scripts/load.py" $(VERBOSITY) \
+		--boot-topic "$(BOOT_TOPIC)" \
+		--app-name   "$(APP_NAME)" \
+		--stack-size "$(APP_STACK_SIZE)" \
+		--sys-elf    "$(SYS_ELF)" \
+		--app-elf    "$(BUILDDIR)/$(PROJECT).elf" \
+		--app-hex    "$(BUILDDIR)/$(PROJECT).hex" \
+		--ld-cmd     "$(TRGT)ld" \
+		--ld-script  "$(LDSCRIPT)" \
+		--ld-map     "$(BUILDDIR)/$(PROJECT).map" \
+		--ld-objects $(OBJS)
 
+getappinfo: $(OBJ) $(LDSCRIPT) all
+	@"$(R2P)/scripts/getappinfo.py" $(VERBOSITY) \
+		--boot-topic "$(BOOT_TOPIC)"
 
+getparam: $(OBJ) $(LDSCRIPT) all
+	@"$(R2P)/scripts/getparam.py" $(VERBOSITY) \
+		--boot-topic   "$(BOOT_TOPIC)" \
+		--app-name     "$(APP_NAME)" \
+		--param-offset "$(PARAM_OFFSET)" \
+		--param-length "$(PARAM_LENGTH)"
+
+setparam: $(OBJ) $(LDSCRIPT) all
+	@"$(R2P)/scripts/setparam.py" $(VERBOSITY) \
+		--boot-topic   "$(BOOT_TOPIC)" \
+		--app-name     "$(APP_NAME)" \
+		--param-offset "$(PARAM_OFFSET)" \
+		--param-bytes  "$(PARAM_BYTES)"
+
+remove_last:
+	@"$(R2P)/scripts/remove.py" $(VERBOSITY) \
+		--boot-topic "$(BOOT_TOPIC)" \
+		--last
+
+remove_all:
+	@"$(R2P)/scripts/remove.py" $(VERBOSITY) \
+		--boot-topic "$(BOOT_TOPIC)" \
+		--all
+
+##############################################################################

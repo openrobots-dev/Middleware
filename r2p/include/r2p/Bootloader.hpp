@@ -1,7 +1,7 @@
 #pragma once
 
 #include <r2p/common.hpp>
-#include <r2p/BootloaderMsg.hpp>
+#include <r2p/BootMsg.hpp>
 #include <r2p/NamingTraits.hpp>
 #include <r2p/Flasher.hpp>
 #include <r2p/Thread.hpp>
@@ -21,6 +21,13 @@ public:
   class Iterator;
 
   struct FlashAppInfo {
+    union Flags {
+      uint16_t raw;
+      struct {
+        unsigned  enabled     : 1;
+      };
+    };
+
     uint32_t            signature   R2P_FLASH_ALIGNED;
     size_t              pgmlen      R2P_FLASH_ALIGNED;
     size_t              bsslen      R2P_FLASH_ALIGNED;
@@ -28,10 +35,13 @@ public:
     const uint8_t       *bssp       R2P_FLASH_ALIGNED;
     const uint8_t       *datap      R2P_FLASH_ALIGNED;
     const uint8_t       *cfgp       R2P_FLASH_ALIGNED;
+    size_t              cfglen      R2P_FLASH_ALIGNED;
     size_t              stacklen    R2P_FLASH_ALIGNED;
     Thread::Function    threadf     R2P_FLASH_ALIGNED;
     const char          name[NamingTraits<Node>::MAX_LENGTH]
                         R2P_FLASH_ALIGNED;
+    Flags               flags       R2P_FLASH_ALIGNED;
+
 
     const uint8_t *get_program() const {
       return reinterpret_cast<const uint8_t *>(this) +
@@ -39,17 +49,18 @@ public:
     }
 
     const uint8_t *get_data_program() const {
-      return reinterpret_cast<const uint8_t *>(this) +
-             Flasher::align_next(sizeof(FlashAppInfo)) +
-             Flasher::align_next(pgmlen);
+      if (datalen > 0) {
+        return reinterpret_cast<const uint8_t *>(this) +
+               Flasher::align_next(sizeof(FlashAppInfo)) +
+               Flasher::align_next(pgmlen);
+      } else {
+        return NULL;
+      }
     }
 
     bool is_valid() const {
       return signature == SIGNATURE &&
-             reinterpret_cast<Flasher::Address>(this) >=
-             Flasher::get_program_start() &&
-             reinterpret_cast<Flasher::Address>(this) <=
-             (Flasher::get_program_end() - sizeof(FlashAppInfo));
+             Flasher::is_within_bounds(reinterpret_cast<const uint8_t *>(this));
     }
 
     bool has_name(const char *namep) const {
@@ -79,8 +90,6 @@ private:
   static const uint32_t an_invalid_signature;
 
 public:
-  bool remove_last();
-  bool remove_all();
 
   void spin_loop();
 
@@ -97,8 +106,8 @@ private:
   void do_getparam();
   void do_setparam();
   void do_ack();
-  void do_error();
-  void do_release_error();
+  void do_error(uint32_t line, const char *textp = "");
+  void do_release_error(uint32_t line, const char *textp = "");
 
   void begin_write();
   void end_write();
@@ -110,6 +119,8 @@ private:
   bool process_ihex(const IhexRecord &record,
                     const BootMsg::LinkingSetup &setup,
                     const BootMsg::LinkingAddresses &addresses);
+  bool remove_last();
+  bool remove_all();
 
 public:
   Bootloader(Flasher::Data *flash_page_bufp,
@@ -120,12 +131,16 @@ private:
   static const Iterator end();
   static size_t get_num_apps();
   static const uint8_t *get_free_address();
+  static const FlashAppInfo *get_free_app();
+  static const FlashAppInfo *get_last_app();
   static const FlashAppInfo *get_app(const char *appname);
   static bool compute_addresses(const BootMsg::LinkingSetup &setup,
                                 BootMsg::LinkingAddresses &addresses);
   static uint8_t *reserve_ram(size_t length);
   static uint8_t *unreserve_ram(size_t length);
   static bool launch(const char *appname);
+
+public:
   static bool launch_all();
 
 public:
@@ -154,6 +169,14 @@ public:
     }
 
     const FlashAppInfo &operator * () const {
+      return *curp;
+    }
+
+    operator const FlashAppInfo * () const {
+      return curp;
+    }
+
+    operator const FlashAppInfo & () const {
       return *curp;
     }
 
@@ -215,7 +238,7 @@ void Bootloader::end_write() {
 inline
 bool Bootloader::write(const void *dstp, const void *srcp, size_t length) {
 
-  return flasher.flash(reinterpret_cast<Flasher::Address>(dstp),
+  return flasher.flash(reinterpret_cast<const uint8_t *>(dstp),
                        reinterpret_cast<const Flasher::Data *>(srcp),
                        length);
 }
@@ -227,6 +250,22 @@ const Bootloader::Iterator Bootloader::begin() {
   return Iterator(reinterpret_cast<const FlashAppInfo *>(
     Flasher::get_program_start()
   ));
+}
+
+
+inline
+const Bootloader::Iterator Bootloader::end() {
+
+  return Iterator(reinterpret_cast<const FlashAppInfo *>(
+    &an_invalid_signature
+  ));
+}
+
+
+inline
+const uint8_t *Bootloader::get_free_address() {
+
+  return reinterpret_cast<const uint8_t *>(get_free_app());
 }
 
 

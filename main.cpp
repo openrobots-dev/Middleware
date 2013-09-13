@@ -32,9 +32,13 @@ struct FloatMsg : public r2p::Message {
 } R2P_PACKED;
 
 
-void *__dso_handle;
-
-extern "C" void __cxa_pure_virtual() { chSysHalt(); }
+extern "C" {
+  void *__dso_handle;
+  void __cxa_pure_virtual() { chSysHalt(); }
+  void _exit(int) { chSysHalt(); }
+  int _kill(int, int) { chSysHalt(); return -1; }
+  int _getpid() { return 1; }
+} // extern "C"
 
 static WORKING_AREA(wa_info, 2048);
 

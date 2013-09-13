@@ -1,14 +1,13 @@
 #include "ch.h"
 #include "hal.h"
-#include <stdint.h>
 
-typedef struct {
-   uint32_t address;
-   char name[32];
-   void *dummy;
-} DummyInfo;
 
-const DummyInfo app_config =  { 0xEFBEADDE, "DEADBEEF", (void*)0x37133713 };
+struct AppConfig {
+    uint16_t l33t;
+};
+
+
+const struct AppConfig app_config = { 0x1337 };
 
 
 msg_t app_thread(void *arg) {
@@ -21,3 +20,4 @@ msg_t app_thread(void *arg) {
 	}
 	return CH_SUCCESS;
 }
+

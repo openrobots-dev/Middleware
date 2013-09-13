@@ -35,15 +35,14 @@ public:
     NACK = 0,
     ACK,
 
-    REMOVE_LAST,
-    REMOVE_ALL,
-
     BEGIN_LOADER,
     END_LOADER,
     LINKING_SETUP,
     LINKING_ADDRESSES,
     LINKING_OUTCOME,
     IHEX_RECORD,
+    REMOVE_LAST,
+    REMOVE_ALL,
 
     BEGIN_APPINFO,
     END_APPINFO,
@@ -62,38 +61,77 @@ public:
   typedef const uint8_t *Address;
   typedef size_t        Length;
 
+  struct ErrorInfo {
+    enum ReasonEnum {
+      UNKNOWN = 0,
+      NO_FREE_MEMORY,
+      ZERO_LENGTH,
+      OUT_OF_RANGE,
+    };
+    enum TypeEnum {
+      NONE = 0,
+      TEXT,
+      INTEGRAL,
+      UINTEGRAL,
+      ADDRESS,
+      LENGTH,
+      CHUNK
+    };
+    enum { MAX_TEXT_LENGTH = 20 };
+
+    uint16_t    line;
+    uint8_t     reason;
+    uint8_t     type;
+    union {
+      char      text[MAX_TEXT_LENGTH];
+      intmax_t  integral;
+      uintmax_t uintegral;
+      Address   address;
+      Length    length;
+      struct {
+        Address     address;
+        Length      length;
+      }         chunk R2P_PACKED;
+    } R2P_PACKED;
+  } R2P_PACKED;
+
   struct LinkingSetup {
-    Length  pgmlen;
-    Length  bsslen;
-    Length  datalen;
-    Length  stacklen;
-    char    name[NamingTraits<Node>::MAX_LENGTH];
+    Length      pgmlen;
+    Length      bsslen;
+    Length      datalen;
+    Length      stacklen;
+    char        name[NamingTraits<Node>::MAX_LENGTH];
+    uint16_t    flags;
   } R2P_PACKED;
 
   struct LinkingAddresses {
-    Address infoadr;
-    Address pgmadr;
-    Address bssadr;
-    Address dataadr;
-    Address datapgmadr;
-    Address freeadr;
+    Address     infoadr;
+    Address     pgmadr;
+    Address     bssadr;
+    Address     dataadr;
+    Address     datapgmadr;
+    Address     nextadr;
   } R2P_PACKED;
 
   struct LinkingOutcome {
-    Address threadadr;
-    Address cfgadr;
-    Address appinfoadr;
+    Address     threadadr;
+    Address     cfgadr;
+    Length      cfglen;
   } R2P_PACKED;
 
   struct AppInfoSummary {
-    Length  numapps;
-    Address freeadr;
+    Length      numapps;
+    Address     freeadr;
+    Address     pgmstartadr;
+    Address     pgmendadr;
+    Address     ramstartadr;
+    Address     ramendadr;
   } R2P_PACKED;
 
   struct ParamRequest {
-    Length  offset;
-    char    appname[NamingTraits<Node>::MAX_LENGTH];
-    uint8_t length;
+    Length      offset;
+    char        appname[NamingTraits<Node>::MAX_LENGTH];
+    uint8_t     length;
   } R2P_PACKED;
 
   struct ParamChunk {
@@ -105,6 +143,7 @@ public:
 public:
   union {
     uint8_t             raw[MAX_PAYLOAD_LENGTH];
+    ErrorInfo           error_info;
     IhexRecord          ihex_record;
     LinkingSetup        linking_setup;
     LinkingAddresses    linking_addresses;

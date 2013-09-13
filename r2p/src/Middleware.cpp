@@ -3,7 +3,8 @@
 #include <r2p/NamingTraits.hpp>
 #include <r2p/Thread.hpp>
 #include <r2p/MgmtMsg.hpp>
-#include <r2p/BootloaderMsg.hpp>
+#include <r2p/BootMsg.hpp>
+#include <r2p/Bootloader.hpp>
 #include <r2p/Topic.hpp>
 #include <r2p/Node.hpp>
 #include <r2p/Transport.hpp>
@@ -44,6 +45,11 @@ void Middleware::initialize(void *mgmt_boot_stackp, size_t mgmt_boot_stacklen,
   }
   SysLock::release();
   Thread::set_priority(oldprio);
+
+  // Launch all installed apps
+  bool success; (void)success;
+  success = Bootloader::launch_all();
+  R2P_ASSERT(success);
 }
 
 
@@ -211,6 +217,15 @@ Topic *Middleware::find_topic(const char *namep) {
   Topic *topicp = topics.find_first(Topic::has_name, namep);
   lists_lock.release();
   return topicp;
+}
+
+
+Node *Middleware::find_node(const char *namep) {
+
+  lists_lock.acquire();
+  Node *nodep = nodes.find_first(Node::has_name, namep);
+  lists_lock.release();
+  return nodep;
 }
 
 

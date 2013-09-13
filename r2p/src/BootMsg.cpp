@@ -1,5 +1,5 @@
 
-#include <r2p/BootloaderMsg.hpp>
+#include <r2p/BootMsg.hpp>
 #include <cstring>
 
 namespace r2p {

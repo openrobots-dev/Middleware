@@ -84,6 +84,7 @@ public:
   void confirm_stop(const Node &node);
 
   Topic *find_topic(const char *namep);
+  Node *find_node(const char *namep);
 
 private:
   Topic *touch_topic(const char *namep, size_t type_size);
