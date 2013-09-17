@@ -4,12 +4,12 @@ import sys, os
 import logging
 import argparse
 import r2p
-from helpers import str2hexb, autoint, verbosity2level
+from helpers import *
 
 
 def _create_argsparser():
     parser = argparse.ArgumentParser(
-        description='R2P app bootloader'
+        description='R2P get app parameter'
     )
     
     parser.add_argument(

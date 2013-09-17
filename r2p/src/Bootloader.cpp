@@ -253,9 +253,13 @@ void Bootloader::do_appinfo() {
     alloc(BootMsg::LINKING_OUTCOME);
     {
       BootMsg::LinkingOutcome &outcome = slave_msgp->linking_outcome;
-      outcome.threadadr = reinterpret_cast<BootMsg::Address>(i->threadf);
+      outcome.mainadr = reinterpret_cast<BootMsg::Address>(i->mainf);
       outcome.cfgadr = i->cfgp;
       outcome.cfglen = i->cfglen;
+      outcome.ctorsadr = i->ctorsp;
+      outcome.ctorslen = i->ctorslen;
+      outcome.dtorsadr = i->dtorsp;
+      outcome.dtorslen = i->dtorslen;
     }
     publish();
 
@@ -310,8 +314,12 @@ void Bootloader::do_getparam() {
       do_release_error(__LINE__);
       return;
     }
-    const uint8_t *sourcep = &infop->cfgp[request.offset];
-    if (!check_bounds(sourcep, request.length, infop->cfgp, infop->cfglen)) {
+    const uint8_t *sourcep = (request.offset != ~0u)
+                             ? &infop->cfgp[request.offset]
+                             : reinterpret_cast<const uint8_t *>(&infop->flags);
+    if (!check_bounds(sourcep, request.length, infop->cfgp, infop->cfglen) &&
+        !check_bounds(sourcep, request.length, &infop->flags,
+                      sizeof(FlashAppInfo::Flags))) {
       do_release_error(__LINE__);
       return;
     }
@@ -374,8 +382,12 @@ void Bootloader::do_setparam() {
       do_release_error(__LINE__);
       return;
     }
-    const uint8_t *targetp = &infop->cfgp[request.offset];
-    if (!check_bounds(targetp, request.length, infop->cfgp, infop->cfglen)) {
+    const uint8_t *targetp = (request.offset != ~0u)
+                             ? &infop->cfgp[request.offset]
+                             : reinterpret_cast<const uint8_t *>(&infop->flags);
+    if (!check_bounds(targetp, request.length, infop->cfgp, infop->cfglen) &&
+        !check_bounds(targetp, request.length, &infop->flags,
+                      sizeof(FlashAppInfo::Flags))) {
       do_release_error(__LINE__);
       return;
     }
@@ -459,7 +471,11 @@ bool Bootloader::write_appinfo(const FlashAppInfo *flashinfop,
   WRITE_(cfgp, outcome.cfgadr);
   WRITE_(cfglen, outcome.cfglen);
   WRITE_(stacklen, setup.stacklen);
-  WRITE_(threadf, outcome.threadadr);
+  WRITE_(mainf, outcome.mainadr);
+  WRITE_(ctorsp, outcome.ctorsadr);
+  WRITE_(ctorslen, outcome.ctorslen);
+  WRITE_(dtorsp, outcome.dtorsadr);
+  WRITE_(dtorslen, outcome.dtorslen);
   if (!write(flashinfop->name, setup.name, NamingTraits<Node>::MAX_LENGTH)) {
     return false;
   }
@@ -635,9 +651,12 @@ bool Bootloader::compute_addresses(const BootMsg::LinkingSetup &setup,
   const FlashAppInfo *newp = get_free_app();
   if (newp == NULL) return false;
   addresses.infoadr = reinterpret_cast<const uint8_t *>(newp);
-  addresses.pgmadr = newp->get_program();
-  addresses.datapgmadr = (setup.datalen > 0) ? newp->get_data_program() : NULL;
-  addresses.nextadr = reinterpret_cast<const uint8_t *>(newp->get_next());
+  addresses.pgmadr = FlashAppInfo::compute_program(newp);
+  addresses.datapgmadr =
+    FlashAppInfo::compute_data_program(newp, setup.pgmlen, setup.datalen);
+  addresses.nextadr = reinterpret_cast<const uint8_t *>(
+    FlashAppInfo::compute_next(newp, setup.pgmlen, setup.datalen)
+  );
   if (addresses.infoadr >= Flasher::get_program_end() ||
       addresses.nextadr >  Flasher::get_program_end()) {
     return false;
@@ -679,9 +698,40 @@ bool Bootloader::launch(const char *appname) {
 
   Thread *threadp = Thread::create_heap(
     NULL, infop->stacklen, Thread::NORMAL,
-    infop->threadf, NULL, namep
+    app_threadf_wrapper, const_cast<FlashAppInfo *>(infop), namep
   );
   return threadp != NULL;
+}
+
+
+Thread::Return Bootloader::app_threadf_wrapper(Thread::Argument appinfop) {
+
+  typedef FlashAppInfo::Proc Proc;
+
+  register const Bootloader::FlashAppInfo *infop =
+    reinterpret_cast<const Bootloader::FlashAppInfo *>(appinfop);
+
+  // Clear the ".bss" section
+  memset(const_cast<uint8_t *>(infop->bssp), 0, infop->bsslen);
+
+  // Copy the ".data" section
+  memcpy(const_cast<uint8_t *>(infop->datap), infop->get_data_program(),
+         infop->datalen);
+
+  // Call global constructors
+  for (size_t i = 0; i < infop->ctorslen; ++i) {
+    (*reinterpret_cast<const Proc *>(&infop->ctorsp[i * sizeof(Proc)]))();
+  }
+
+  // Call the app entry point procedure
+  infop->mainf();
+
+  // Call global destructors
+  for (size_t i = 0; i < infop->dtorslen; ++i) {
+    (*reinterpret_cast<const Proc *>(&infop->dtorsp[i * sizeof(Proc)]))();
+  }
+
+  return Thread::OK;
 }
 
 

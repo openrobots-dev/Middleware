@@ -35,7 +35,7 @@ struct FloatMsg : public r2p::Message {
 extern "C" {
   void *__dso_handle;
   void __cxa_pure_virtual() { chSysHalt(); }
-  void _exit(int) { chSysHalt(); }
+  void _exit(int) { chSysHalt(); for (;;) {} }
   int _kill(int, int) { chSysHalt(); return -1; }
   int _getpid() { return 1; }
 } // extern "C"

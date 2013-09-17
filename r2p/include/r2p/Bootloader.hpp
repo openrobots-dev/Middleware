@@ -28,6 +28,8 @@ public:
       };
     };
 
+    typedef void (*Proc)();
+
     uint32_t            signature   R2P_FLASH_ALIGNED;
     size_t              pgmlen      R2P_FLASH_ALIGNED;
     size_t              bsslen      R2P_FLASH_ALIGNED;
@@ -37,25 +39,52 @@ public:
     const uint8_t       *cfgp       R2P_FLASH_ALIGNED;
     size_t              cfglen      R2P_FLASH_ALIGNED;
     size_t              stacklen    R2P_FLASH_ALIGNED;
-    Thread::Function    threadf     R2P_FLASH_ALIGNED;
+    Proc                mainf       R2P_FLASH_ALIGNED;
+    const uint8_t       *ctorsp     R2P_FLASH_ALIGNED;
+    size_t              ctorslen    R2P_FLASH_ALIGNED;
+    const uint8_t       *dtorsp     R2P_FLASH_ALIGNED;
+    size_t              dtorslen    R2P_FLASH_ALIGNED;
     const char          name[NamingTraits<Node>::MAX_LENGTH]
                         R2P_FLASH_ALIGNED;
     Flags               flags       R2P_FLASH_ALIGNED;
 
 
-    const uint8_t *get_program() const {
-      return reinterpret_cast<const uint8_t *>(this) +
+    static const uint8_t *compute_program(const FlashAppInfo *infop) {
+      return reinterpret_cast<const uint8_t *>(infop) +
              Flasher::align_next(sizeof(FlashAppInfo));
     }
 
-    const uint8_t *get_data_program() const {
+    static const uint8_t *compute_data_program(const FlashAppInfo *infop,
+                                               size_t pgmlen, size_t datalen) {
       if (datalen > 0) {
-        return reinterpret_cast<const uint8_t *>(this) +
+        return reinterpret_cast<const uint8_t *>(infop) +
                Flasher::align_next(sizeof(FlashAppInfo)) +
                Flasher::align_next(pgmlen);
       } else {
         return NULL;
       }
+    }
+
+    static const FlashAppInfo *compute_next(const FlashAppInfo *infop,
+                                            size_t pgmlen, size_t datalen) {
+      return reinterpret_cast<const FlashAppInfo *>(
+        reinterpret_cast<const uint8_t *>(infop) +
+        Flasher::align_next(sizeof(FlashAppInfo)) +
+        Flasher::align_next(pgmlen) +
+        Flasher::align_next(datalen)
+      );
+    }
+
+    const uint8_t *get_program() const {
+      return compute_program(this);
+    }
+
+    const uint8_t *get_data_program() const {
+      return compute_data_program(this, pgmlen, datalen);
+    }
+
+    const FlashAppInfo *get_next() const {
+      return compute_next(this, pgmlen, datalen);
     }
 
     bool is_valid() const {
@@ -65,15 +94,6 @@ public:
 
     bool has_name(const char *namep) const {
       return 0 == strncmp(name, namep, NamingTraits<Node>::MAX_LENGTH);
-    }
-
-    const FlashAppInfo *get_next() const {
-      return reinterpret_cast<const FlashAppInfo *>(
-        reinterpret_cast<const uint8_t *>(this) +
-        Flasher::align_next(sizeof(FlashAppInfo)) +
-        Flasher::align_next(pgmlen) +
-        Flasher::align_next(datalen)
-      );
     }
   } R2P_FLASH_ALIGNED;
 
@@ -139,6 +159,7 @@ private:
   static uint8_t *reserve_ram(size_t length);
   static uint8_t *unreserve_ram(size_t length);
   static bool launch(const char *appname);
+  static Thread::Return app_threadf_wrapper(Thread::Argument appinfop);
 
 public:
   static bool launch_all();

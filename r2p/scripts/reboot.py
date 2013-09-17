@@ -9,7 +9,7 @@ from helpers import *
 
 def _create_argsparser():
     parser = argparse.ArgumentParser(
-        description='R2P get app info'
+        description='R2P module reboot'
     )
     
     parser.add_argument(
@@ -50,7 +50,7 @@ def _main():
     try:
         transport.open()
         bootloader.stop()
-        bootloader.get_appinfo()
+        bootloader.reboot()
         transport.close()
 
     except KeyboardInterrupt:

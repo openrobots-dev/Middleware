@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
 
-import sys, os
+import sys, os, struct
 import logging
 import argparse
 import r2p
@@ -9,7 +9,7 @@ from helpers import *
 
 def _create_argsparser():
     parser = argparse.ArgumentParser(
-        description='R2P get app info'
+        description='R2P get network state'
     )
     
     parser.add_argument(
@@ -26,9 +26,9 @@ def _create_argsparser():
         dest='transport', metavar='PARAMS'
     )
     group.add_argument(
-        '-t', '--boot-topic', required=True,
-        help='name of the bootloader topic for the target R2P module; format: "[\\w]{1,%d}"' % r2p.MODULE_NAME_MAX_LENGTH,
-        dest='topic', metavar='BOOT_TOPIC'
+        '-t', '--r2p-topic', required=False, default='R2P',
+        help='name of the R2P topic; format: "[\\w]{1,%d}"' % r2p.MODULE_NAME_MAX_LENGTH,
+        dest='topic', metavar='R2P_TOPIC'
     )
     
     return parser
@@ -45,12 +45,17 @@ def _main():
     assert args.transport[1] == 'SerialLineIO'
     lineio = r2p.SerialLineIO(str(args.transport[2]), int(args.transport[3]))
     transport = r2p.DebugTransport(lineio)
-    bootloader = r2p.Bootloader(transport, args.topic)
+    
+    payload = struct.pack('<B', 0x20).ljust(32, '\0')
     
     try:
         transport.open()
-        bootloader.stop()
-        bootloader.get_appinfo()
+        logging.info('Requesting network state')
+        transport.send_message(args.topic, payload)
+        while True:
+            fields = transport.recv()
+            if fields[0] == r2p.Transport.TypeEnum.MESSAGE and fields[1] == args.topic:
+                logging.info('  ' + (fields[2]))
         transport.close()
 
     except KeyboardInterrupt:

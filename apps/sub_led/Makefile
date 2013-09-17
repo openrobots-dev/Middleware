@@ -55,7 +55,7 @@ endif
 #
 
 # Define project name here
-PROJECT = pub_led
+PROJECT = sub_led
 
 # Imported source files and paths
 include ../common/paths.mk
@@ -77,7 +77,7 @@ CSRC =
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
 CPPSRC = ../common/common.cpp \
-         pub_led.cpp
+         sub_led.cpp
 
 # C sources to be compiled in ARM mode regardless of the global setting.
 # NOTE: Mixing ARM and THUMB mode enables the -mthumb-interwork compiler
@@ -207,7 +207,7 @@ DLIBS = -lm
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS +=
+UDEFS += 
 
 # Define ASM defines here
 UADEFS +=

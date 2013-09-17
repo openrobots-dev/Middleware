@@ -5,7 +5,7 @@ import sys, os, io, time, struct, string, random
 import subprocess
 import serial
 import logging
-from helpers import str2hexb, hexb2str
+from helpers import *
 
 from elftools.elf.elffile import ELFFile
 from elftools.construct.macros import FlagsEnum
@@ -16,7 +16,7 @@ NODE_NAME_MAX_LENGTH = 8
 TOPIC_NAME_MAX_LENGTH = 16
 IHEX_MAX_DATA_LENGTH = 16
 
-APP_THREAD_SYMBOL = 'app_thread'
+APP_THREAD_SYMBOL = 'app_main'
 THREAD_PC_OFFSET = 1
 APP_CONFIG_SYMBOL = 'app_config'
 
@@ -24,6 +24,12 @@ _MODULE_NAME = ''.join([ random.choice(string.ascii_letters + string.digits + '_
                          for x in range(MODULE_NAME_MAX_LENGTH) ])
 
 #==============================================================================
+
+def _get_section_address(elffile, name):
+    for section in elffile.iter_sections():
+        if section.name == name:
+            return section.header['sh_addr']
+    raise RuntimeError('Section "%s" not found' % name)
 
 
 def _get_function_address(elffile, name):
@@ -54,7 +60,7 @@ def _get_variable_address(elffile, name):
             try:
                 if DIE.tag == 'DW_TAG_variable' and DIE.attributes['DW_AT_name'].value == name:
                     value = DIE.attributes['DW_AT_location'].value
-                    # handmade conversion (cannot manage through ELFFile...)
+                    # FIXME: Handmade address conversion (I don't know how to manage this with pyelftools...)
                     assert value[0] == 3
                     return (value[4] << 24) | (value[3] << 16) | (value[2] << 8) | value[1]
             except KeyError: continue
@@ -71,9 +77,9 @@ def _get_variable_size(elffile, name):
                     offset = DIE.attributes['DW_AT_type'].value
                     break
             except KeyError: continue
-        if not offset is None:
-            break
-    if offset is None: raise RuntimeError('Symbol "%s" not found' % name)
+        else: continue
+        break
+    else: raise RuntimeError('Symbol "%s" not found' % name)
     
     for DIE in CU.iter_DIEs():
         try:
@@ -81,7 +87,7 @@ def _get_variable_size(elffile, name):
                 offset = DIE.attributes['DW_AT_type'].value
                 break
         except KeyError: continue
-    else: raise RuntimeError()
+    else: pass # no separate struct/class type definition
     
     for DIE in CU.iter_DIEs():
         try:
@@ -97,9 +103,15 @@ def _get_variable_size(elffile, name):
                 size = DIE.attributes['DW_AT_byte_size'].value
                 break
         except KeyError: continue
-    else: raise RuntimeError()
+    else: raise RuntimeError('Cannot find structure type of variable "%s"' % name)
     
     return size
+
+
+if __name__ == '__main__':
+    with open('/home/texzk/openrobots/R2P_IMU_test_mw/apps/pub_led/build/pub_led.elf', 'r') as f:
+        elffile = ELFFile(f)
+        addr = _get_variable_size(elffile, APP_CONFIG_SYMBOL)
 
 #==============================================================================
 
@@ -375,6 +387,7 @@ class DebugTransport(Transport):
         self.__lineio.writeln(line)
     
     def send_reboot(self):
+        now = int(time.time()) & 0xFFFFFFFF
         cs = Checksummer()
         cs.add_uint(now)
         cs.add_bytes('r')
@@ -567,8 +580,8 @@ class IhexRecord(Serializable):
 #==============================================================================
 
 class BootMsg(Serializable):
-    MAX_PAYLOAD_LENGTH  = 26
-    MAX_LENGTH          = 26 + 1 
+    MAX_PAYLOAD_LENGTH  = 30
+    MAX_LENGTH          = 30 + 1 
     
     class TypeEnum:
         NACK                =  0
@@ -698,16 +711,22 @@ class BootMsg(Serializable):
 
     class LinkingOutcome(Serializable):
         def __init__(self):
-            self.threadadr = 0
+            self.mainadr = 0
             self.cfgadr = 0
             self.cfglen = 0
+            self.ctorsadr = 0
+            self.ctorslen = 0
+            self.dtorsadr = 0
+            self.dtorslen = 0
             
         def marshal(self):
-            return struct.pack('<LLL', self.threadadr, self.cfgadr, self.cfglen)
+            return struct.pack('<LLLLLLL', self.mainadr, self.cfgadr, self.cfglen,
+                               self.ctorsadr, self.ctorslen, self.dtorsadr, self.dtorslen)
 
         def unmarshal(self, data):
             self.__init__()
-            self.threadadr, self.cfgadr, self.cfglen = struct.unpack_from('<LLL', data)
+            self.mainadr, self.cfgadr, self.cfglen, self.ctorsadr, self.dtorslen, self.dtorsadr, self.dtorslen = \
+              struct.unpack_from('<LLLLLLL', data)
 
     class AppInfoSummary(Serializable):
         def __init__(self):
@@ -823,11 +842,15 @@ class BootMsg(Serializable):
         self.linking_addresses.datapgmadr = datapgmadr
         self.linking_addresses.nextadr = nextadr
     
-    def set_linking_outcome(self, threadadr, cfgadr, cfglen):
+    def set_linking_outcome(self, mainadr, cfgadr, cfglen, ctorsadr, ctorslen, dtorsadr, dtorslen):
         self.clean(BootMsg.TypeEnum.LINKING_OUTCOME)
-        self.linking_outcome.threadadr = threadadr
+        self.linking_outcome.mainadr = mainadr
         self.linking_outcome.cfgadr = cfgadr
         self.linking_outcome.cfglen = cfglen
+        self.linking_outcome.ctorsadr = ctorsadr
+        self.linking_outcome.ctorslen = ctorslen
+        self.linking_outcome.dtorsadr = dtorsadr
+        self.linking_outcome.dtorslen = dtorslen
     
     def set_appinfo_summary(self, numapps, freeadr, pgmstartadr, pgmendadr, ramstartadr, ramendadr):
         self.clean(BootMsg.TypeEnum.APPINFO_SUMMARY)
@@ -890,6 +913,26 @@ class BootMsg(Serializable):
 
 #==============================================================================
 
+class MgmtMsg(Serializable):
+    class TypeEnum:
+        RAW                     = 0x00
+    
+        INFO_MODULE             = 0x10
+        INFO_ADVERTISEMENT      = 0x11
+        INFO_SUBSCRIPTION       = 0x12
+    
+        CMD_GET_NETWORK_STATE   = 0x20
+        CMD_ADVERTISE           = 0x21
+        CMD_SUBSCRIBE           = 0x22
+    
+    
+    def __init__(self):
+        self.type = -1
+        
+        # TODO ...
+
+#==============================================================================
+
 class Bootloader:
     def __init__(self, transport, boot_topic):
         self.__transport = transport
@@ -917,6 +960,12 @@ class Bootloader:
             logging.debug('NACK sent but not received, trying again')
             
         logging.info('Target bootloader alive')
+    
+    def reboot(self):
+        # Reboot the board
+        logging.info('Sending reboot signal')
+        self.__transport.send_reboot()
+        logging.info('Reboot signal sent')
 
     def load(self, appname, hexpath, stacklen, ldexe, ldgcc, ldscript, ldoself, ldmap, ldobjelf, ldobjs, *args, **kwargs):
         self.__do_wrapper(self.__do_load, appname, hexpath, stacklen, ldexe, ldgcc, ldscript, ldoself, ldmap, ldobjelf, ldobjs, *args, **kwargs)
@@ -1006,11 +1055,11 @@ class Bootloader:
             
             bss_start   = _get_symbol_address(elffile, '__bss_start__')
             bss_end     = _get_symbol_address(elffile, '__bss_end__')
-            bsslen = bss_start - bss_end
+            bsslen = bss_end - bss_start
             
             data_start  = _get_symbol_address(elffile, '__data_start__')
             data_end    = _get_symbol_address(elffile, '__data_end__')
-            datalen = data_start - data_end
+            datalen = data_end - data_start
         
         appflags = BootMsg.LinkingSetup.FlagsEnum.ENABLED
         logging.info('  pgmlen   = 0x%0.8X (%d)' % (pgmlen, pgmlen))
@@ -1052,7 +1101,7 @@ class Bootloader:
         if dataadr:
             args += [ '--section-start', '.data=0x%0.8X' % dataadr ]
         if ldmap:
-            args += [ '-Map', ldmap, '--cref' ]
+            args += [ '-Map', ldmap ]
         if ldgcc:
             args = [ '-Wl,' + ','.join(args) ]
         args = [ ldexe ] + args + list(ldobjs)
@@ -1071,17 +1120,38 @@ class Bootloader:
         with open(ldobjelf, 'rb') as f:
             elffile = ELFFile(f)
             
-            threadadr = _get_function_address(elffile, APP_THREAD_SYMBOL)
-            logging.info('  threadadr = 0x%0.8X' % threadadr)
+            mainadr = _get_function_address(elffile, APP_THREAD_SYMBOL)
+            logging.info('  mainadr   = 0x%0.8X' % mainadr)
             
-            cfgadr = _get_variable_address(elffile, APP_CONFIG_SYMBOL)
+            config_start  = _get_symbol_address(elffile, '__config_start__')
+            config_end    = _get_symbol_address(elffile, '__config_end__')
+            cfgadr = config_start
+            cfglen = config_end - config_start
             logging.info('  cfgadr    = 0x%0.8X' % cfgadr)
-            
-            cfglen = _get_variable_size(elffile, APP_CONFIG_SYMBOL)
             logging.info('  cfglen    = 0x%0.8X (%d)' % (cfglen, cfglen))
+            
+            try:
+                ctorsadr = _get_symbol_address(elffile, '__init_array_start')
+                ctorslen = (_get_symbol_address(elffile, '__init_array_end') - ctorsadr) / 4
+            except RuntimeError:
+                logging.debug('Section "constructors" looks empty')
+                ctorsadr = 0
+                ctorslen = 0
+            logging.info('  ctorsadr  = 0x%0.8X' % ctorsadr)
+            logging.info('  ctorslen  = 0x%0.8X (%d)' % (ctorslen, ctorslen))
+            
+            try:
+                dtorsadr = _get_symbol_address(elffile, '__fini_array_start')
+                dtorslen = (_get_symbol_address(elffile, '__fini_array_end') - dtorsadr) / 4
+            except RuntimeError:
+                logging.debug('Section "destructors" looks empty')
+                dtorsadr = 0
+                dtorslen = 0
+            logging.info('  dtorsadr  = 0x%0.8X' % dtorsadr)
+            logging.info('  dtorslen  = 0x%0.8X (%d)' % (dtorslen, dtorslen))
         
         # Send the linking outcome
-        msg.set_linking_outcome(threadadr, cfgadr, cfglen)
+        msg.set_linking_outcome(mainadr, cfgadr, cfglen, ctorsadr, ctorslen, dtorsadr, dtorslen)
         publish(msg)
         fetch(BootMsg.TypeEnum.ACK)
         
@@ -1121,8 +1191,9 @@ class Bootloader:
         
         # Send IHEX records
         logging.info('Sending IHEX records to target module')
-        for record in ihex_records:
-            logging.info('  ' + str(record))
+        for i in range(len(ihex_records)):
+            record = ihex_records[i]
+            logging.info('  %s (%d/%d)' % (str(record), i + 1, len(ihex_records)))
             msg.set_ihex(record)
             publish(msg)
             fetch(BootMsg.TypeEnum.ACK)
@@ -1179,9 +1250,13 @@ class Bootloader:
             # Get the linking outcome
             publish(msg)
             outcome = fetch(BootMsg.TypeEnum.LINKING_OUTCOME).linking_outcome
-            logging.info('  threadadr  = 0x%0.8X' % outcome.threadadr)
+            logging.info('  mainadr    = 0x%0.8X' % outcome.mainadr)
             logging.info('  cfgadr     = 0x%0.8X' % outcome.cfgadr)
             logging.info('  cfglen     = 0x%0.8X (%d)' % (outcome.cfglen, outcome.cfglen))
+            logging.info('  ctorsadr   = 0x%0.8X' % outcome.ctorsadr)
+            logging.info('  ctorslen   = 0x%0.8X (%d)' % (outcome.ctorslen, outcome.ctorslen))
+            logging.info('  dtorsadr   = 0x%0.8X' % outcome.dtorsadr)
+            logging.info('  dtorslen   = 0x%0.8X (%d)' % (outcome.dtorslen, outcome.dtorslen))
         
         logging.debug('There should not be more apps')
         publish(msg)

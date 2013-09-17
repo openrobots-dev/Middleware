@@ -136,4 +136,14 @@ bool Middleware::is_stopped() const {
 }
 
 
+inline
+bool ok() {
+
+  SysLock::acquire();
+  bool alive = !Middleware::instance.is_stopped();
+  SysLock::release();
+  return alive;
+}
+
+
 } // namespace r2p

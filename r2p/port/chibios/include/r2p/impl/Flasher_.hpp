@@ -36,6 +36,7 @@ public:
   enum { WORD_ALIGNMENT     = sizeof(Data) };
   enum { ERASED_BYTE        = 0xFF };
   enum { ERASED_WORD        = 0xFFFF };
+  enum { INVALID_PAGE       = 0xFFFF };
 
 private:
   Data *page_bufp;
@@ -69,8 +70,10 @@ public:
 
   static const uint8_t *get_program_start();
   static const uint8_t *get_program_end();
+  static size_t get_program_length();
   static const uint8_t *get_ram_start();
   static const uint8_t *get_ram_end();
+  static size_t get_ram_length();
 
   static void jump_to(const uint8_t *address);
 };
@@ -136,6 +139,13 @@ const uint8_t *Flasher_::get_program_end() {
 
 
 inline
+size_t Flasher_::get_program_length() {
+
+  return compute_chunk_size(get_program_start(), get_program_end());
+}
+
+
+inline
 const uint8_t *Flasher_::get_ram_start() {
 
   return __ram_start__;
@@ -146,6 +156,13 @@ inline
 const uint8_t *Flasher_::get_ram_end() {
 
   return __ram_end__;
+}
+
+
+inline
+size_t Flasher_::get_ram_length() {
+
+  return compute_chunk_size(get_ram_start(), get_ram_end());
 }
 
 

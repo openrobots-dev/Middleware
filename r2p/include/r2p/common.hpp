@@ -19,6 +19,8 @@ namespace r2p {
 #define R2P_PACKED          __attribute__((packed))
 #define R2P_FORCE_INLINE    inline __attribute__((always_inline))
 
+#define R2P_APP_CONFIG      __attribute__((section("app_config")))
+
 
 template<typename Test, typename Base> R2P_FORCE_INLINE
 void static_cast_check () {

@@ -112,6 +112,11 @@ bool Flasher_::read(PageID page, Data *bufp) {
 
 bool Flasher_::write(PageID page, volatile const Data *bufp) {
 
+  if (!check_bounds(address_of(page), PAGE_SIZE, get_program_start(),
+                    get_program_length())) {
+    return false;
+  }
+
   volatile Data *const flashp = reinterpret_cast<volatile Data *>(
     reinterpret_cast<uintptr_t>(address_of(page))
   );
@@ -173,7 +178,8 @@ bool Flasher_::write_if_needed(PageID page, volatile const Data *bufp) {
 void Flasher_::begin() {
 
   R2P_ASSERT(page_modified == false);
-  page = 0;
+
+  page = INVALID_PAGE;
 }
 
 
@@ -202,6 +208,9 @@ bool Flasher_::flash(const uint8_t *address, const Data *bufp, size_t buflen) {
 
     // Read back new page if page has changed
     if (old_page != page) {
+      if (page_modified) {
+        if (!write_if_needed(old_page, page_bufp)) return false;
+      }
       if (!read(page, page_bufp)) return false;
       page_modified = false;
     }

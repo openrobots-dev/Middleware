@@ -56,7 +56,7 @@ public:
     PARAM_CHUNK
   };
 
-  enum { MAX_PAYLOAD_LENGTH = 26 };
+  enum { MAX_PAYLOAD_LENGTH = 30 };
 
   typedef const uint8_t *Address;
   typedef size_t        Length;
@@ -114,9 +114,13 @@ public:
   } R2P_PACKED;
 
   struct LinkingOutcome {
-    Address     threadadr;
+    Address     mainadr;
     Address     cfgadr;
     Length      cfglen;
+    Address     ctorsadr;
+    Length      ctorslen;
+    Address     dtorsadr;
+    Length      dtorslen;
   } R2P_PACKED;
 
   struct AppInfoSummary {

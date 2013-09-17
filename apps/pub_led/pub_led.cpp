@@ -1,32 +1,46 @@
-#include "ch.h"
-#include "hal.h"
-
-#include <r2p/Middleware.hpp>
+#include "common.hpp"
 
 using namespace r2p;
 
 
 struct AppConfig {
-    uint16_t l33t;
+    char        led_topic_name[NamingTraits<Topic>::MAX_LENGTH + 1];
+    char        pub_node_name[NamingTraits<Node>::MAX_LENGTH + 1];
+    uint32_t    loop_delay_ms;
+    unsigned    led_id;
+};
+
+const AppConfig app_config R2P_APP_CONFIG = {
+    "LED",
+    "LED_PUB",
+    200,
+    1
 };
 
 
-const AppConfig app_config = { 0x1337 };
-
-
 extern "C"
-msg_t app_thread(void *arg) {
+void app_main(void) {
 
-    (void)arg;
+    Node node(app_config.pub_node_name);
+    r2p::Publisher<LedMsg> pub;
 
-    if (r2p::Middleware::instance.is_stopped()) {
-        palTogglePad(LED_GPIO, LED4);
+    node.advertise(pub, app_config.led_topic_name);
+    
+    bool was_on = false;
+    while (r2p::ok()) {
+        LedMsg *msgp;
+        if (pub.alloc(msgp)) {
+            msgp->id = app_config.led_id;
+            msgp->on = !was_on;
+            if (pub.publish(*msgp)) {
+                was_on = !was_on;
+            } else {
+                palTogglePad(LED_GPIO, LED3);
+            }
+        } else {
+            palTogglePad(LED_GPIO, LED3);
+        }
+        r2p::Thread::sleep(Time::ms(app_config.loop_delay_ms));
     }
-
-	for (;;) {
-        palTogglePad(LED_GPIO, LED4);
-		chThdSleepMilliseconds(500);
-	}
-	return CH_SUCCESS;
 }
 
