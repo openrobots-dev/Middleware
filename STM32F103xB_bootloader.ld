@@ -51,22 +51,27 @@ SECTIONS
         *(.glue_7t)
         *(.glue_7)
         *(.gcc*)
+        __config_start__ = .;
+        *(app_config)
+        __config_end__ = .;
+        *(app_config.*)
     } > flash
-
+    
     constructors : ALIGN(4) SUBALIGN(4)
     {
-        PROVIDE(__init_array_start = .);
+        __init_array_start = .;
         KEEP(*(SORT(.init_array.*)))
         KEEP(*(.init_array))
-        PROVIDE(__init_array_end = .);
+        __init_array_end = .;
     } > flash
 
     destructors : ALIGN(4) SUBALIGN(4)
     {
-        PROVIDE(__fini_array_start = .);
+        /* FIXME: Why global destructors are not called here? */
+        __fini_array_start = .;
         KEEP(*(.fini_array))
         KEEP(*(SORT(.fini_array.*)))
-        PROVIDE(__fini_array_end = .);
+        __fini_array_end = .;
     } > flash
 
     .ARM.extab :
