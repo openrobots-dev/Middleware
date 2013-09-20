@@ -1,6 +1,6 @@
 
-#include "DebugSubscriber.hpp"
-#include "DebugTransport.hpp"
+#include "r2p/transport/DebugSubscriber.hpp"
+#include "r2p/transport/DebugTransport.hpp"
 #include <r2p/Topic.hpp>
 
 namespace r2p {

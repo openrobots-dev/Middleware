@@ -1,5 +1,5 @@
 
-#include "DebugPublisher.hpp"
+#include "r2p/transport/DebugPublisher.hpp"
 
 namespace r2p {
 

@@ -1,7 +1,7 @@
 
-#include "DebugTransport.hpp"
-#include "DebugPublisher.hpp"
-#include "DebugSubscriber.hpp"
+#include "r2p/transport/DebugTransport.hpp"
+#include "r2p/transport/DebugPublisher.hpp"
+#include "r2p/transport/DebugSubscriber.hpp"
 #include <r2p/Middleware.hpp>
 #include <r2p/ScopedLock.hpp>
 #include <r2p/Checksummer.hpp>

@@ -82,8 +82,8 @@ CSRC = $(PORTSRC) \
        $(BOARDSRC) \
        $(CHIBIOS)/os/various/evtimer.c \
        $(CHIBIOS)/os/various/syscalls.c \
-#       $(RTCANSRC) \
-#       $(RTCANPLATFORMSRC)
+       $(RTCANSRC) \
+       $(RTCANPLATFORMSRC)
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
