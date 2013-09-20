@@ -1,4 +1,9 @@
-#include "common.hpp"
+#include <r2p/Middleware.hpp>
+#include "LedMsg.hpp"
+
+#include "ch.h"
+#include "hal.h"
+
 
 using namespace r2p;
 
@@ -19,12 +24,10 @@ const AppConfig app_config R2P_APP_CONFIG = {
 
 static bool led_callback(const LedMsg &msg) {
 
-    unsigned led_pin_id = led2pin(msg.id);
-    
     if (msg.on) {
-        palClearPad(LED_GPIO, led_pin_id);
+        palClearPad(LED_GPIO, msg.id);
     } else {
-        palSetPad(LED_GPIO, led_pin_id);
+        palSetPad(LED_GPIO, msg.id);
     }
     return true;
 }

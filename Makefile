@@ -90,21 +90,16 @@ CSRC = $(PORTSRC) \
 CPPSRC = $(R2PSRC)
 
 ifeq ($(TEST),debug_test)
-  CPPSRC += DebugTransport.cpp DebugPublisher.cpp DebugSubscriber.cpp \
-         chnew.cpp main_debug_test.cpp
+  CPPSRC += chnew.cpp main_debug_test.cpp
 endif
 
 ifeq ($(TEST),rtcan_pub_test)
-  CPPSRC += DebugTransport.cpp DebugPublisher.cpp DebugSubscriber.cpp \
-         RTCANTransport.cpp RTCANPublisher.cpp RTCANSubscriber.cpp \
-         chnew.cpp main_rtcan_pub_test.cpp
+  CPPSRC += chnew.cpp main_rtcan_pub_test.cpp
 #  UDEFS = -DRTCAN_ISMASTER
 endif
 
 ifeq ($(TEST),rtcan_sub_test)
-  CPPSRC += DebugTransport.cpp DebugPublisher.cpp DebugSubscriber.cpp \
-         RTCANTransport.cpp RTCANPublisher.cpp RTCANSubscriber.cpp \
-         chnew.cpp main_rtcan_sub_test.cpp
+  CPPSRC += chnew.cpp main_rtcan_sub_test.cpp
 endif
 
 ifeq ($(TEST),pubsub_test)
@@ -112,8 +107,7 @@ ifeq ($(TEST),pubsub_test)
 endif
 
 ifeq ($(TEST),)
-  CPPSRC += DebugTransport.cpp DebugPublisher.cpp DebugSubscriber.cpp \
-            main.cpp chnew.cpp
+  CPPSRC += main.cpp chnew.cpp
 endif
 
 # C sources to be compiled in ARM mode regardless of the global setting.

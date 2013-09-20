@@ -11,7 +11,7 @@
 #include <r2p/Mutex.hpp>
 #include <r2p/NamingTraits.hpp>
 #include <r2p/Bootloader.hpp>
-#include "DebugTransport.hpp"
+#include "r2p/transport/DebugTransport.hpp"
 
 #include <cstdio>
 #include <cstdlib>
