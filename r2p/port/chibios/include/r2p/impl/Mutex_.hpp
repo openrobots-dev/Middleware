@@ -1,7 +1,6 @@
 #pragma once
 
 #include <r2p/common.hpp>
-#include <r2p/Mutex.hpp>
 #include <ch.h>
 
 namespace r2p {
