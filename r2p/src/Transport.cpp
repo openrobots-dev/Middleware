@@ -11,21 +11,6 @@
 namespace r2p {
 
 
-bool Transport::notify_advertisement(Topic &topic) {
-
-  if (!send_advertisement(topic)) return false;
-  return true;
-}
-
-
-bool Transport::notify_subscription(Topic &topic) {
-
-  // FIXME: Get the queue length by the topic itself
-  if (!send_subscription(topic, topic.get_max_queue_length())) return false;
-  return true;
-}
-
-
 bool Transport::notify_stop() {
 
   return send_stop();

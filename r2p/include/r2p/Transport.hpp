@@ -27,8 +27,9 @@ private:
   mutable StaticList<Transport>::Link by_middleware;
 
 public:
-  bool notify_advertisement(Topic &topic);
-  bool notify_subscription(Topic &topic);
+  bool notify_advertisement(const Topic &topic);
+  bool notify_subscription_request(const Topic &topic);
+  bool notify_subscription_response(const Topic &topic);
   bool notify_stop();
   bool notify_reboot();
 
@@ -46,7 +47,8 @@ protected:
                  size_t type_size);
 
   virtual bool send_advertisement(const Topic &topic) = 0;
-  virtual bool send_subscription(const Topic &topic, size_t queue_length) = 0;
+  virtual bool send_subscription_request(const Topic &topic) = 0;
+  virtual bool send_subscription_response(const Topic &topic) = 0;
   virtual bool send_stop() = 0;
   virtual bool send_reboot() = 0;
 
@@ -62,6 +64,27 @@ protected:
   Transport();
   virtual ~Transport() = 0;
 };
+
+
+inline
+bool Transport::notify_advertisement(const Topic &topic) {
+
+  return send_advertisement(topic);
+}
+
+
+inline
+bool Transport::notify_subscription_request(const Topic &topic) {
+
+  return send_subscription_request(topic);
+}
+
+
+inline
+bool Transport::notify_subscription_response(const Topic &topic) {
+
+  return send_subscription_response(topic);
+}
 
 
 } // namespace r2p

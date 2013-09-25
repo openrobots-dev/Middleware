@@ -46,10 +46,12 @@ void Middleware::initialize(void *mgmt_boot_stackp, size_t mgmt_boot_stacklen,
   SysLock::release();
   Thread::set_priority(oldprio);
 
+#if R2P_USE_BOOTLOADER
   // Launch all installed apps
   bool success; (void)success;
   success = Bootloader::launch_all();
   R2P_ASSERT(success);
+#endif
 }
 
 
@@ -89,6 +91,7 @@ void Middleware::stop() {
   }
   SysLock::release();
 
+#if R2P_USE_BOOTLOADER
   // Enter bootloader mode
   trigger = Thread::join(*mgmt_boot_threadp);
   R2P_ASSERT(trigger);
@@ -97,6 +100,7 @@ void Middleware::stop() {
     boot_threadf, NULL, "R2P_BOOT"
   );
   R2P_ASSERT(mgmt_boot_threadp != NULL);
+#endif // R2P_USE_BOOTLOADER
 }
 
 
@@ -175,7 +179,7 @@ bool Middleware::subscribe(LocalSubscriber &sub, const char *namep,
 
   for (StaticList<Transport>::Iterator i = transports.begin();
        i != transports.end(); ++i) {
-    i->notify_subscription(*topicp);
+    i->notify_subscription_request(*topicp);
   }
 
   return true;
@@ -287,7 +291,7 @@ void Middleware::do_mgmt_thread() {
           }
           break;
         }
-        case MgmtMsg::CMD_SUBSCRIBE: {
+        case MgmtMsg::CMD_SUBSCRIBE_REQUEST: {
           Transport *transportp = msgp->pubsub.transportp;
           R2P_ASSERT(transportp != NULL);
           size_t queue_length = msgp->pubsub.queue_length;
@@ -295,9 +299,19 @@ void Middleware::do_mgmt_thread() {
           sub.release(*msgp);
           if (topicp != NULL) {
             transportp->subscribe_cb(*topicp, queue_length);
-            while (!transportp->notify_advertisement(*topicp)) {
+            while (!transportp->notify_subscription_response(*topicp)) {
               Thread::yield();
             }
+          }
+          break;
+        }
+        case MgmtMsg::CMD_SUBSCRIBE_RESPONSE: {
+          Transport *transportp = msgp->pubsub.transportp;
+          R2P_ASSERT(transportp != NULL);
+          Topic *topicp = find_topic(msgp->pubsub.topic);
+          sub.release(*msgp);
+          if (topicp != NULL) {
+            transportp->advertise_cb(*topicp);
           }
           break;
         }
@@ -348,7 +362,7 @@ void Middleware::do_mgmt_thread() {
           SysLock::release();
           for (StaticList<Transport>::Iterator i = transports.begin();
                i != transports.end(); ++i) {
-            i->notify_subscription(*topic_iter);
+            i->notify_subscription_request(*topic_iter);
           }
         } else {
           SysLock::release();
@@ -361,6 +375,7 @@ void Middleware::do_mgmt_thread() {
 }
 
 
+#if R2P_USE_BOOTLOADER
 Thread::Return Middleware::boot_threadf(Thread::Argument) {
 
   Flasher::Data *flash_page_bufp = new Flasher::Data[BOOT_PAGE_LENGTH];
@@ -384,6 +399,7 @@ Thread::Return Middleware::boot_threadf(Thread::Argument) {
   R2P_ASSERT(false);
   return Thread::OK;
 }
+#endif
 
 
 Middleware::Middleware(const char *module_namep, const char *bootloader_namep)

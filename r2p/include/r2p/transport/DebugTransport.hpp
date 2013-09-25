@@ -39,7 +39,8 @@ private:
 
 public:
   bool send_advertisement(const Topic &topic);
-  bool send_subscription(const Topic &topic, size_t queue_length);
+  bool send_subscription_request(const Topic &topic);
+  bool send_subscription_response(const Topic &topic);
   bool send_stop();
   bool send_reboot();
 

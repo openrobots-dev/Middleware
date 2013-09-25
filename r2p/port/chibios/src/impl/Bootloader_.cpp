@@ -1,6 +1,7 @@
 
 #include <r2p/Bootloader.hpp>
 
+#if R2P_USE_BOOTLOADER
 namespace r2p {
 
 
@@ -17,3 +18,4 @@ uint8_t *Bootloader::unreserve_ram(size_t length) {
 
 
 } // namespace r2p
+#endif // R2P_USE_BOOTLOADER

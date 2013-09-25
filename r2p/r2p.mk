@@ -22,13 +22,18 @@ R2PSRC = $(R2P)/src/impl/ArrayQueue_.cpp \
          $(R2P)/src/Topic.cpp \
          $(R2P)/src/Transport.cpp \
          $(R2P)/src/Utils.cpp \
-         $(R2P)/src/transport/DebugTransport.cpp \
-         $(R2P)/src/transport/DebugPublisher.cpp \
-         $(R2P)/src/transport/DebugSubscriber.cpp \
-         $(R2P)/src/transport/RTCANTransport.cpp \
-         $(R2P)/src/transport/RTCANPublisher.cpp \
-         $(R2P)/src/transport/RTCANSubscriber.cpp \
 #
+
+ifeq ($(R2P_USE_DEBUGTRANSPORT),yes)
+R2PSRC += $(R2P)/src/transport/DebugTransport.cpp \
+          $(R2P)/src/transport/DebugPublisher.cpp \
+          $(R2P)/src/transport/DebugSubscriber.cpp
+endif
+ifeq ($(R2P_USE_RTCANTRANSPORT),yes)
+R2PSRC += $(R2P)/src/transport/RTCANTransport.cpp \
+          $(R2P)/src/transport/RTCANPublisher.cpp \
+          $(R2P)/src/transport/RTCANSubscriber.cpp
+endif
 
 R2PINC = $(R2P)/include \
 #

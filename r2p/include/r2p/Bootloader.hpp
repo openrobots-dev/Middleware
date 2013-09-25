@@ -6,6 +6,11 @@
 #include <r2p/Flasher.hpp>
 #include <r2p/Thread.hpp>
 
+#if !defined(R2P_USE_BOOTLOADER) || defined(__DOXYGEN__)
+#define R2P_USE_BOOTLOADER  0
+#endif
+
+#if R2P_USE_BOOTLOADER
 namespace r2p {
 
 template<typename MessageType> class Publisher;
@@ -291,3 +296,4 @@ const uint8_t *Bootloader::get_free_address() {
 
 
 } // namespace r2p
+#endif // R2P_USE_BOOTLOADER

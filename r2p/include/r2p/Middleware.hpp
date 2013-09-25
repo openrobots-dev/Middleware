@@ -93,8 +93,10 @@ private:
   static Thread::Return mgmt_threadf(Thread::Argument);
   void do_mgmt_thread();
 
+#if R2P_USE_BOOTLOADER
   static Thread::Return boot_threadf(Thread::Argument);
   void do_boot_thread();
+#endif
 
 private:
   Middleware(const char *module_namep, const char *bootloader_namep);

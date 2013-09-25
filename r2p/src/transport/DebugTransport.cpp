@@ -284,7 +284,7 @@ bool DebugTransport::send_advertisement(const Topic &topic) {
 }
 
 
-bool DebugTransport::send_subscription(const Topic &topic,
+bool DebugTransport::send_subscription_request(const Topic &topic,
                                        size_t queue_length) {
 
   ScopedLock<Mutex> lock(send_lock);

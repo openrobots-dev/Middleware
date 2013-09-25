@@ -4,6 +4,7 @@
 #include <r2p/Publisher.hpp>
 #include <r2p/Subscriber.hpp>
 
+#if R2P_USE_BOOTLOADER
 namespace r2p {
 
 
@@ -748,3 +749,4 @@ bool Bootloader::launch_all() {
 
 
 } // namespace r2p
+#endif // R2P_USE_BOOTLOADER
