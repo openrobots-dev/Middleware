@@ -90,7 +90,7 @@ private:
   bool recv_value(T &value, systime_t timeout = TIME_INFINITE);
   bool send_msg(const Message &msg, size_t msg_size, const char *topicp,
                 const Time &deadline);
-  bool send_pubsub_msg(const Topic &topic, size_t queue_length = 0);
+  bool send_pubsub_msg(const Topic &topic, MgmtMsg::TypeEnum type);
   bool send_stop_msg();
   bool send_reboot_msg();
 

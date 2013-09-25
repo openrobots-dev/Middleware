@@ -156,9 +156,8 @@ bool DebugTransport::send_msg(const Message &msg, size_t msg_size,
 }
 
 
-bool DebugTransport::send_pubsub_msg(const Topic &topic, size_t queue_length) {
-
-  R2P_ASSERT(queue_length <= 255);
+bool DebugTransport::send_pubsub_msg(const Topic &topic,
+                                     MgmtMsg::TypeEnum type) {
 
   Checksummer cs;
 
@@ -174,15 +173,31 @@ bool DebugTransport::send_pubsub_msg(const Topic &topic, size_t queue_length) {
   if (!send_char(':')) return false;
 
   // Discriminate between publisher and subscriber
-  if (queue_length == 0) {
+  switch (type) {
+  case MgmtMsg::CMD_ADVERTISE: {
     if (!send_char('p')) return false;
     cs.add('p');
-  } else {
+    break;
+  }
+  case MgmtMsg::CMD_SUBSCRIBE_REQUEST: {
     if (!send_char('s')) return false;
-    uint8_t length = static_cast<uint8_t>(queue_length);
+    SysLock::acquire();
+    uint8_t length = static_cast<uint8_t>(topic.get_max_queue_length());
+    SysLock::release();
     if (!send_value(length)) return false;
     cs.add('s');
     cs.add(length);
+    break;
+  }
+  case MgmtMsg::CMD_SUBSCRIBE_RESPONSE: {
+    if (!send_char('e')) return false;
+    cs.add('e');
+    break;
+  }
+  default: {
+    R2P_ASSERT(false && "unreachable");
+    break;
+  }
   }
   if (!send_char(':')) return false;
 
@@ -280,15 +295,21 @@ bool DebugTransport::send_reboot_msg() {
 bool DebugTransport::send_advertisement(const Topic &topic) {
 
   ScopedLock<Mutex> lock(send_lock);
-  return send_pubsub_msg(topic);
+  return send_pubsub_msg(topic, MgmtMsg::CMD_ADVERTISE);
 }
 
 
-bool DebugTransport::send_subscription_request(const Topic &topic,
-                                       size_t queue_length) {
+bool DebugTransport::send_subscription_request(const Topic &topic) {
 
   ScopedLock<Mutex> lock(send_lock);
-  return send_pubsub_msg(topic, queue_length);
+  return send_pubsub_msg(topic, MgmtMsg::CMD_SUBSCRIBE_REQUEST);
+}
+
+
+bool DebugTransport::send_subscription_response(const Topic &topic) {
+
+  ScopedLock<Mutex> lock(send_lock);
+  return send_pubsub_msg(topic, MgmtMsg::CMD_SUBSCRIBE_RESPONSE);
 }
 
 
@@ -448,7 +469,8 @@ bool DebugTransport::spin_rx() {
 
     switch (typechar) {
     case 'p':
-    case 's': {
+    case 's':
+    case 'e': {
       // Get the module name (ignored)
       if (!expect_char(':')) return false;
       if (!recv_value(length)) return false;
@@ -473,11 +495,14 @@ bool DebugTransport::spin_rx() {
       if (!mgmt_rpub.alloc(reinterpret_cast<Message *&>(msgp))) return false;
       Message::clean(*msgp);
       msgp->pubsub.transportp = this;
+      strncpy(msgp->pubsub.topic, namebufp, NamingTraits<Topic>::MAX_LENGTH);
 
-      if (typechar == 'p') {
+      switch (typechar) {
+      case 'p': {
         msgp->type = MgmtMsg::CMD_ADVERTISE;
-        strncpy(msgp->pubsub.topic, namebufp, NamingTraits<Topic>::MAX_LENGTH);
-      } else {
+        break;
+      }
+      case 's': {
         // Get the queue length
         if (!recv_value(length) || length == 0) {
           mgmt_rsub.release(*msgp);
@@ -485,9 +510,14 @@ bool DebugTransport::spin_rx() {
         }
         cs.add(length);
 
-        msgp->type = MgmtMsg::CMD_SUBSCRIBE;
-        strncpy(msgp->pubsub.topic, namebufp, NamingTraits<Topic>::MAX_LENGTH);
+        msgp->type = MgmtMsg::CMD_SUBSCRIBE_REQUEST;
         msgp->pubsub.queue_length = length;
+        break;
+      }
+      case 'e': {
+        msgp->type = MgmtMsg::CMD_SUBSCRIBE_RESPONSE;
+        break;
+      }
       }
 
       // Get the checksum
