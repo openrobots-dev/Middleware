@@ -6,7 +6,7 @@
 #include <r2p/RemoteSubscriber.hpp>
 #include <r2p/TimestampedMsgPtrQueue.hpp>
 #include <r2p/ScopedLock.hpp>
-#include "RTCANPublisher.hpp"
+#include "r2p/transport/RTCANPublisher.hpp"
 
 namespace r2p {
 

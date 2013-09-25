@@ -379,7 +379,7 @@ public:
   }
 
   bool is_empty_unsafe() const {
-    return headp != NULL;
+    return headp == NULL;
   }
 
   size_t count_unsafe() const;
