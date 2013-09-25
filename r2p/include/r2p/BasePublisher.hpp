@@ -63,12 +63,16 @@ void BasePublisher::notify_advertised(Topic &topic) {
 inline
 bool BasePublisher::publish_locally_unsafe(Message &msg) {
 
+  R2P_ASSERT(topicp != NULL);
+
   return topicp->notify_locals_unsafe(msg, Time::now());
 }
 
 
 inline
 bool BasePublisher::publish_remotely_unsafe(Message &msg) {
+
+  R2P_ASSERT(topicp != NULL);
 
   return topicp->notify_remotes_unsafe(msg, Time::now());
 }
@@ -87,12 +91,16 @@ bool BasePublisher::alloc(Message *&msgp) {
 inline
 bool BasePublisher::publish_locally(Message &msg) {
 
+  R2P_ASSERT(topicp != NULL);
+
   return topicp->notify_locals(msg, Time::now());
 }
 
 
 inline
 bool BasePublisher::publish_remotely(Message &msg) {
+
+  R2P_ASSERT(topicp != NULL);
 
   return topicp->notify_remotes(msg, Time::now());
 }
@@ -101,7 +109,7 @@ bool BasePublisher::publish_remotely(Message &msg) {
 inline
 bool BasePublisher::has_topic(const BasePublisher &pub, const char *namep) {
 
-  return Topic::has_name(*pub.topicp, namep);
+  return pub.topicp != NULL && Topic::has_name(*pub.topicp, namep);
 }
 
 

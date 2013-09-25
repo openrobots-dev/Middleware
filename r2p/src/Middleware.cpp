@@ -283,7 +283,7 @@ void Middleware::do_mgmt_thread() {
           Topic *topicp = find_topic(msgp->pubsub.topic);
           sub.release(*msgp);
           if (topicp != NULL) {
-            transportp->advertise(*topicp);
+            transportp->advertise_cb(*topicp);
           }
           break;
         }
@@ -294,7 +294,10 @@ void Middleware::do_mgmt_thread() {
           Topic *topicp = find_topic(msgp->pubsub.topic);
           sub.release(*msgp);
           if (topicp != NULL) {
-            transportp->subscribe(*topicp, queue_length);
+            transportp->subscribe_cb(*topicp, queue_length);
+            while (!transportp->notify_advertisement(*topicp)) {
+              Thread::yield();
+            }
           }
           break;
         }

@@ -36,8 +36,8 @@ protected:
   bool touch_publisher(Topic &topic);
   bool touch_subscriber(Topic &topic, size_t queue_length);
 
-  bool advertise(Topic &topic);
-  bool subscribe(Topic &topic, size_t queue_length);
+  bool advertise_cb(Topic &topic);
+  bool subscribe_cb(Topic &topic, size_t queue_length);
 
   bool advertise(RemotePublisher &pub, const char *namep,
                  const Time &publish_timeout, size_t type_size);
@@ -53,7 +53,7 @@ protected:
   virtual RemotePublisher *create_publisher(Topic &topic) const = 0;
   virtual RemoteSubscriber *create_subscriber(
     Topic &topic,
-    Transport &transport,
+    Transport &transport, // FIXME: &transport == this  ==>  remove!
     TimestampedMsgPtrQueue::Entry queue_buf[], // TODO: Make as generic <const void *> argument
     size_t queue_length
   ) const = 0;

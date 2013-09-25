@@ -6,7 +6,7 @@
 #include <r2p/RemoteSubscriber.hpp>
 #include <r2p/TimestampedMsgPtrQueue.hpp>
 #include <r2p/ScopedLock.hpp>
-#include "r2p/transport/RTCANPublisher.hpp"
+#include "RTCANPublisher.hpp"
 
 namespace r2p {
 
@@ -100,7 +100,7 @@ bool Transport::touch_subscriber(Topic &topic, size_t queue_length) {
 }
 
 
-bool Transport::advertise(Topic &topic) {
+bool Transport::advertise_cb(Topic &topic) {
 
   // Process only if there are local subscribers
   SysLock::acquire();
@@ -114,7 +114,7 @@ bool Transport::advertise(Topic &topic) {
 }
 
 
-bool Transport::subscribe(Topic &topic, size_t queue_length) {
+bool Transport::subscribe_cb(Topic &topic, size_t queue_length) {
 
   // Process only if there are local publishers
   SysLock::acquire();
@@ -131,11 +131,15 @@ bool Transport::subscribe(Topic &topic, size_t queue_length) {
 bool Transport::advertise(RemotePublisher &pub, const char *namep,
                           const Time &publish_timeout, size_t type_size) {
 
+  publishers_lock.acquire();
   if (Middleware::instance.advertise(pub, namep, publish_timeout, type_size)) {
     publishers.link(pub.by_transport);
+    publishers_lock.release();
     return true;
+  } else {
+    publishers_lock.release();
+    return false;
   }
-  return false;
 }
 
 
@@ -143,12 +147,16 @@ bool Transport::subscribe(RemoteSubscriber &sub, const char *namep,
                           Message msgpool_buf[], size_t msgpool_buflen,
                           size_t type_size) {
 
+  subscribers_lock.acquire();
   if (Middleware::instance.subscribe(sub, namep, msgpool_buf, msgpool_buflen,
                                      type_size)) {
     subscribers.link(sub.by_transport);
+    subscribers_lock.release();
     return true;
+  } else {
+    subscribers_lock.release();
+    return false;
   }
-  return false;
 }
 
 
