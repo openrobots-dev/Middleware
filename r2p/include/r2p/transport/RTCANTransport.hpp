@@ -49,7 +49,8 @@ private:
 
 public:
   bool send_advertisement(const Topic &topic);
-  bool send_subscription(const Topic &topic, size_t queue_length);
+  bool send_subscription_request(const Topic &topic);
+  bool send_subscription_response(const Topic &topic);
   bool send_stop();
   bool send_reboot();
   bool send(Message * msgp, RTCANSubscriber * rsubp);
@@ -61,21 +62,24 @@ public:
 private:
   bool send_adv_msg(const adv_msg_t &adv_msg);
   void recv_adv_msg(const adv_msg_t &adv_msg);
-  RemotePublisher *create_publisher(Topic &topic) const;
+  RemotePublisher *create_publisher(Topic &topic, uint8_t * raw_params) const;
   RemoteSubscriber *create_subscriber(
     Topic &topic,
     Transport &transport,
     TimestampedMsgPtrQueue::Entry queue_buf[], // TODO: remove
-    size_t queue_length
+    size_t queue_length,
+    uint8_t * raw_params
   ) const;
 
 public:
   RTCANTransport(RTCANDriver &rtcan);
+  ~RTCANTransport();
 
 private:
   static void adv_rx_cb(rtcan_msg_t &rtcan_msg);
   static void send_cb(rtcan_msg_t &rtcan_msg);
   static void recv_cb(rtcan_msg_t &rtcan_msg);
+  static void free_header(rtcan_msg_t &rtcan_msg);
 };
 
 } // namespace r2p

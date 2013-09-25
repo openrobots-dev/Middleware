@@ -24,15 +24,10 @@ bool RTCANSubscriber::fetch_unsafe(Message *&msgp, Time &timestamp) {
 
 
 bool RTCANSubscriber::notify_unsafe(Message &msg, const Time &timestamp) {
-	RTCANTransport * transportp;
+	RTCANTransport * transportp = static_cast<RTCANTransport *>(get_transport());
 	(void) timestamp;
 
-	if (queue_free > 0) {
-		queue_free--;
-		transportp = static_cast<RTCANTransport *>(get_transport());
-		transportp->send(&msg, this);
-		return true;
-	}
+	if (transportp->send(&msg, this)) return true;
 
 	return false;
 }
@@ -46,8 +41,7 @@ RTCANSubscriber::RTCANSubscriber(RTCANTransport &transport,
 		                         TimestampedMsgPtrQueue::Entry queue_buf[],
                                  size_t queue_length)
 :
-  RemoteSubscriber(transport),
-  queue_free(queue_length)
+  RemoteSubscriber(transport)
 {}
 
 

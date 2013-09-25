@@ -21,7 +21,6 @@ class RTCANSubscriber : public RemoteSubscriber {
   friend class RTCANTransport;
 
 private:
-  size_t queue_free;
   rtcan_id_t rtcan_id;
 
 public:

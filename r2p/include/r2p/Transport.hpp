@@ -34,11 +34,11 @@ public:
   bool notify_reboot();
 
 protected:
-  bool touch_publisher(Topic &topic);
-  bool touch_subscriber(Topic &topic, size_t queue_length);
+  bool touch_publisher(Topic &topic, uint8_t * raw_params = NULL);
+  bool touch_subscriber(Topic &topic, size_t queue_length, uint8_t * raw_params = NULL);
 
-  bool advertise_cb(Topic &topic);
-  bool subscribe_cb(Topic &topic, size_t queue_length);
+  bool advertise_cb(Topic &topic, uint8_t * raw_params = NULL);
+  bool subscribe_cb(Topic &topic, size_t queue_length, uint8_t * raw_params = NULL);
 
   bool advertise(RemotePublisher &pub, const char *namep,
                  const Time &publish_timeout, size_t type_size);
@@ -52,12 +52,13 @@ protected:
   virtual bool send_stop() = 0;
   virtual bool send_reboot() = 0;
 
-  virtual RemotePublisher *create_publisher(Topic &topic) const = 0;
+  virtual RemotePublisher *create_publisher(Topic &topic, uint8_t * raw_params = NULL) const = 0;
   virtual RemoteSubscriber *create_subscriber(
     Topic &topic,
     Transport &transport, // FIXME: &transport == this  ==>  remove!
     TimestampedMsgPtrQueue::Entry queue_buf[], // TODO: Make as generic <const void *> argument
-    size_t queue_length
+    size_t queue_length,
+    uint8_t * raw_params
   ) const = 0;
 
 protected:

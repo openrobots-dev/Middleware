@@ -23,7 +23,7 @@ bool Transport::notify_reboot() {
 }
 
 
-bool Transport::touch_publisher(Topic &topic) {
+bool Transport::touch_publisher(Topic &topic, uint8_t * raw_params) {
 
   ScopedLock<Mutex> lock(publishers_lock);
 
@@ -33,7 +33,7 @@ bool Transport::touch_publisher(Topic &topic) {
   if (pubp != NULL) return true;
 
   // Create a new remote publisher
-  pubp = create_publisher(topic);
+  pubp = create_publisher(topic, raw_params);
   if (pubp == NULL) return false;
 
   pubp->notify_advertised(topic);
@@ -48,7 +48,7 @@ bool Transport::touch_publisher(Topic &topic) {
 }
 
 
-bool Transport::touch_subscriber(Topic &topic, size_t queue_length) {
+bool Transport::touch_subscriber(Topic &topic, size_t queue_length, uint8_t * raw_params) {
 
   ScopedLock<Mutex> lock(subscribers_lock);
 
@@ -67,7 +67,7 @@ bool Transport::touch_subscriber(Topic &topic, size_t queue_length) {
   if (msgpool_bufp != NULL) {
     queue_bufp = new TimestampedMsgPtrQueue::Entry[queue_length];
     if (queue_bufp != NULL) {
-      subp = create_subscriber(topic, *this, queue_bufp, queue_length);
+      subp = create_subscriber(topic, *this, queue_bufp, queue_length, raw_params);
       if (subp != NULL) {
         subp->notify_subscribed(topic);
         topic.extend_pool(msgpool_bufp, queue_length);
@@ -85,13 +85,13 @@ bool Transport::touch_subscriber(Topic &topic, size_t queue_length) {
 }
 
 
-bool Transport::advertise_cb(Topic &topic) {
+bool Transport::advertise_cb(Topic &topic, uint8_t * raw_params) {
 
   // Process only if there are local subscribers
   SysLock::acquire();
   if (topic.has_local_subscribers()) {
     SysLock::release();
-    return touch_publisher(topic);
+    return touch_publisher(topic, raw_params);
   } else {
     SysLock::release();
     return true;
@@ -99,13 +99,13 @@ bool Transport::advertise_cb(Topic &topic) {
 }
 
 
-bool Transport::subscribe_cb(Topic &topic, size_t queue_length) {
+bool Transport::subscribe_cb(Topic &topic, size_t queue_length, uint8_t * raw_params) {
 
   // Process only if there are local publishers
   SysLock::acquire();
   if (topic.has_local_publishers()) {
     SysLock::release();
-    return touch_subscriber(topic, queue_length);
+    return touch_subscriber(topic, queue_length, raw_params);
   } else {
     SysLock::release();
     return true;
