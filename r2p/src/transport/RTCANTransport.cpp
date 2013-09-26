@@ -75,6 +75,11 @@ bool RTCANTransport::send_adv_msg(const adv_msg_t &adv_msg) {
 
 	rtcanTransmit(&rtcan, rtcan_msg_p, 100);
 
+	// FIXME!!!
+	while(rtcan_msg_p->status != RTCAN_MSG_READY) {
+		Thread::yield();
+	}
+
 	return true;
 }
 
@@ -201,12 +206,12 @@ RemoteSubscriber *RTCANTransport::create_subscriber(Topic &topic,
 
 // FIXME: to implement
 rtcan_id_t RTCANTransport::topic_id(const char * namep) const {
+	if (strcmp(namep, "leds") == 0)
+		return 110 << 8;
 	if (strcmp(namep, "led2") == 0)
 		return 112 << 8;
 	if (strcmp(namep, "led3") == 0)
 		return 113 << 8;
-	if (strcmp(namep, "ledall") == 0)
-		return 114 << 8;
 
 	if (strcmp(namep, "tilt") == 0)
 		return 155 << 8;
