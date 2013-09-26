@@ -62,13 +62,12 @@ public:
 private:
   bool send_adv_msg(const adv_msg_t &adv_msg);
   void recv_adv_msg(const adv_msg_t &adv_msg);
-  RemotePublisher *create_publisher(Topic &topic, uint8_t * raw_params) const;
+  RemotePublisher *create_publisher(Topic &topic, const uint8_t *raw_params = NULL) const;
   RemoteSubscriber *create_subscriber(
     Topic &topic,
-    Transport &transport,
     TimestampedMsgPtrQueue::Entry queue_buf[], // TODO: remove
     size_t queue_length,
-    uint8_t * raw_params
+    const uint8_t *raw_params = NULL
   ) const;
 
 public:

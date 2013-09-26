@@ -414,7 +414,6 @@ bool DebugTransport::spin_rx() {
 
   // Skip the deadline
   if (!skip_after_char('@')) return false;
-  Thread::sleep(Time::ms(100)); // XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX
   { Time deadline;
   if (!recv_value(deadline.raw)) return false;
   cs.add(deadline.raw); }

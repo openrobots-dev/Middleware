@@ -6,7 +6,6 @@ R2PSRC = $(R2P)/src/impl/ArrayQueue_.cpp \
          $(R2P)/src/BasePublisher.cpp \
          $(R2P)/src/BaseSubscriber.cpp \
          $(R2P)/src/BaseSubscriberQueue.cpp \
-		 $(R2P)/src/Bootloader.cpp \
 		 $(R2P)/src/BootMsg.cpp \
 		 $(R2P)/src/Checksummer.cpp \
          $(R2P)/src/LocalPublisher.cpp \
@@ -23,6 +22,13 @@ R2PSRC = $(R2P)/src/impl/ArrayQueue_.cpp \
          $(R2P)/src/Transport.cpp \
          $(R2P)/src/Utils.cpp \
 #
+
+ifeq ($(R2P_USE_BOOTLOADER),)
+R2P_USE_BOOTLOADER = yes
+endif
+ifeq ($(R2P_USE_BOOTLOADER),yes)
+R2PSRC += $(R2P)/src/Bootloader.cpp
+endif
 
 ifeq ($(R2P_USE_DEBUGTRANSPORT),yes)
 R2PSRC += $(R2P)/src/transport/DebugTransport.cpp \

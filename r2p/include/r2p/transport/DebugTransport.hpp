@@ -52,13 +52,13 @@ public:
   void notify_first_sub_unsafe(const DebugSubscriber &sub);
 
 private:
-  RemotePublisher *create_publisher(Topic &topic, uint8_t * raw_params) const;
+  RemotePublisher *create_publisher(Topic &topic,
+                                    const uint8_t *raw_params = NULL) const;
   RemoteSubscriber *create_subscriber(
     Topic &topic,
-    Transport &transport,
     TimestampedMsgPtrQueue::Entry queue_buf[],
     size_t queue_length,
-    uint8_t * raw_params
+    const uint8_t *raw_params = NULL
   ) const;
 
   bool spin_tx();
@@ -114,7 +114,9 @@ void DebugTransport::notify_first_sub_unsafe(const DebugSubscriber &sub) {
 
 
 inline
-RemotePublisher *DebugTransport::create_publisher(Topic &topic, uint8_t * raw_params) const {
+RemotePublisher *DebugTransport::create_publisher(Topic &topic,
+                                                  const uint8_t *raw_params)
+const {
 
   (void)topic;
   (void)raw_params;
@@ -125,14 +127,13 @@ RemotePublisher *DebugTransport::create_publisher(Topic &topic, uint8_t * raw_pa
 inline
 RemoteSubscriber *DebugTransport::create_subscriber(
   Topic &topic,
-  Transport &transport,
   TimestampedMsgPtrQueue::Entry queue_buf[],
   size_t queue_length,
-  uint8_t * raw_params) const {
+  const uint8_t *raw_params) const {
 
   (void)topic;
   (void)raw_params;
-  return new DebugSubscriber(static_cast<DebugTransport &>(transport),
+  return new DebugSubscriber(*const_cast<DebugTransport *>(this),
                              queue_buf, queue_length);
 }
 

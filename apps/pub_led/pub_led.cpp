@@ -1,10 +1,7 @@
-#include <r2p/Middleware.hpp>
-#include "LedMsg.hpp"
-
-#include "ch.h"
-#include "hal.h"
+#include "common.hpp"
 
 using namespace r2p;
+
 
 struct AppConfig {
     char        led_topic_name[NamingTraits<Topic>::MAX_LENGTH + 1];
@@ -17,7 +14,7 @@ const AppConfig app_config R2P_APP_CONFIG = {
     "LED",
     "LED_PUB",
     200,
-    LED2
+    1
 };
 
 
@@ -38,10 +35,10 @@ void app_main(void) {
             if (pub.publish(*msgp)) {
                 was_on = !was_on;
             } else {
-                palTogglePad(LED_GPIO, LED4);
+                palTogglePad(LED_GPIO, LED3);
             }
         } else {
-            palTogglePad(LED_GPIO, LED4);
+            palTogglePad(LED_GPIO, LED3);
         }
         r2p::Thread::sleep(Time::ms(app_config.loop_delay_ms));
     }

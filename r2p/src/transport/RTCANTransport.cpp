@@ -175,7 +175,7 @@ void RTCANTransport::initialize(const RTCANConfig &rtcan_config) {
 	Middleware::instance.add(*this);
 }
 
-RemotePublisher *RTCANTransport::create_publisher(Topic &topic, uint8_t * raw_params) const {
+RemotePublisher *RTCANTransport::create_publisher(Topic &topic, const uint8_t *raw_params) const {
 	RTCANPublisher * rpubp = new RTCANPublisher();
 
 	rpubp->rtcan_header.id = *(rtcan_id_t *)raw_params;
@@ -188,9 +188,9 @@ RemotePublisher *RTCANTransport::create_publisher(Topic &topic, uint8_t * raw_pa
 	return rpubp;
 }
 
-RemoteSubscriber *RTCANTransport::create_subscriber(Topic &topic, Transport &transport,
-		TimestampedMsgPtrQueue::Entry queue_buf[], size_t queue_length, uint8_t * raw_params) const {
-	RTCANSubscriber * rsubp = new RTCANSubscriber(static_cast<RTCANTransport &>(transport), queue_buf, queue_length);
+RemoteSubscriber *RTCANTransport::create_subscriber(Topic &topic,
+		TimestampedMsgPtrQueue::Entry queue_buf[], size_t queue_length, const uint8_t *raw_params) const {
+	RTCANSubscriber *rsubp = new RTCANSubscriber(*const_cast<RTCANTransport *>(this), queue_buf, queue_length);
 
 	// TODO: dynamic ID arbitration
 	// FIXME: ID da raw_params se esiste gia' (altri publisher su stesso topic)

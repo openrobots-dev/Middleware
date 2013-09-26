@@ -1,16 +1,18 @@
 #pragma once
 
 #include <r2p/common.hpp>
-#include <r2p/BootMsg.hpp>
-#include <r2p/NamingTraits.hpp>
-#include <r2p/Flasher.hpp>
-#include <r2p/Thread.hpp>
 
 #if !defined(R2P_USE_BOOTLOADER) || defined(__DOXYGEN__)
-#define R2P_USE_BOOTLOADER  0
+#define R2P_USE_BOOTLOADER  1
 #endif
 
 #if R2P_USE_BOOTLOADER
+
+#include <r2p/Flasher.hpp>
+#include <r2p/BootMsg.hpp>
+#include <r2p/NamingTraits.hpp>
+#include <r2p/Thread.hpp>
+
 namespace r2p {
 
 template<typename MessageType> class Publisher;

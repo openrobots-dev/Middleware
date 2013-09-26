@@ -67,7 +67,7 @@ bool Transport::touch_subscriber(Topic &topic, size_t queue_length, uint8_t * ra
   if (msgpool_bufp != NULL) {
     queue_bufp = new TimestampedMsgPtrQueue::Entry[queue_length];
     if (queue_bufp != NULL) {
-      subp = create_subscriber(topic, *this, queue_bufp, queue_length, raw_params);
+      subp = create_subscriber(topic, queue_bufp, queue_length, raw_params);
       if (subp != NULL) {
         subp->notify_subscribed(topic);
         topic.extend_pool(msgpool_bufp, queue_length);
