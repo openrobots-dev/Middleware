@@ -6,7 +6,7 @@
 #include <r2p/RemotePublisher.hpp>
 #include <r2p/StaticList.hpp>
 
-#include "rtcan.h"
+#include <rtcan.h>
 
 namespace r2p {
 

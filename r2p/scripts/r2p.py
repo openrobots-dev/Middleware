@@ -4,6 +4,7 @@
 import sys, os, io, time, struct, string, random
 import subprocess
 import serial
+import socket
 import logging
 from helpers import *
 
@@ -256,6 +257,37 @@ class StdLineIO(LineIO):
         logging.debug("stdout >>> '%s'" % line)
         print line
 
+#==============================================================================
+
+class TCPLineIO(LineIO):
+    
+    def __init__(self, address, port):
+        self.__socket = None
+        self.__fp = None
+        self.__address = address
+        self.__port = port
+    
+    def open(self):
+        self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.__socket.connect((self.__address, self.__port))
+        self.__fp = self.__socket.makefile()
+        
+        time.sleep(1)
+        
+    def close(self):
+        self.__socket.close()
+        self.__fp = None
+    
+    def readln(self):
+        line = self.__fp.readline().rstrip('\r\n')
+        logging.debug("%s >>> '%s'" % (self.__address, line))
+        return line
+     
+    def writeln(self, line):
+        logging.debug("%s <<< '%s'" % (self.__address, line))
+        self.__fp.write(unicode(line + '\n'))
+        self.__fp.flush()
+        
 #==============================================================================
 
 class DebugTransport(Transport):
