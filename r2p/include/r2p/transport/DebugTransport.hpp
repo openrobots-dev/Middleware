@@ -96,7 +96,7 @@ private:
   bool send_reboot_msg();
 
 public:
-  DebugTransport(BaseChannel *channelp, char namebuf[]);
+  DebugTransport(const char *namep, BaseChannel *channelp, char namebuf[]);
   ~DebugTransport();
 
 private:

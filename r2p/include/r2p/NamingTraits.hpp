@@ -7,6 +7,7 @@ namespace r2p {
 class Middleware;
 class Node;
 class Topic;
+class Transport;
 
 
 template<typename T>
@@ -28,6 +29,12 @@ struct NamingTraits<Node> {
 template<>
 struct NamingTraits<Topic> {
   enum { MAX_LENGTH = 16 };
+};
+
+
+template<>
+struct NamingTraits<Transport> {
+  enum { MAX_LENGTH = 8 };
 };
 
 

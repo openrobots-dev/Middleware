@@ -30,6 +30,14 @@ bool Topic::notify_remotes_unsafe(Message &msg, const Time &timestamp) {
     for (StaticList<RemoteSubscriber>::IteratorUnsafe i =
          remote_subscribers.begin_unsafe();
          i != remote_subscribers.end_unsafe(); ++i) {
+
+#if R2P_MESSAGE_TRACKS_SOURCE
+      R2P_ASSERT(i->get_transport() != NULL);
+      if (msg.get_source() == i->get_transport()) {
+        continue; // Do not send back to source transport
+      }
+#endif
+
       msg.acquire_unsafe();
       if (!i->notify_unsafe(msg, timestamp)) {
         msg.release_unsafe();

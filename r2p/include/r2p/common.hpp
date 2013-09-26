@@ -13,13 +13,13 @@ namespace r2p {
 
 
 #ifndef R2P_MEMORY_ALIGNED
-#define R2P_MEMORY_ALIGNED  __attribute__((aligned(sizeof(unsigned))))
+#define R2P_MEMORY_ALIGNED  __attribute__(( aligned(sizeof(unsigned)) ))
 #endif
 
-#define R2P_PACKED          __attribute__((packed))
-#define R2P_FORCE_INLINE    inline __attribute__((always_inline))
+#define R2P_PACKED          __attribute__(( packed ))
+#define R2P_FORCE_INLINE    inline __attribute__(( always_inline ))
 
-#define R2P_APP_CONFIG      __attribute__((section("app_config")))
+#define R2P_APP_CONFIG      __attribute__(( section("app_config") ))
 
 
 template<typename Test, typename Base> R2P_FORCE_INLINE

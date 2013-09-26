@@ -145,10 +145,13 @@ bool Transport::subscribe(RemoteSubscriber &sub, const char *namep,
 }
 
 
-Transport::Transport()
+Transport::Transport(const char *namep)
 :
+  namep(namep),
   by_middleware(*this)
-{}
+{
+  R2P_ASSERT(is_identifier(namep, NamingTraits<Transport>::MAX_LENGTH));
+}
 
 
 Transport::~Transport() {}

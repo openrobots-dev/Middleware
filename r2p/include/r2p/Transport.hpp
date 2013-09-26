@@ -4,6 +4,7 @@
 #include <r2p/StaticList.hpp>
 #include <r2p/TimestampedMsgPtrQueue.hpp>
 #include <r2p/Mutex.hpp>
+#include <r2p/NamingTraits.hpp>
 
 namespace r2p {
 
@@ -18,6 +19,7 @@ class Transport : private Uncopyable {
   friend class Middleware;
 
 protected:
+  const char *namep;
   StaticList<RemotePublisher> publishers;
   StaticList<RemoteSubscriber> subscribers;
   Mutex publishers_lock;
@@ -27,6 +29,8 @@ private:
   mutable StaticList<Transport>::Link by_middleware;
 
 public:
+  const char *get_name() const;
+
   bool notify_advertisement(const Topic &topic);
   bool notify_subscription_request(const Topic &topic);
   bool notify_subscription_response(const Topic &topic);
@@ -65,9 +69,19 @@ protected:
   ) const = 0;
 
 protected:
-  Transport();
+  Transport(const char *namep);
   virtual ~Transport() = 0;
+
+public:
+  static bool has_name(const Transport &transport, const char *namep);
 };
+
+
+inline
+const char *Transport::get_name() const {
+
+  return namep;
+}
 
 
 inline
@@ -88,6 +102,15 @@ inline
 bool Transport::notify_subscription_response(const Topic &topic) {
 
   return send_subscription_response(topic);
+}
+
+
+inline
+bool Transport::has_name(const Transport &transport, const char *namep) {
+
+  return namep != NULL &&
+         0 == strncmp(transport.get_name(), namep,
+                      NamingTraits<Transport>::MAX_LENGTH);
 }
 
 

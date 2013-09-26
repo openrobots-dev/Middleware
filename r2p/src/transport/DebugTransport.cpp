@@ -120,6 +120,10 @@ bool DebugTransport::recv_string(char *stringp, size_t length,
 bool DebugTransport::send_msg(const Message &msg, size_t msg_size,
                               const char *topicp, const Time &deadline) {
 
+#if R2P_MESSAGE_TRACKS_SOURCE
+  R2P_ASSERT(msg.get_source() != this);
+#endif
+
   Checksummer cs;
 
   // Send the deadline
@@ -445,6 +449,9 @@ bool DebugTransport::spin_rx() {
     // Get the payload data
     Message *msgp;
     if (!pubp->alloc(msgp)) return false;
+#if R2P_MESSAGE_TRACKS_SOURCE
+    msgp->set_source(this);
+#endif
     if (!recv_chunk(const_cast<uint8_t *>(msgp->get_raw_data()), length)) {
       topicp->free(*msgp);
       return false;
@@ -457,7 +464,11 @@ bool DebugTransport::spin_rx() {
     if (length != cs.compute_checksum()) return false;
 
     // Forward the message locally
+#if R2P_MESSAGE_TRACKS_SOURCE
+    return pubp->publish_locally(*msgp) && pubp->publish_remotely(*msgp);
+#else
     return pubp->publish_locally(*msgp);
+#endif
   }
   else { // Management message
     // Read the management message type character
@@ -492,7 +503,10 @@ bool DebugTransport::spin_rx() {
 
       MgmtMsg *msgp;
       if (!mgmt_rpub.alloc(reinterpret_cast<Message *&>(msgp))) return false;
-      Message::clean(*msgp);
+#if R2P_MESSAGE_TRACKS_SOURCE
+    msgp->set_source(this);
+#endif
+      Message::reset_payload(*msgp);
       msgp->pubsub.transportp = this;
       strncpy(msgp->pubsub.topic, namebufp, NamingTraits<Topic>::MAX_LENGTH);
 
@@ -525,7 +539,12 @@ bool DebugTransport::spin_rx() {
         mgmt_rsub.release(*msgp);
         return false;
       }
+#if R2P_MESSAGE_TRACKS_SOURCE
+      return mgmt_rpub.publish_locally(*msgp) &&
+             mgmt_rpub.publish_remotely(*msgp);
+#else
       return mgmt_rpub.publish_locally(*msgp);
+#endif
     }
     case 't': {
       // Get the checksum
@@ -577,9 +596,10 @@ Thread::Return DebugTransport::tx_threadf(Thread::Argument arg) {
 }
 
 
-DebugTransport::DebugTransport(BaseChannel *channelp, char namebuf[])
+DebugTransport::DebugTransport(const char *namep, BaseChannel *channelp,
+                               char namebuf[])
 :
-  Transport(),
+  Transport(namep),
   rx_threadp(NULL),
   tx_threadp(NULL),
   channelp(channelp),

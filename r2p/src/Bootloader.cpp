@@ -58,7 +58,7 @@ void Bootloader::alloc() {
   while (!pubp->alloc(slave_msgp)) {
     Thread::sleep(Time::ms(100)); // TODO: configure
   }
-  Message::clean(*slave_msgp);
+  Message::reset_payload(*slave_msgp);
 }
 
 
