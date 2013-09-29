@@ -40,10 +40,6 @@ bool Transport::touch_publisher(Topic &topic, uint8_t * raw_params) {
   topic.advertise(*pubp, Time::INFINITE);
   publishers.link(pubp->by_transport);
 
-  // FIXME
-  RTCANPublisher *rpubp = static_cast<RTCANPublisher *>(pubp);
-  rpubp->rtcan_header.data = reinterpret_cast<uint8_t *>(topic.alloc());
-
   return true;
 }
 
