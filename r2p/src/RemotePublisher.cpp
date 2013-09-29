@@ -3,10 +3,10 @@
 
 namespace r2p {
 
-
-RemotePublisher::RemotePublisher()
+RemotePublisher::RemotePublisher(Transport &transport)
 :
   BasePublisher(),
+  transportp(&transport),
   by_transport(*this)
 {}
 
