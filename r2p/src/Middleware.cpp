@@ -295,7 +295,7 @@ void Middleware::do_mgmt_thread() {
           size_t queue_length = msgp->pubsub.queue_length;
           Topic *topicp = find_topic(msgp->pubsub.topic);
           sub.release(*msgp);
-          if (topicp != NULL) {
+          if (topicp != NULL && topicp->has_local_publishers()) { // TODO: will this prevent gw from proxiyng messages?
             transportp->subscribe_cb(*topicp, queue_length);
             while (!transportp->notify_subscription_response(*topicp)) {
               Thread::yield();
