@@ -43,3 +43,5 @@ endif
 
 R2PINC = $(R2P)/include \
 #
+
+R2PNODES = $(R2P)/src/node
