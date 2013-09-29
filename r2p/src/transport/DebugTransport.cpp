@@ -607,7 +607,7 @@ DebugTransport::DebugTransport(const char *namep, BaseChannel *channelp,
   subp_sem(false),
   send_lock(false),
   mgmt_rsub(*this, mgmt_msgqueue_buf, MGMT_BUFFER_LENGTH),
-  mgmt_rpub()
+  mgmt_rpub(*this)
 {
   R2P_ASSERT(channelp != NULL);
   R2P_ASSERT(namebuf != NULL);

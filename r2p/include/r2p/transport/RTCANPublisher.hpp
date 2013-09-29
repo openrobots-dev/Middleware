@@ -16,7 +16,7 @@ class RTCANPublisher : public RemotePublisher {
 public:
   rtcan_msg_t rtcan_header; // FIXME should be private
 
-  RTCANPublisher();
+  RTCANPublisher(Transport &transport);
   virtual ~RTCANPublisher();
 };
 

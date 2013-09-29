@@ -120,7 +120,7 @@ const {
 
   (void)topic;
   (void)raw_params;
-  return new DebugPublisher();
+  return new DebugPublisher(*const_cast<DebugTransport *>(this));
 }
 
 

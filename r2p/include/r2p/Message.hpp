@@ -14,7 +14,7 @@ namespace r2p {
 #endif
 
 #if !defined(R2P_MESSAGE_TRACKS_SOURCE) || defined(__DOXYGEN__)
-#define R2P_MESSAGE_TRACKS_SOURCE   1
+#define R2P_MESSAGE_TRACKS_SOURCE   0
 #endif
 
 
@@ -53,6 +53,7 @@ protected:
 
 public:
   static void copy(Message &to, const Message &from, size_t msg_size);
+  static const Message &get_msg_from_raw_data(const uint8_t *datap);
 
   template<typename MessageType>
   static void reset_payload(MessageType &msg);
@@ -63,6 +64,16 @@ inline
 const uint8_t *Message::get_raw_data() const {
 
   return reinterpret_cast<const uint8_t *>(&refcount + 1);
+}
+
+// TODO: menate di stile
+inline
+const Message &Message::get_msg_from_raw_data(const uint8_t * datap) {
+#if R2P_MESSAGE_TRACKS_SOURCE
+  return *reinterpret_cast<const Message *>(datap - (sizeof(Transport *) + sizeof(RefcountType)));
+#else
+  return *reinterpret_cast<const Message *>(datap - sizeof(RefcountType));
+#endif
 }
 
 

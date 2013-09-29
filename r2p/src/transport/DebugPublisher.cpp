@@ -4,7 +4,10 @@
 namespace r2p {
 
 
-DebugPublisher::DebugPublisher() {}
+DebugPublisher::DebugPublisher(Transport &transport)
+:
+  RemotePublisher(transport)
+  {}
 
 
 DebugPublisher::~DebugPublisher() {}

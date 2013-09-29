@@ -12,6 +12,8 @@
 
 namespace r2p {
 
+RTCANTransport * myrtcan; // FIXME !!!!
+
 void RTCANTransport::adv_rx_cb(rtcan_msg_t &rtcan_msg) {
 //  RTCANTransport &transport = reinterpret_cast<RTCANTransport &>(rtcan_msg.params);
 //  transport.recv_adv_msg(reinterpret_cast<const adv_msg_t &>(rtcan_msg.data));
@@ -29,7 +31,11 @@ void RTCANTransport::recv_adv_msg(const adv_msg_t &adv_msg) {
 			msgp->type = MgmtMsg::CMD_ADVERTISE;
 			::strncpy(msgp->pubsub.topic, adv_msg.topic, NamingTraits<Topic>::MAX_LENGTH);
 			msgp->pubsub.transportp = this;
+#if R2P_MESSAGE_TRACKS_SOURCE
+			mgmt_rpub.publish_locally_unsafe(*msgp) && mgmt_rpub.publish_remotely_unsafe(*msgp);
+#else
 			mgmt_rpub.publish_locally_unsafe(*msgp);
+#endif
 		}
 		break;
 	case 'S':
@@ -38,7 +44,12 @@ void RTCANTransport::recv_adv_msg(const adv_msg_t &adv_msg) {
 			::strncpy(msgp->pubsub.topic, adv_msg.topic, NamingTraits<Topic>::MAX_LENGTH);
 			msgp->pubsub.transportp = this;
 			msgp->pubsub.queue_length = static_cast<size_t>(adv_msg.queue_length);
+#if R2P_MESSAGE_TRACKS_SOURCE
+			mgmt_rpub.publish_locally_unsafe(*msgp) && mgmt_rpub.publish_remotely_unsafe(*msgp);
+#else
 			mgmt_rpub.publish_locally_unsafe(*msgp);
+#endif
+
 		}
 		break;
 	case 'E':
@@ -47,12 +58,17 @@ void RTCANTransport::recv_adv_msg(const adv_msg_t &adv_msg) {
 			::strncpy(msgp->pubsub.topic, adv_msg.topic, NamingTraits<Topic>::MAX_LENGTH);
 			memcpy(msgp->pubsub.raw_params, &(adv_msg.rtcan_id), sizeof(adv_msg.rtcan_id));
 			msgp->pubsub.transportp = this;
+#if R2P_MESSAGE_TRACKS_SOURCE
+			mgmt_rpub.publish_locally_unsafe(*msgp) && mgmt_rpub.publish_remotely_unsafe(*msgp);
+#else
 			mgmt_rpub.publish_locally_unsafe(*msgp);
+#endif
+
 		}
 		break;
 
 	default:
-		R2P_ASSERT(false && "Should never happen");
+		// Non handled messages
 		break;
 	}
 }
@@ -65,18 +81,18 @@ bool RTCANTransport::send_adv_msg(const adv_msg_t &adv_msg) {
 	if (rtcan_msg_p == NULL)
 		return false;
 
-	rtcan_msg_p->id = 123 << 8;
+	rtcan_msg_p->id = mgmt_rsub.rtcan_id;
 	// FIXME need callback to free the message header
 	rtcan_msg_p->callback = reinterpret_cast<rtcan_msgcallback_t>(free_header);
 	rtcan_msg_p->params = this;
 	rtcan_msg_p->size = sizeof(adv_msg_t);
 	rtcan_msg_p->status = RTCAN_MSG_READY;
-	rtcan_msg_p->data = const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(&adv_msg));
+	rtcan_msg_p->data = reinterpret_cast<const uint8_t *>(&adv_msg);
 
 	rtcanTransmit(&rtcan, rtcan_msg_p, 100);
 
 	// FIXME!!!
-	while(rtcan_msg_p->status != RTCAN_MSG_READY) {
+	while (rtcan_msg_p->status != RTCAN_MSG_READY) {
 		Thread::yield();
 	}
 
@@ -129,6 +145,10 @@ bool RTCANTransport::send_reboot() {
 bool RTCANTransport::send(Message * msgp, RTCANSubscriber * rsubp) {
 	rtcan_msg_t * rtcan_msg_p;
 
+#if R2P_MESSAGE_TRACKS_SOURCE
+	R2P_ASSERT(msgp->get_source() != this);
+#endif
+
 	// Allocate RTCAN msg header
 	rtcan_msg_p = header_pool.alloc_unsafe();
 	if (rtcan_msg_p == NULL)
@@ -152,49 +172,66 @@ void RTCANTransport::send_cb(rtcan_msg_t &rtcan_msg) {
 
 	RTCANSubscriber * rsubp = (RTCANSubscriber *) rtcan_msg.params;
 	RTCANTransport * transport = (RTCANTransport *) rsubp->get_transport();
+	Message &msg = const_cast<Message &>(Message::get_msg_from_raw_data(rtcan_msg.data));
 
-	Message * msg = (Message *) (rtcan_msg.data - 1);
-
-	rsubp->release_unsafe(*msg);
+	rsubp->release_unsafe(msg);
 	transport->header_pool.free_unsafe(&rtcan_msg);
 }
 
 void RTCANTransport::recv_cb(rtcan_msg_t &rtcan_msg) {
-	RTCANPublisher* rpub = (RTCANPublisher *) rtcan_msg.params;
+	RTCANPublisher* pubp = static_cast<RTCANPublisher *>(rtcan_msg.params);
+	Message &msg = const_cast<Message &>(Message::get_msg_from_raw_data(rtcan_msg.data));
+
+#if R2P_MESSAGE_TRACKS_SOURCE
+	Transport * transportp = pubp->get_transport();
+	msg.set_source(transportp);
+	pubp->publish_locally_unsafe(msg) && pubp->publish_remotely_unsafe(msg);
+#else
+	pubp->publish_locally(msg);
+#endif
+
+	// allocate again for next message from RTCAN
 	Message * msgp;
-
-	msgp = (Message *) (((uint8_t *) rtcan_msg.data) - sizeof(Message));
-	rpub->publish_unsafe(*msgp);
+	if (pubp->alloc_unsafe(msgp)) {
+		rtcan_msg.data = msgp->get_raw_data();
+	} else {
+		rtcan_msg.status = RTCAN_MSG_BUSY;
+		R2P_ASSERT(false);
+	}
 }
 
-void RTCANTransport::initialize(const RTCANConfig &rtcan_config) {
-
-	rtcanInit();
-	rtcanStart(&rtcan, &rtcan_config);
-
-	rtcanReceive(&rtcan, &adv_rx_header);
-
-	advertise(mgmt_rpub, "R2P", Time::INFINITE, sizeof(MgmtMsg));
-	subscribe(mgmt_rsub, "R2P", mgmt_msgbuf, MGMT_BUFFER_LENGTH, sizeof(MgmtMsg));
-
-	Middleware::instance.add(*this);
+void RTCANTransport::free_header(rtcan_msg_t &rtcan_msg) {
+	RTCANTransport * transport = (RTCANTransport *) rtcan_msg.params;
+	transport->header_pool.free_unsafe(&rtcan_msg);
 }
+
 
 RemotePublisher *RTCANTransport::create_publisher(Topic &topic, const uint8_t *raw_params) const {
-	RTCANPublisher * rpubp = new RTCANPublisher();
+	RTCANPublisher * rpubp = new RTCANPublisher(*const_cast<RTCANTransport *>(this));
+	Message * msgp;
+	bool success;
 
-	rpubp->rtcan_header.id = *(rtcan_id_t *)raw_params;
-	rpubp->rtcan_header.callback = reinterpret_cast<rtcan_msgcallback_t>(recv_cb);
-	rpubp->rtcan_header.params = rpubp;
-	rpubp->rtcan_header.size = 4; // FIXME
-	rpubp->rtcan_header.status = RTCAN_MSG_READY;
+	R2P_ASSERT(rpubp != NULL);
 
-	rtcanReceive(&RTCAND1, &rpubp->rtcan_header);
+	success = topic.alloc(msgp);
+	R2P_ASSERT(success);
+	msgp->reset();
+
+	rtcan_msg_t * rtcan_headerp = &(rpubp->rtcan_header);
+	const uint8_t ** p = &rtcan_headerp->data;
+	rtcan_headerp->id = *(rtcan_id_t *) raw_params;
+	rtcan_headerp->callback = reinterpret_cast<rtcan_msgcallback_t>(recv_cb);
+	rtcan_headerp->params = rpubp;
+	rtcan_headerp->size = topic.get_size();
+	rtcan_headerp->data = msgp->get_raw_data();
+	rtcan_headerp->status = RTCAN_MSG_READY;
+
+	rtcanReceiveMask(&RTCAND1, rtcan_headerp, 0xFF00);
 	return rpubp;
 }
 
-RemoteSubscriber *RTCANTransport::create_subscriber(Topic &topic,
-		TimestampedMsgPtrQueue::Entry queue_buf[], size_t queue_length, const uint8_t *raw_params) const {
+RemoteSubscriber *RTCANTransport::create_subscriber(Topic &topic, TimestampedMsgPtrQueue::Entry queue_buf[],
+		size_t queue_length, const uint8_t *raw_params) const {
 	RTCANSubscriber *rsubp = new RTCANSubscriber(*const_cast<RTCANTransport *>(this), queue_buf, queue_length);
 
 	// TODO: dynamic ID arbitration
@@ -204,39 +241,62 @@ RemoteSubscriber *RTCANTransport::create_subscriber(Topic &topic,
 	return rsubp;
 }
 
-// FIXME: to implement
-rtcan_id_t RTCANTransport::topic_id(const char * namep) const {
-	if (strcmp(namep, "leds") == 0)
-		return 110 << 8;
-	if (strcmp(namep, "led2") == 0)
-		return 112 << 8;
-	if (strcmp(namep, "led3") == 0)
-		return 113 << 8;
 
-	if (strcmp(namep, "tilt") == 0)
-		return 155 << 8;
+void RTCANTransport::initialize(const RTCANConfig &rtcan_config) {
 
-	return 255 << 8;
-}
+	rtcanInit();
+	rtcanStart(&rtcan, &rtcan_config);
 
 
-void RTCANTransport::free_header(rtcan_msg_t &rtcan_msg) {
-	RTCANTransport * transport = (RTCANTransport *) rtcan_msg.params;
-	transport->header_pool.free_unsafe(&rtcan_msg);
-}
+	advertise(mgmt_rpub, "R2P", Time::INFINITE, sizeof(MgmtMsg));
+	subscribe(mgmt_rsub, "R2P", mgmt_msgbuf, MGMT_BUFFER_LENGTH, sizeof(MgmtMsg));
 
-RTCANTransport::RTCANTransport(RTCANDriver &rtcan) :
-		Transport(), rtcan(rtcan), header_pool(header_buffer, 10), mgmt_rsub(*this, mgmt_msgqueue_buf,
-				MGMT_BUFFER_LENGTH), mgmt_rpub() {
-	adv_rx_header.id = 123 << 8;
+	mgmt_rsub.rtcan_id = topic_id(mgmt_rsub.get_topic()->get_name());
+
+	adv_rx_header.id = topic_id(mgmt_rsub.get_topic()->get_name());
 	adv_rx_header.data = reinterpret_cast<uint8_t *>(&adv_rx_msg);
 	adv_rx_header.size = sizeof(adv_rx_msg);
 	adv_rx_header.callback = reinterpret_cast<rtcan_msgcallback_t>(adv_rx_cb);
 	adv_rx_header.params = reinterpret_cast<void *>(this);
 	adv_rx_header.status = RTCAN_MSG_READY;
+
+	rtcanReceiveMask(&rtcan, &adv_rx_header, 0xFF00);
+
+	Middleware::instance.add(*this);
+}
+
+RTCANTransport::RTCANTransport(RTCANDriver &rtcan) :
+		Transport("rtcan"), rtcan(rtcan), header_pool(header_buffer, 10), mgmt_rsub(*this, mgmt_msgqueue_buf,
+				MGMT_BUFFER_LENGTH), mgmt_rpub(*this) {
 }
 
 RTCANTransport::~RTCANTransport() {
 }
+
+
+
+// FIXME: to implement
+
+#include <r2p/msg/led.hpp>
+#include <r2p/msg/motor.hpp>
+#include <r2p/msg/imu.hpp>
+
+rtcan_id_t RTCANTransport::topic_id(const char * namep) const {
+	if (strcmp(namep, "R2P") == 0)
+		return 1 << 8 | stm32_id8();
+	if (strcmp(namep, "leds") == 0)
+		return LEDS_ID | stm32_id8();
+
+	if (strcmp(namep, "pwm2") == 0)
+		return PWM2_ID | stm32_id8();
+	if (strcmp(namep, "qei") == 0)
+		return QEI_ID | stm32_id8();
+
+	if (strcmp(namep, "tilt") == 0)
+		return TILT_ID | stm32_id8();
+
+	return 255 << 8;
+}
+
 
 } // namespace r2p

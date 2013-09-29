@@ -4,7 +4,10 @@
 namespace r2p {
 
 
-RTCANPublisher::RTCANPublisher() {}
+RTCANPublisher::RTCANPublisher(Transport &transport)
+:
+  RemotePublisher(transport)
+  {}
 
 
 RTCANPublisher::~RTCANPublisher() {}

@@ -18,7 +18,7 @@ private:
   mutable StaticList<RemoteSubscriber>::Link by_transport;
   mutable StaticList<RemoteSubscriber>::Link by_topic;
 
-protected:
+public:
   Transport *get_transport() const;
 
 protected:
