@@ -6,7 +6,7 @@ namespace r2p {
 
 
 #if !defined(R2P_MESSAGE_REFCOUNT_TYPE) || defined(__DOXYGEN__)
-#define R2P_MESSAGE_REFCOUNT_TYPE   uint8_t
+#define R2P_MESSAGE_REFCOUNT_TYPE   uint16_t
 #endif
 
 #if !defined(R2P_MESSAGE_LENGTH_TYPE) || defined(__DOXYGEN__)
