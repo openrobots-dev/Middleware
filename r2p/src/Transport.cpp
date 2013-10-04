@@ -99,7 +99,7 @@ bool Transport::subscribe_cb(Topic &topic, size_t queue_length, uint8_t * raw_pa
 
   // Process only if there are local publishers
   SysLock::acquire();
-  if (topic.has_local_publishers()) {
+  if (topic.has_local_publishers()) { // FIXME: isn't this already checked? and probably also for advertise_cb() [MARTINO]
     SysLock::release();
     return touch_subscriber(topic, queue_length, raw_params);
   } else {
