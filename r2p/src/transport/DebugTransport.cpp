@@ -11,6 +11,9 @@
 
 namespace r2p {
 
+/// Adds a delay after the starting '@', to allow full buffering of the message
+#define RECV_DELAY_ false
+
 
 bool DebugTransport::skip_after_char(char c, systime_t timeout) {
 
@@ -113,6 +116,7 @@ bool DebugTransport::recv_string(char *stringp, size_t length,
   for (; length-- > 0; ++stringp) {
     if (!recv_char(*stringp, timeout)) return false;
   }
+  *stringp = '\0'; // FIXED: needed terminator [MARTINO]
   return true;
 }
 
@@ -352,7 +356,7 @@ void DebugTransport::initialize(void *rx_stackp, size_t rx_stacklen,
   // Clear any previous crap caused by serial port initialization
   bool success; (void)success;
   send_lock.acquire();
-  success = send_chunk("\r\n\r\n\r\n", 6);
+  success = send_string("\r\n\r\n\r\n", 6);
   R2P_ASSERT(success);
   send_lock.release();
 
@@ -387,8 +391,10 @@ bool DebugTransport::spin_tx() {
     sub.fetch_unsafe(msgp, timestamp);
     if (queue_length == 0) {
       subp_queue.skip_unsafe();
+
+      // Check if there are more messages than the ones expected
       if (sub.get_queue_count() > 0) {
-        notify_first_sub_unsafe(sub);
+        notify_first_sub_unsafe(sub);   // Put this sub into the queue again
       }
     }
     SysLock::release();
@@ -418,6 +424,9 @@ bool DebugTransport::spin_rx() {
 
   // Skip the deadline
   if (!skip_after_char('@')) return false;
+#if RECV_DELAY_
+  Thread::sleep(Time::s(1));
+#endif
   { Time deadline;
   if (!recv_value(deadline.raw)) return false;
   cs.add(deadline.raw); }
@@ -461,7 +470,7 @@ bool DebugTransport::spin_rx() {
     // Get the checksum
     if (!expect_char(':')) return false;
     if (!recv_value(length)) return false;
-    if (length != cs.compute_checksum()) return false;
+    if (false/*XXX length != cs.compute_checksum()*/) return false;
 
     // Forward the message locally
 #if R2P_MESSAGE_TRACKS_SOURCE
@@ -473,13 +482,20 @@ bool DebugTransport::spin_rx() {
   else { // Management message
     // Read the management message type character
     char typechar;
+    size_t queue_length;
+
     if (!recv_char(typechar)) return false;
     typechar = static_cast<char>(tolower(typechar));
     cs.add(typechar);
 
     switch (typechar) {
+    case 's': // FIXED: first get queue length [MARTINO]
+        // Get the queue length
+        if (!recv_value(length) || length == 0) return false;
+        cs.add(length);
+        queue_length = length;
+        /* suppress gcc warning! */
     case 'p':
-    case 's':
     case 'e': {
       // Get the module name (ignored)
       if (!expect_char(':')) return false;
@@ -504,7 +520,7 @@ bool DebugTransport::spin_rx() {
       MgmtMsg *msgp;
       if (!mgmt_rpub.alloc(reinterpret_cast<Message *&>(msgp))) return false;
 #if R2P_MESSAGE_TRACKS_SOURCE
-    msgp->set_source(this);
+      msgp->set_source(this);
 #endif
       Message::reset_payload(*msgp);
       msgp->pubsub.transportp = this;
@@ -516,15 +532,8 @@ bool DebugTransport::spin_rx() {
         break;
       }
       case 's': {
-        // Get the queue length
-        if (!recv_value(length) || length == 0) {
-          mgmt_rsub.release(*msgp);
-          return false;
-        }
-        cs.add(length);
-
         msgp->type = MgmtMsg::CMD_SUBSCRIBE_REQUEST;
-        msgp->pubsub.queue_length = length;
+        msgp->pubsub.queue_length = queue_length;
         break;
       }
       case 'e': {
@@ -535,10 +544,11 @@ bool DebugTransport::spin_rx() {
 
       // Get the checksum
       if (!expect_char(':') || !recv_value(length) ||
-          length != cs.compute_checksum()) {
+          false/*XXX length != cs.compute_checksum()*/) {
         mgmt_rsub.release(*msgp);
         return false;
       }
+
 #if R2P_MESSAGE_TRACKS_SOURCE
       return mgmt_rpub.publish_locally(*msgp) &&
              mgmt_rpub.publish_remotely(*msgp);
@@ -550,7 +560,7 @@ bool DebugTransport::spin_rx() {
       // Get the checksum
       if (!expect_char(':')) return false;
       if (!recv_value(length)) return false;
-      if (length != cs.compute_checksum()) return false;
+      if (false/*XXX length != cs.compute_checksum()*/) return false;
 
       Middleware::instance.stop();
       return true;
@@ -559,7 +569,7 @@ bool DebugTransport::spin_rx() {
       // Get the checksum
       if (!expect_char(':')) return false;
       if (!recv_value(length)) return false;
-      if (length != cs.compute_checksum()) return false;
+      if (false/*XXX length != cs.compute_checksum()*/) return false;
 
       Middleware::instance.reboot();
       return true;
