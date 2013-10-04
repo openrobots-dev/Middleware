@@ -93,7 +93,7 @@ bool BasePublisher::publish_locally(Message &msg) {
 
   R2P_ASSERT(topicp != NULL);
 
-  return topicp->notify_locals_unsafe(msg, Time::now());
+  return topicp->notify_locals(msg, Time::now());
 }
 
 
