@@ -12,7 +12,7 @@
 namespace r2p {
 
 /// Adds a delay after the starting '@', to allow full buffering of the message
-#define RECV_DELAY_ false
+#define RECV_DELAY_     0//1
 
 
 bool DebugTransport::skip_after_char(char c, systime_t timeout) {
@@ -403,8 +403,9 @@ bool DebugTransport::spin_tx() {
     send_lock.acquire();
     if (!send_msg(*msgp, topic.get_size(), topic.get_name(),
                   timestamp + topic.get_publish_timeout())) {
-      send_char('\r');
-      while (!send_char('\n')) {
+      bool success = send_char('\r');
+      success = send_char('\n') && success;
+      while (!success) {
         Thread::yield();
       }
       send_lock.release();
@@ -425,7 +426,7 @@ bool DebugTransport::spin_rx() {
   // Skip the deadline
   if (!skip_after_char('@')) return false;
 #if RECV_DELAY_
-  Thread::sleep(Time::s(1));
+  Thread::sleep(Time::ms(100));
 #endif
   { Time deadline;
   if (!recv_value(deadline.raw)) return false;
@@ -438,6 +439,8 @@ bool DebugTransport::spin_rx() {
   if (length > NamingTraits<Topic>::MAX_LENGTH) return false;
   if (!recv_string(namebufp, length)) return false;
   if (!expect_char(':')) return false;
+  cs.add(length);
+  cs.add(namebufp, length);
 
   // Check if it is a management message
   if (length > 0) { // Normal message
@@ -447,8 +450,6 @@ bool DebugTransport::spin_rx() {
     RemotePublisher *pubp;
     pubp = publishers.find_first(BasePublisher::has_topic, topicp->get_name());
     if (pubp == NULL) return false;
-    cs.add(length);
-    cs.add(namebufp, length);
 
     // Get the payload length
     if (!recv_value(length)) return false;
@@ -458,26 +459,30 @@ bool DebugTransport::spin_rx() {
     // Get the payload data
     Message *msgp;
     if (!pubp->alloc(msgp)) return false;
+    MessageGuard guard(*msgp, *topicp);
 #if R2P_MESSAGE_TRACKS_SOURCE
     msgp->set_source(this);
 #endif
     if (!recv_chunk(const_cast<uint8_t *>(msgp->get_raw_data()), length)) {
-      topicp->free(*msgp);
       return false;
     }
     cs.add(msgp->get_raw_data(), length);
 
     // Get the checksum
-    if (!expect_char(':')) return false;
-    if (!recv_value(length)) return false;
-    if (false/*XXX length != cs.compute_checksum()*/) return false;
+    if (!expect_char(':') || !recv_value(length) ||
+        length != cs.compute_checksum()) {
+      return false;
+    }
 
     // Forward the message locally
+    bool success;
 #if R2P_MESSAGE_TRACKS_SOURCE
-    return pubp->publish_locally(*msgp) && pubp->publish_remotely(*msgp);
+    success = pubp->publish_locally(*msgp);
+    success = pubp->publish_remotely(*msgp) && success;
 #else
-    return pubp->publish_locally(*msgp);
+    success = pubp->publish_locally(*msgp);
 #endif
+    return success;
   }
   else { // Management message
     // Read the management message type character
@@ -494,7 +499,7 @@ bool DebugTransport::spin_rx() {
         if (!recv_value(length) || length == 0) return false;
         cs.add(length);
         queue_length = length;
-        /* suppress gcc warning! */
+        /* no break */
     case 'p':
     case 'e': {
       // Get the module name (ignored)
@@ -519,6 +524,7 @@ bool DebugTransport::spin_rx() {
 
       MgmtMsg *msgp;
       if (!mgmt_rpub.alloc(reinterpret_cast<Message *&>(msgp))) return false;
+      MessageGuard(*msgp, *mgmt_rpub.get_topic());
 #if R2P_MESSAGE_TRACKS_SOURCE
       msgp->set_source(this);
 #endif
@@ -544,8 +550,7 @@ bool DebugTransport::spin_rx() {
 
       // Get the checksum
       if (!expect_char(':') || !recv_value(length) ||
-          false/*XXX length != cs.compute_checksum()*/) {
-        mgmt_rsub.release(*msgp);
+          length != cs.compute_checksum()) {
         return false;
       }
 
@@ -558,18 +563,20 @@ bool DebugTransport::spin_rx() {
     }
     case 't': {
       // Get the checksum
-      if (!expect_char(':')) return false;
-      if (!recv_value(length)) return false;
-      if (false/*XXX length != cs.compute_checksum()*/) return false;
+      if (!expect_char(':') || !recv_value(length) ||
+          length != cs.compute_checksum()) {
+        return false;
+      }
 
       Middleware::instance.stop();
       return true;
     }
     case 'r': {
       // Get the checksum
-      if (!expect_char(':')) return false;
-      if (!recv_value(length)) return false;
-      if (false/*XXX length != cs.compute_checksum()*/) return false;
+      if (!expect_char(':') || !recv_value(length) ||
+          length != cs.compute_checksum()) {
+        return false;
+      }
 
       Middleware::instance.reboot();
       return true;

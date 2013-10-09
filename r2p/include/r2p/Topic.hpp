@@ -71,8 +71,20 @@ public:
 };
 
 
+class MessageGuard : private Uncopyable {
+private:
+  Message &msg;
+  Topic &topic;
+
+public:
+  MessageGuard(Message &msg, Topic &topic);
+  ~MessageGuard();
+};
+
+
 } // namespace r2p
 
+#include <r2p/Message.hpp>
 #include <r2p/LocalPublisher.hpp>
 #include <r2p/LocalSubscriber.hpp>
 #include <r2p/RemotePublisher.hpp>
@@ -250,6 +262,23 @@ bool Topic::has_name(const Topic &topic, const char *namep) {
 
   return namep != NULL && 0 == strncmp(topic.get_name(), namep,
                                        NamingTraits<Topic>::MAX_LENGTH);
+}
+
+
+inline
+MessageGuard::MessageGuard(Message &msg, Topic &topic)
+:
+  msg(msg),
+  topic(topic)
+{
+  msg.acquire();
+}
+
+
+inline
+MessageGuard::~MessageGuard() {
+
+  topic.release(msg);
 }
 
 

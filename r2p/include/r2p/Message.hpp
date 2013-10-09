@@ -29,9 +29,9 @@ public:
 
 private:
 #if R2P_MESSAGE_TRACKS_SOURCE
-  Transport *sourcep;
+  Transport *sourcep R2P_PACKED;
 #endif
-  RefcountType refcount;
+  RefcountType refcount R2P_PACKED;
 
 public:
   const uint8_t *get_raw_data() const;
@@ -70,7 +70,9 @@ const uint8_t *Message::get_raw_data() const {
 inline
 const Message &Message::get_msg_from_raw_data(const uint8_t * datap) {
 #if R2P_MESSAGE_TRACKS_SOURCE
-  return *reinterpret_cast<const Message *>(datap - (sizeof(Transport *) + sizeof(RefcountType)));
+  return *reinterpret_cast<const Message *>(
+    datap - (sizeof(Transport *) + sizeof(RefcountType))
+  );
 #else
   return *reinterpret_cast<const Message *>(datap - sizeof(RefcountType));
 #endif

@@ -14,7 +14,7 @@ private:
   Topic *topicp;
 
 public:
-  const Topic *get_topic() const;
+  Topic *get_topic() const;
 
   void notify_advertised(Topic &topic);
 
@@ -45,7 +45,7 @@ namespace r2p {
 
 
 inline
-const Topic *BasePublisher::get_topic() const {
+Topic *BasePublisher::get_topic() const {
 
   return topicp;
 }
