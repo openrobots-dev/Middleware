@@ -2,6 +2,7 @@
 
 #include <r2p/common.hpp>
 #include <r2p/Time.hpp>
+#include <r2p/Thread.hpp>
 #include <ch.h>
 
 namespace r2p {
@@ -12,10 +13,14 @@ public:
   typedef ::eventmask_t Mask;
 
 private:
-  ::Thread *threadp;
+  typedef ::Thread ChThread;
+
+private:
+  Thread *threadp;
 
 public:
-  void initialize();
+  Thread *get_thread() const;
+  void set_thread(Thread *threadp);
 
   void signal_unsafe(unsigned event_index);
 
@@ -23,32 +28,40 @@ public:
   Mask wait(const Time &timeout);
 
 public:
-  SpinEvent_(bool initialize = true);
+  SpinEvent_(Thread *threadp = &Thread::self());
 };
 
 
 inline
-void SpinEvent_::initialize() {
+Thread *SpinEvent_::get_thread() const {
 
-  R2P_ASSERT(threadp == NULL);
+  return threadp;
+}
 
-  threadp = chThdSelf();
+
+inline
+void SpinEvent_::set_thread(Thread *threadp) {
+
+  this->threadp = threadp;
 }
 
 
 inline
 void SpinEvent_::signal_unsafe(unsigned event_index) {
 
-  R2P_ASSERT(event_index < 8 * sizeof(Mask));
-  chEvtSignalI(threadp, 1 << event_index);
+  if (threadp != NULL) {
+    R2P_ASSERT(event_index < 8 * sizeof(Mask));
+    chEvtSignalI(reinterpret_cast<ChThread *>(threadp), 1 << event_index);
+  }
 }
 
 
 inline
 void SpinEvent_::signal(unsigned event_index) {
 
-  R2P_ASSERT(event_index < 8 * sizeof(Mask));
-  chEvtSignal(threadp, 1 << event_index);
+  chSysLock();
+  signal_unsafe(event_index);
+  chSysUnlock();
 }
 
 
@@ -64,14 +77,10 @@ SpinEvent_::Mask SpinEvent_::wait(const Time &timeout) {
 
 
 inline
-SpinEvent_::SpinEvent_(bool initialize)
+SpinEvent_::SpinEvent_(Thread *threadp)
 :
-  threadp(NULL)
-{
-  if (initialize) {
-    this->initialize();
-  }
-}
+  threadp(threadp)
+{}
 
 
 } // namespace r2p

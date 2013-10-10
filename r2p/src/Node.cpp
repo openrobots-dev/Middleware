@@ -114,9 +114,10 @@ bool Node::spin(const Time &timeout) {
 }
 
 
-Node::Node(const char *namep)
+Node::Node(const char *namep, bool enabled)
 :
   namep(namep),
+  event(enabled ? &Thread::self() : NULL),
   by_middleware(*this)
 {
   R2P_ASSERT(is_identifier(namep, NamingTraits<Node>::MAX_LENGTH));

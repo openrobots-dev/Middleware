@@ -3,6 +3,7 @@
 #include <r2p/common.hpp>
 #include <r2p/impl/SpinEvent_.hpp>
 #include <r2p/Time.hpp>
+#include <r2p/Thread.hpp>
 
 namespace r2p {
 
@@ -17,7 +18,8 @@ private:
   SpinEvent_ impl;
 
 public:
-  void initialize();
+  Thread *get_thread() const;
+  void set_thread(Thread *threadp);
 
   void signal_unsafe(unsigned event_index);
 
@@ -25,14 +27,21 @@ public:
   Mask wait(const Time &timeout);
 
 public:
-  SpinEvent(bool initialize = true);
+  SpinEvent(Thread *threadp = &Thread::self());
 };
 
 
 inline
-void SpinEvent::initialize() {
+Thread *SpinEvent::get_thread() const {
 
-  impl.initialize();
+  return impl.get_thread();
+}
+
+
+inline
+void SpinEvent::set_thread(Thread *threadp) {
+
+  impl.set_thread(threadp);
 }
 
 
@@ -58,9 +67,9 @@ SpinEvent::Mask SpinEvent::wait(const Time &timeout) {
 
 
 inline
-SpinEvent::SpinEvent(bool initialize)
+SpinEvent::SpinEvent(Thread *threadp)
 :
-  impl(initialize)
+  impl(threadp)
 {}
 
 

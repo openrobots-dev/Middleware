@@ -31,6 +31,8 @@ private:
 
 public:
   const char *get_name() const;
+  bool get_enabled() const;
+  void set_enabled(bool enabled);
 
   template<typename MessageType>
   bool advertise(Publisher<MessageType> &pub, const char *namep,
@@ -58,7 +60,7 @@ private:
                  Message msgpool_buf[], size_t msg_size);
 
 public:
-  Node(const char *namep);
+  Node(const char *namep, bool enabled = true);
   ~Node();
 
 public:
@@ -66,10 +68,31 @@ public:
 };
 
 
+} // namespace r2p
+
+#include <r2p/Thread.hpp>
+
+namespace r2p {
+
+
 inline
 const char *Node::get_name() const {
 
   return namep;
+}
+
+
+inline
+bool Node::get_enabled() const {
+
+  return event.get_thread() != NULL;
+}
+
+
+inline
+void Node::set_enabled(bool enabled) {
+
+  event.set_thread(enabled ? &Thread::self() : NULL);
 }
 
 
