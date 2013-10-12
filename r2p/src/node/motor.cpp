@@ -105,6 +105,8 @@ msg_t pwm2sub_node(void * arg) {
 msg_t qeipub_node(void *arg) {
 	Node node("qeipub");
 	Publisher<QEIMsg> qei_pub;
+	systime_t time;
+	QEIMsg *msgp;
 
 	(void)arg;
 	chRegSetThreadName("qeipub");
@@ -115,17 +117,17 @@ msg_t qeipub_node(void *arg) {
 	node.advertise(qei_pub, "qei");
 
 	for (;;) {
-		QEIMsg *msgp;
-		if (qei_pub.alloc(msgp)) {
-			msgp->delta = qeiGetCount(&QEI_DRIVER);
+		time = chTimeNow();
 
-			if (!qei_pub.publish(*msgp)) {
-				chSysHalt();
-			}
+		if (qei_pub.alloc(msgp)) {
+			msgp->delta = qeiUpdate(&QEI_DRIVER);
+			qei_pub.publish(*msgp);
 		}
 
-		Thread::sleep(Time::ms(500)); //TODO: Node::sleep()
+		time += MS2ST(50);
+		chThdSleepUntil(time);
 	}
+
 	return CH_SUCCESS;
 }
 
