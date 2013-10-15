@@ -92,9 +92,9 @@ bool RTCANTransport::send_adv_msg(const adv_msg_t &adv_msg) {
 	rtcanTransmit(&rtcan, rtcan_msg_p, 100);
 
 	// FIXME!!!
-	while (rtcan_msg_p->status != RTCAN_MSG_READY) {
-		Thread::yield();
-	}
+//	while (rtcan_msg_p->status != RTCAN_MSG_READY) {
+	//		Thread::yield();
+	//	}
 
 	return true;
 }
@@ -161,7 +161,7 @@ bool RTCANTransport::send(Message * msgp, RTCANSubscriber * rsubp) {
 	rtcan_msg_p->status = RTCAN_MSG_READY;
 	rtcan_msg_p->data = msgp->get_raw_data();
 
-	rtcanTransmitI(&rtcan, rtcan_msg_p, 100);
+	rtcanTransmitI(&rtcan, rtcan_msg_p, 50);
 
 	return true;
 }
@@ -187,7 +187,7 @@ void RTCANTransport::recv_cb(rtcan_msg_t &rtcan_msg) {
 	msg.set_source(transportp);
 	pubp->publish_locally_unsafe(msg) && pubp->publish_remotely_unsafe(msg);
 #else
-	pubp->publish_locally(msg);
+	pubp->publish_locally_unsafe(msg);
 #endif
 
 	// allocate again for next message from RTCAN
@@ -196,7 +196,7 @@ void RTCANTransport::recv_cb(rtcan_msg_t &rtcan_msg) {
 		rtcan_msg.data = msgp->get_raw_data();
 	} else {
 		rtcan_msg.status = RTCAN_MSG_BUSY;
-		R2P_ASSERT(false);
+//		R2P_ASSERT(false);
 	}
 }
 
@@ -294,6 +294,9 @@ rtcan_id_t RTCANTransport::topic_id(const char * namep) const {
 
 	if (strcmp(namep, "tilt") == 0)
 		return TILT_ID | stm32_id8();
+
+	if (strcmp(namep, "velocity") == 0)
+		return VELOCITY_ID | stm32_id8();
 
 	return 255 << 8;
 }

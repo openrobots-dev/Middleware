@@ -20,10 +20,11 @@ ioportid_t led2gpio(unsigned led_id) {
 	case 1:
 		return LED1_GPIO;
 	case 2:
-		return LED1_GPIO;
+		return LED2_GPIO;
 	case 3:
-	case 4:
 		return LED3_GPIO;
+	case 4:
+		return LED4_GPIO;
 	default:
 		chSysHalt();
 		return 0;
@@ -107,7 +108,7 @@ msg_t ledsub_node(void * arg) {
 	node.subscribe(sub, "leds", sub_msgbuf);
 
 	for (;;) {
-		if (!node.spin(r2p::Time::ms(1000))) {
+		if (!node.spin(MS2ST(1000))) {
 			palTogglePad((GPIO_TypeDef *)led2gpio(4), led2pin(4));
 		} else {
 			palSetPad((GPIO_TypeDef *)led2gpio(4), led2pin(4));
