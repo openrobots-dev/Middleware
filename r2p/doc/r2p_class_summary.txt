@@ -353,6 +353,8 @@ RemoteSubscriber -left-|> BaseSubscriber
 
 Topic o-down-> "*" LocalSubscriber : local_subscribers
 Topic o-down-> "*" RemoteSubscriber : remote_subscribers
+BasePublisher -down-> Topic : topic
+BaseSubscriber -up-> Topic : topic
 Topic .left.> Message
 
 Middleware *-left-> "*" Node : nodes
