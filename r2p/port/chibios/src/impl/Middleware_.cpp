@@ -12,6 +12,9 @@ void Middleware::reboot() {
   chThdSleep((MS2ST(10) > 0) ? MS2ST(10) : 1);
   chSysDisable();
 
+  // Set the reboot magic number
+  rebooted_magic = REBOOTED_MAGIC;
+
   // Ensure completion of memory access.
   __DSB();
 

@@ -12,16 +12,20 @@ class Transport;
 class MgmtMsg : public Message {
 public:
   enum TypeEnum {
-    RAW                     = 0x00,
+    RAW                         = 0x00,
 
-    INFO_MODULE             = 0x10,
-    INFO_ADVERTISEMENT      = 0x11,
-    INFO_SUBSCRIPTION       = 0x12,
+    INFO_MODULE                 = 0x10,
+    INFO_ADVERTISEMENT          = 0x11,
+    INFO_SUBSCRIPTION           = 0x12,
 
-    CMD_GET_NETWORK_STATE   = 0x20,
-    CMD_ADVERTISE           = 0x21,
-    CMD_SUBSCRIBE_REQUEST   = 0x22,
-    CMD_SUBSCRIBE_RESPONSE  = 0x23,
+    CMD_GET_NETWORK_STATE       = 0x20,
+    CMD_ADVERTISE               = 0x21,
+    CMD_SUBSCRIBE_REQUEST       = 0x22,
+    CMD_SUBSCRIBE_RESPONSE      = 0x23,
+
+    CMD_STOP                    = 0x30,
+    CMD_REBOOT                  = 0x31,
+    CMD_BOOTLOAD                = 0x32,
   };
 
   enum { MAX_PAYLOAD_LENGTH = 31 };

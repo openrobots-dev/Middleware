@@ -54,6 +54,10 @@ protected:
 public:
   static void copy(Message &to, const Message &from, size_t msg_size);
   static const Message &get_msg_from_raw_data(const uint8_t *datap);
+  static size_t get_payload_size(size_t type_size);
+
+  template<typename MessageType>
+  static size_t get_payload_size();
 
   template<typename MessageType>
   static void reset_payload(MessageType &msg);
@@ -135,17 +139,30 @@ Message::Message()
 {}
 
 
+inline
+size_t Message::get_payload_size(size_t type_size) {
+
+#if R2P_MESSAGE_TRACKS_SOURCE
+  return type_size - sizeof(RefcountType) - sizeof(Transport *);
+#else
+  return type_size - sizeof(RefcountType);
+#endif
+}
+
+
+template<typename MessageType> inline
+size_t Message::get_payload_size() {
+
+  static_cast_check<MessageType, Message>();
+  return get_payload_size(sizeof(MessageType));
+}
+
+
 template<typename MessageType> inline
 void Message::reset_payload(MessageType &msg) {
 
   static_cast_check<MessageType, Message>();
-
-#if R2P_MESSAGE_TRACKS_SOURCE
-  memset(&msg.refcount + 1, 0,
-         sizeof(MessageType) - sizeof(RefcountType) - sizeof(Transport *));
-#else
-  memset(&msg.refcount + 1, 0, sizeof(MessageType) - sizeof(RefcountType));
-#endif
+  memset(&msg.refcount + 1, 0, get_payload_size<MessageType>());
 }
 
 

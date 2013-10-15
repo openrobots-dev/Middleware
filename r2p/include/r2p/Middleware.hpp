@@ -31,18 +31,26 @@ private:
   StaticList<Transport> transports;
   ReMutex lists_lock;
 
-  void *mgmt_boot_stackp;
-  size_t mgmt_boot_stacklen;
-  Thread::Priority mgmt_boot_priority;
 
   enum { MGMT_BUFFER_LENGTH = 5 };
   enum { MGMT_TIMEOUT_MS = 20 };
   Topic mgmt_topic;
-  Thread *mgmt_boot_threadp;
+  void *mgmt_stackp;
+  size_t mgmt_stacklen;
+  Thread *mgmt_threadp;
+  Thread::Priority mgmt_priority;
 
+#if R2P_USE_BOOTLOADER
+  enum { REBOOTED_MAGIC = 0xFEB007ED };
+  enum { BOOT_MODE_MAGIC = 0x51B0077A };
   enum { BOOT_PAGE_LENGTH = 1 << 10 };
   enum { BOOT_BUFFER_LENGTH = 4 };
   Topic boot_topic;
+  void *boot_stackp;
+  size_t boot_stacklen;
+  Thread *boot_threadp;
+  Thread::Priority boot_priority;
+#endif
 
   enum { TOPIC_CHECK_TIMEOUT_MS = 100 };
   StaticList<Topic>::Iterator topic_iter;
@@ -53,18 +61,27 @@ private:
 
 public:
   static Middleware instance;
+  static uint32_t rebooted_magic;
+  static uint32_t boot_mode_magic;
 
 public:
   const char *get_module_name() const;
   const StaticList<Node> &get_nodes() const;
   const StaticList<Topic> &get_topics() const;
   const StaticList<Transport> &get_transports() const;
+  Topic &get_mgmt_topic();
+  Topic &get_boot_topic();
   bool is_stopped() const;
 
-  void initialize(void *mgmt_boot_stackp, size_t mgmt_boot_stacklen,
-                  Thread::Priority mgmt_boot_priority);
+  void pre_init(void *mgmt_stackp, size_t mgmt_stacklen,
+                Thread::Priority mgmt_priority,
+                void *boot_stackp, size_t boot_stacklen,
+                Thread::Priority boot_priority);
+  void post_init();
+
   void stop();
   void reboot();
+  void preload_bootloader_mode();
 
   void add(Node &node);
   void add(Transport &transport);
@@ -90,6 +107,9 @@ private:
   Topic *touch_topic(const char *namep, size_t type_size);
 
 private:
+  Middleware(const char *module_namep, const char *bootloader_namep);
+
+private:
   static Thread::Return mgmt_threadf(Thread::Argument);
   void do_mgmt_thread();
 
@@ -98,8 +118,9 @@ private:
   void do_boot_thread();
 #endif
 
-private:
-  Middleware(const char *module_namep, const char *bootloader_namep);
+public:
+  static bool has_rebooted();
+  static bool is_bootloader_mode();
 };
 
 
@@ -132,9 +153,44 @@ const StaticList<Transport> &Middleware::get_transports() const {
 
 
 inline
+Topic &Middleware::get_mgmt_topic() {
+
+  return mgmt_topic;
+}
+
+
+inline
+Topic &Middleware::get_boot_topic() {
+
+  return boot_topic;
+}
+
+
+inline
 bool Middleware::is_stopped() const {
 
   return stopped;
+}
+
+
+inline
+void Middleware::preload_bootloader_mode() {
+
+  boot_mode_magic = BOOT_MODE_MAGIC;
+}
+
+
+inline
+bool Middleware::has_rebooted() {
+
+  return rebooted_magic == REBOOTED_MAGIC;
+}
+
+
+inline
+bool Middleware::is_bootloader_mode() {
+
+  return boot_mode_magic == BOOT_MODE_MAGIC;
 }
 
 

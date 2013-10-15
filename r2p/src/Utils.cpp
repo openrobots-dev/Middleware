@@ -29,7 +29,7 @@ bool is_identifier(const char *namep, size_t max_length) {
       ++namep;
       --max_length;
     }
-    return *namep == 0 || max_length == 0;
+    return max_length == 0 || *namep == 0;
   }
   return false;
 }

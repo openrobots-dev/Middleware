@@ -110,7 +110,7 @@ const Time &Topic::get_publish_timeout() const {
 inline
 size_t Topic::get_size() const {
 
-  return msg_pool.get_item_size() - sizeof(Message);
+  return Message::get_payload_size(msg_pool.get_item_size());
 }
 
 

@@ -22,13 +22,9 @@
 #endif
 
 
-struct Uint32Msg : public r2p::Message {
-  uint32_t value;
-} R2P_PACKED;
-
-
-struct FloatMsg : public r2p::Message {
-  float value;
+struct TestMsg : public r2p::Message {
+  long id;
+  long value;
 } R2P_PACKED;
 
 
@@ -40,6 +36,9 @@ extern "C" {
   int _getpid() { return 1; }
 } // extern "C"
 
+
+#define BOOT_STACKLEN   1024
+
 static WORKING_AREA(wa_info, 2048);
 
 r2p::Middleware r2p::Middleware::instance(R2P_MODULE_NAME,
@@ -49,11 +48,9 @@ static WORKING_AREA(wa1, 1024);
 static WORKING_AREA(wa2, 1024);
 static WORKING_AREA(wa3, 1024);
 
-static r2p::Topic test_topic("test", sizeof(Uint32Msg));
-
 static char dbgtra_namebuf[64];
 
-static r2p::DebugTransport dbgtra(reinterpret_cast<BaseChannel *>(&SD2),
+static r2p::DebugTransport dbgtra("SD2", reinterpret_cast<BaseChannel *>(&SD2),
                                   dbgtra_namebuf);
 
 static WORKING_AREA(wa_rx_dbgtra, 1024);
@@ -66,7 +63,7 @@ systime_t start_time, cur_time;
 msg_t Thread1(void *) {
 
   r2p::Node node("Node1");
-  r2p::Publisher<Uint32Msg> pub1;
+  r2p::Publisher<TestMsg> pub1;
 
   node.advertise(pub1, "test");
 
@@ -76,9 +73,10 @@ msg_t Thread1(void *) {
   for (;;) {
     chThdSleepMilliseconds(250);
     cur_time = chTimeNow();
-    Uint32Msg *msgp;
+    TestMsg *msgp;
     if (pub1.alloc(msgp)) {
-      msgp->value = 1;
+      msgp->id = 0xDEADBEEF;
+      msgp->value = 0x1337B00B;
       if (!pub1.publish(*msgp)) {
         chSysHalt();
       }
@@ -91,7 +89,7 @@ msg_t Thread1(void *) {
 }
 
 
-bool callback_2(const Uint32Msg &msg) {
+bool callback_2(const TestMsg &msg) {
   (void)msg;
   palTogglePad(LED_GPIO, LED2);
   ++num_msgs;
@@ -101,7 +99,7 @@ bool callback_2(const Uint32Msg &msg) {
 
 static unsigned remote_msg_count = 0;
 
-bool callback_3(const Uint32Msg &msg) {
+bool callback_3(const TestMsg &msg) {
     (void)msg;
     ++remote_msg_count;
     palTogglePad(LED_GPIO, LED3);
@@ -111,9 +109,9 @@ bool callback_3(const Uint32Msg &msg) {
 
 msg_t Thread2(void *) {
 
-  Uint32Msg sub2_msgbuf[5], *sub2_queue[5];
+  TestMsg sub2_msgbuf[5], *sub2_queue[5];
   r2p::Node node("Node2");
-  r2p::Subscriber<Uint32Msg> sub2(sub2_queue, 5, callback_2);
+  r2p::Subscriber<TestMsg> sub2(sub2_queue, 5, callback_2);
 
   node.subscribe(sub2, "test", sub2_msgbuf);
 
@@ -128,9 +126,9 @@ msg_t Thread2(void *) {
 
 msg_t Thread3(void *) {
 
-  Uint32Msg sub3_msgbuf[5], *sub3_queue[5];
+  TestMsg sub3_msgbuf[5], *sub3_queue[5];
   r2p::Node node("Node3");
-  r2p::Subscriber<Uint32Msg> sub3(sub3_queue, 5, callback_3);
+  r2p::Subscriber<TestMsg> sub3(sub3_queue, 5, callback_3);
 
   node.subscribe(sub3, "asdf", sub3_msgbuf);
 
@@ -143,6 +141,8 @@ msg_t Thread3(void *) {
 }
 
 
+#include <r2p/BootMsg.hpp> // XXX
+
 extern "C" {
 int main(void) {
 
@@ -152,16 +152,29 @@ int main(void) {
   sdStart(&SD2, NULL);
 
   r2p::Thread::set_priority(r2p::Thread::HIGHEST);
-  r2p::Middleware::instance.initialize(wa_info, sizeof(wa_info),
-                                       r2p::Thread::LOWEST);
-  r2p::Middleware::instance.add(test_topic);
 
-  dbgtra.initialize(wa_rx_dbgtra, sizeof(wa_rx_dbgtra), r2p::Thread::LOWEST + 11,
-                    wa_tx_dbgtra, sizeof(wa_tx_dbgtra), r2p::Thread::LOWEST + 10);
+  void *boot_stackp = NULL;
+  if (r2p::Middleware::is_bootloader_mode()) {
+    uint8_t *stackp = new uint8_t[BOOT_STACKLEN + sizeof(stkalign_t)];
+    R2P_ASSERT(stackp != NULL);
+    stackp += (sizeof(stkalign_t) - reinterpret_cast<uintptr_t>(stackp)) %
+              sizeof(stkalign_t);
+    boot_stackp = stackp;
+  }
 
-  r2p::Thread::create_static(wa3, sizeof(wa3), r2p::Thread::NORMAL - 2, Thread3, NULL, "Thread3");
-  r2p::Thread::create_static(wa2, sizeof(wa2), r2p::Thread::NORMAL + 1, Thread2, NULL, "Thread2");
-  r2p::Thread::create_static(wa1, sizeof(wa1), r2p::Thread::NORMAL + 0, Thread1, NULL, "Thread1");
+  r2p::Middleware::instance.pre_init(
+    wa_info, sizeof(wa_info), r2p::Thread::LOWEST,
+    boot_stackp, BOOT_STACKLEN, r2p::Thread::LOWEST
+  );
+
+   dbgtra.initialize(wa_rx_dbgtra, sizeof(wa_rx_dbgtra), r2p::Thread::LOWEST + 11,
+                     wa_tx_dbgtra, sizeof(wa_tx_dbgtra), r2p::Thread::LOWEST + 10);
+
+   r2p::Middleware::instance.post_init();
+
+//  r2p::Thread::create_static(wa3, sizeof(wa3), r2p::Thread::NORMAL - 2, Thread3, NULL, "Thread3");
+//  r2p::Thread::create_static(wa2, sizeof(wa2), r2p::Thread::NORMAL + 1, Thread2, NULL, "Thread2");
+//  r2p::Thread::create_static(wa1, sizeof(wa1), r2p::Thread::NORMAL + 0, Thread1, NULL, "Thread1");
 
   r2p::Thread::set_priority(r2p::Thread::NORMAL);
   for (;;) {

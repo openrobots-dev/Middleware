@@ -15,22 +15,58 @@
 namespace r2p {
 
 
-void Middleware::initialize(void *mgmt_boot_stackp, size_t mgmt_boot_stacklen, Thread::Priority mgmt_boot_priority) {
+uint32_t Middleware::rebooted_magic R2P_NORESET;
+uint32_t Middleware::boot_mode_magic R2P_NORESET;
 
-  R2P_ASSERT(mgmt_boot_stackp != NULL);
-  R2P_ASSERT(mgmt_boot_stacklen > 0);
+
+void Middleware::pre_init(void *mgmt_stackp, size_t mgmt_stacklen,
+                          Thread::Priority mgmt_priority,
+                          void *boot_stackp, size_t boot_stacklen,
+                          Thread::Priority boot_priority) {
+
+  R2P_ASSERT(mgmt_stackp != NULL);
+  R2P_ASSERT(mgmt_stacklen > 0);
 
   lists_lock.initialize();
 
-  this->mgmt_boot_stackp = mgmt_boot_stackp;
-  this->mgmt_boot_stacklen = mgmt_boot_stacklen;
-  this->mgmt_boot_priority = mgmt_boot_priority;
+  this->mgmt_stackp = mgmt_stackp;
+  this->mgmt_stacklen = mgmt_stacklen;
+  this->mgmt_priority = mgmt_priority;
+  this->boot_stackp = boot_stackp;
+  this->boot_stacklen = boot_stacklen;
+  this->boot_priority = boot_priority;
 
-  mgmt_boot_threadp = Thread::create_static(
-    mgmt_boot_stackp, mgmt_boot_stacklen, mgmt_boot_priority,
+#if R2P_USE_BOOTLOADER // TODO XXX: Add PRELOAD_BOOT_MODE management message
+  if (is_bootloader_mode()) { // Bootloader mode
+    R2P_ASSERT(boot_stackp != NULL);
+    R2P_ASSERT(boot_stacklen > 0);
+
+    topics.link(boot_topic.by_middleware);
+  }
+#endif
+  topics.link(mgmt_topic.by_middleware);
+}
+
+
+void Middleware::post_init() {
+
+#if R2P_USE_BOOTLOADER
+  if (is_bootloader_mode()) {
+    R2P_ASSERT(boot_stackp != NULL);
+
+    boot_threadp = Thread::create_static(
+      boot_stackp, boot_stacklen, boot_priority,
+      boot_threadf, NULL, "R2P_BOOT"
+    );
+    R2P_ASSERT(boot_threadp != NULL);
+  }
+#endif
+
+  mgmt_threadp = Thread::create_static(
+    mgmt_stackp, mgmt_stacklen, mgmt_priority,
     mgmt_threadf, NULL, "R2P_MGMT"
   );
-  R2P_ASSERT(mgmt_boot_threadp != NULL);
+  R2P_ASSERT(mgmt_threadp != NULL);
 
   // Wait until the info topic is fully initialized
   Thread::Priority oldprio = Thread::get_priority();
@@ -45,37 +81,26 @@ void Middleware::initialize(void *mgmt_boot_stackp, size_t mgmt_boot_stacklen, T
   Thread::set_priority(oldprio);
 
 #if R2P_USE_BOOTLOADER
-  // Launch all installed apps
-  bool success; (void)success;
-  success = Bootloader::launch_all();
-  R2P_ASSERT(success);
+  if (!is_bootloader_mode()) {
+    // Launch all installed apps
+    bool success; (void)success;
+    success = Bootloader::launch_all();
+    R2P_ASSERT(success);
+  }
 #endif
 }
 
 
 void Middleware::stop() {
 
-  bool trigger = false;
   SysLock::acquire();
   if (!stopped) {
-    trigger = stopped = true;
+    stopped = true;
+    SysLock::release();
+  } else {
+    SysLock::release();
+    return;
   }
-  SysLock::release();
-
-  // Stop all remote middlewares, and force remote bootloader pubs/subs
-  for (StaticList<Transport>::Iterator i = transports.begin(); i != transports.end(); ++i) {
-    bool success;
-    (void) success;
-    success = i->notify_stop();
-    R2P_ASSERT(success);
-    success = i->touch_publisher(boot_topic);
-    R2P_ASSERT(success);
-    success = i->touch_subscriber(boot_topic, BOOT_BUFFER_LENGTH);
-    R2P_ASSERT(success);
-  }
-
-  // Don't enter bootloader mode again
-  if (!trigger) return;
 
   // Stop all nodes
   SysLock::acquire();
@@ -88,17 +113,6 @@ void Middleware::stop() {
     SysLock::acquire();
   }
   SysLock::release();
-
-#if R2P_USE_BOOTLOADER
-  // Enter bootloader mode
-  trigger = Thread::join(*mgmt_boot_threadp);
-  R2P_ASSERT(trigger);
-  mgmt_boot_threadp = Thread::create_static(
-    mgmt_boot_stackp, mgmt_boot_stacklen, mgmt_boot_priority,
-    boot_threadf, NULL, "R2P_BOOT"
-  );
-  R2P_ASSERT(mgmt_boot_threadp != NULL);
-#endif // R2P_USE_BOOTLOADER
 }
 
 
@@ -153,12 +167,12 @@ bool Middleware::advertise(RemotePublisher &pub, const char *namep,
   pub.notify_advertised(*topicp);
   topicp->advertise(pub, publish_timeout);
   lists_lock.release();
-
+/* FIXME: Is this needed?
   for (StaticList<Transport>::Iterator i = transports.begin();
       i != transports.end(); ++i) {
     i->notify_advertisement(*topicp);
   }
-
+*/
   return true;
 }
 
@@ -253,13 +267,6 @@ Topic *Middleware::touch_topic(const char *namep, size_t type_size) {
 }
 
 
-Thread::Return Middleware::mgmt_threadf(Thread::Argument) {
-
-  instance.do_mgmt_thread();
-  return Thread::OK;
-}
-
-
 void Middleware::do_mgmt_thread() {
 
   MgmtMsg msgbuf[MGMT_BUFFER_LENGTH];
@@ -271,12 +278,10 @@ void Middleware::do_mgmt_thread() {
   node.advertise(pub, mgmt_topic.get_name(), Time::INFINITE);
   node.subscribe(sub, mgmt_topic.get_name(), msgbuf);
 
+  MgmtMsg *msgp;
+  Time deadline;
   do {
     if (node.spin(Time::ms(MGMT_TIMEOUT_MS))) {
-      if (is_stopped()) break;
-
-      MgmtMsg *msgp;
-      Time deadline;
       while (sub.fetch(msgp, deadline)) {
         switch (msgp->type) {
         case MgmtMsg::CMD_ADVERTISE: {
@@ -339,6 +344,31 @@ void Middleware::do_mgmt_thread() {
 
           break;
         }
+        case MgmtMsg::CMD_STOP: {
+          if (0 == strncmp(module_namep, msgp->module.name,
+                           NamingTraits<Middleware>::MAX_LENGTH)) {
+            stop();
+          }
+          sub.release(*msgp);
+          break;
+        }
+        case MgmtMsg::CMD_REBOOT: {
+          if (0 == strncmp(module_namep, msgp->module.name,
+                           NamingTraits<Middleware>::MAX_LENGTH)) {
+            reboot();
+          }
+          sub.release(*msgp);
+          break;
+        }
+        case MgmtMsg::CMD_BOOTLOAD: {
+          if (0 == strncmp(module_namep, msgp->module.name,
+                           NamingTraits<Middleware>::MAX_LENGTH)) {
+            preload_bootloader_mode();
+            reboot();
+          }
+          sub.release(*msgp);
+          break;
+        }
         default: {
           sub.release(*msgp);
           break;
@@ -347,6 +377,7 @@ void Middleware::do_mgmt_thread() {
       }
     }
 
+#if 0//XXX
     // TODO: Fine grained iterations by saving iterators; maybe in another function
     // Check for the next unadvertised topic
     if (topic_iter == topics.end()) {
@@ -369,8 +400,43 @@ void Middleware::do_mgmt_thread() {
         ++topic_iter;
       }
     }
+#endif //0
+
     Thread::yield();
   } while (!instance.is_stopped());
+}
+
+
+Middleware::Middleware(const char *module_namep, const char *bootloader_namep)
+:
+  module_namep(module_namep),
+  lists_lock(false),
+  mgmt_topic("R2P", sizeof(MgmtMsg)),
+  mgmt_stackp(NULL),
+  mgmt_stacklen(0),
+  mgmt_threadp(NULL),
+  mgmt_priority(Thread::LOWEST),
+#if R2P_USE_BOOTLOADER
+  boot_topic(bootloader_namep, sizeof(BootMsg)),
+  boot_stackp(NULL),
+  boot_stacklen(0),
+  boot_threadp(NULL),
+  boot_priority(Thread::LOWEST),
+#endif
+  topic_iter(topics.end()),
+  stopped(false),
+  num_running_nodes(0)
+{
+	R2P_ASSERT(is_identifier(module_namep,
+	                         NamingTraits<Middleware>::MAX_LENGTH));
+	(void)bootloader_namep;
+}
+
+
+Thread::Return Middleware::mgmt_threadf(Thread::Argument) {
+
+  instance.do_mgmt_thread();
+  return Thread::OK;
 }
 
 
@@ -386,7 +452,7 @@ Thread::Return Middleware::boot_threadf(Thread::Argument) {
   Publisher<BootMsg> pub;
 
   Node node("R2P_BOOT");
-  {	bool success; (void)success;
+  { bool success; (void)success;
   success = node.advertise(pub, instance.boot_topic.get_name());
   R2P_ASSERT(success);
   success = node.subscribe(sub, instance.boot_topic.get_name(), msgbuf);
@@ -399,28 +465,6 @@ Thread::Return Middleware::boot_threadf(Thread::Argument) {
   return Thread::OK;
 }
 #endif
-
-
-Middleware::Middleware(const char *module_namep, const char *bootloader_namep)
-:
-  module_namep(module_namep),
-  lists_lock(false),
-  mgmt_boot_stackp(NULL),
-  mgmt_boot_stacklen(0),
-  mgmt_boot_priority(Thread::LOWEST),
-  mgmt_topic("R2P", sizeof(MgmtMsg)),
-  mgmt_boot_threadp(NULL),
-  boot_topic(bootloader_namep, sizeof(BootMsg)),
-  topic_iter(topics.end()),
-  stopped(false),
-  num_running_nodes(0)
-{
-	R2P_ASSERT(is_identifier(module_namep,
-	                         NamingTraits<Middleware>::MAX_LENGTH));
-
-	topics.link(mgmt_topic.by_middleware);
-	topics.link(boot_topic.by_middleware);
-}
 
 
 } // namespace r2p

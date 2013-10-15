@@ -11,18 +11,6 @@
 namespace r2p {
 
 
-bool Transport::notify_stop() {
-
-  return send_stop();
-}
-
-
-bool Transport::notify_reboot() {
-
-  return send_reboot();
-}
-
-
 bool Transport::touch_publisher(Topic &topic, uint8_t * raw_params) {
 
   ScopedLock<Mutex> lock(publishers_lock);

@@ -36,6 +36,7 @@ public:
   bool notify_subscription_response(const Topic &topic);
   bool notify_stop();
   bool notify_reboot();
+  bool notify_bootload();
 
 protected:
   bool touch_publisher(Topic &topic, uint8_t * raw_params = NULL);
@@ -52,11 +53,20 @@ protected:
                  Message msgpool_buf[], size_t msgpool_buflen,
                  size_t type_size);
 
+  template<typename MessageType>
+  bool advertise(RemotePublisher &pub, const char *namep,
+                 const Time &publish_timeout);
+
+  template<typename MessageType>
+  bool subscribe(RemoteSubscriber &sub, const char *namep,
+                 MessageType msgpool_buf[], size_t msgpool_buflen);
+
   virtual bool send_advertisement(const Topic &topic) = 0;
   virtual bool send_subscription_request(const Topic &topic) = 0;
   virtual bool send_subscription_response(const Topic &topic) = 0;
   virtual bool send_stop() = 0;
   virtual bool send_reboot() = 0;
+  virtual bool send_bootload() = 0;
 
   virtual RemotePublisher *create_publisher(Topic &topic,
                                             const uint8_t *raw_params = NULL)
@@ -75,6 +85,13 @@ protected:
 public:
   static bool has_name(const Transport &transport, const char *namep);
 };
+
+
+} // namespace r2p
+
+#include <r2p/Message.hpp>
+
+namespace r2p {
 
 
 inline
@@ -102,6 +119,46 @@ inline
 bool Transport::notify_subscription_response(const Topic &topic) {
 
   return send_subscription_response(topic);
+}
+
+
+inline
+bool Transport::notify_stop() {
+
+  return send_stop();
+}
+
+
+inline
+bool Transport::notify_reboot() {
+
+  return send_reboot();
+}
+
+
+inline
+bool Transport::notify_bootload() {
+
+  return send_bootload();
+}
+
+
+template<typename MessageType> inline
+bool Transport::advertise(RemotePublisher &pub, const char *namep,
+                          const Time &publish_timeout) {
+
+  static_cast_check<MessageType, Message>();
+  return advertise(pub, namep, publish_timeout, sizeof(MessageType));
+}
+
+
+template<typename MessageType> inline
+bool Transport::subscribe(RemoteSubscriber &sub, const char *namep,
+                          MessageType msgpool_buf[], size_t msgpool_buflen) {
+
+  static_cast_check<MessageType, Message>();
+  return subscribe(sub, namep, msgpool_buf, msgpool_buflen,
+                   sizeof(MessageType));
 }
 
 

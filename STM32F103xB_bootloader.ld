@@ -149,6 +149,13 @@ SECTIONS
         PROVIDE(_bss_end = .);
         __bss_end__ = .;
     } > ram
+    
+    .noreset :
+    {
+    	. = ALIGN(4);
+    	*(.noreset)
+    	*(.noreset.*)
+    } > ram
 }
 
 PROVIDE(end = .);

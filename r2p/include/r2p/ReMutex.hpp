@@ -37,7 +37,7 @@ void ReMutex::initialize() {
 inline
 void ReMutex::acquire_unsafe() {
 
-  if (counter++ == 0) {
+  if (++counter == 1) {
     mutex.acquire_unsafe();
   }
 }
