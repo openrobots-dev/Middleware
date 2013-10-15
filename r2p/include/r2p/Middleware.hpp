@@ -81,7 +81,7 @@ public:
 
   void stop();
   void reboot();
-  void preload_bootloader_mode();
+  void preload_bootloader_mode(bool enable);
 
   void add(Node &node);
   void add(Transport &transport);
@@ -174,9 +174,9 @@ bool Middleware::is_stopped() const {
 
 
 inline
-void Middleware::preload_bootloader_mode() {
+void Middleware::preload_bootloader_mode(bool enable) {
 
-  boot_mode_magic = BOOT_MODE_MAGIC;
+  boot_mode_magic = enable ? BOOT_MODE_MAGIC : ~BOOT_MODE_MAGIC;
 }
 
 

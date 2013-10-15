@@ -570,6 +570,7 @@ bool DebugTransport::spin_rx() {
         return false;
       }
 
+      Middleware::instance.preload_bootloader_mode(false);
       Middleware::instance.reboot();
       return true;
     }
@@ -580,7 +581,7 @@ bool DebugTransport::spin_rx() {
         return false;
       }
 
-      Middleware::instance.preload_bootloader_mode();
+      Middleware::instance.preload_bootloader_mode(true);
       Middleware::instance.reboot();
       return true;
     }

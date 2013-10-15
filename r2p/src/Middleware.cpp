@@ -355,6 +355,7 @@ void Middleware::do_mgmt_thread() {
         case MgmtMsg::CMD_REBOOT: {
           if (0 == strncmp(module_namep, msgp->module.name,
                            NamingTraits<Middleware>::MAX_LENGTH)) {
+            preload_bootloader_mode(false);
             reboot();
           }
           sub.release(*msgp);
@@ -363,7 +364,7 @@ void Middleware::do_mgmt_thread() {
         case MgmtMsg::CMD_BOOTLOAD: {
           if (0 == strncmp(module_namep, msgp->module.name,
                            NamingTraits<Middleware>::MAX_LENGTH)) {
-            preload_bootloader_mode();
+            preload_bootloader_mode(true);
             reboot();
           }
           sub.release(*msgp);
