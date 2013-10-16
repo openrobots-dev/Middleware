@@ -239,48 +239,48 @@ include $(CHIBIOS)/os/ports/GCC/ARMCMx/rules.mk
 load: $(OBJS) $(LDSCRIPT) all
 	@rm -f $(BUILDDIR)/$(PROJECT).hex $(BUILDDIR)/$(PROJECT).bin $(BUILDDIR)/$(PROJECT).dmp
 	
-	@"$(R2P)/scripts/load.py" $(VERBOSITY) \
-		--boot-topic "$(BOOT_TOPIC)" \
-		--app-name   "$(APP_NAME)" \
-		--stack-size "$(APP_STACK_SIZE)" \
-		--sys-elf    "$(SYS_ELF)" \
-		--app-elf    "$(BUILDDIR)/$(PROJECT).elf" \
-		--app-hex    "$(BUILDDIR)/$(PROJECT).hex" \
-		--ld-cmd     "$(TRGT)ld" \
-		--ld-script  "$(LDSCRIPT)" \
-		--ld-map     "$(BUILDDIR)/$(PROJECT).map" \
+	@"$(R2PY)/load.py" $(VERBOSITY) \
+		--boot-topic      "$(BOOT_TOPIC)" \
+		--app-name        "$(APP_NAME)" \
+		--app-stack-size  "$(APP_STACK_SIZE)" \
+		--sys-elf         "$(SYS_ELF)" \
+		--app-elf         "$(BUILDDIR)/$(PROJECT).elf" \
+		--app-hex         "$(BUILDDIR)/$(PROJECT).hex" \
+		--ld-cmd          "$(TRGT)ld" \
+		--ld-script       "$(LDSCRIPT)" \
+		--ld-map          "$(BUILDDIR)/$(PROJECT).map" \
 		--ld-objects $(OBJS)
 
 getappinfo: $(OBJ) $(LDSCRIPT) all
-	@"$(R2P)/scripts/getappinfo.py" $(VERBOSITY) \
+	@"$(R2PY)/getappinfo.py" $(VERBOSITY) \
 		--boot-topic "$(BOOT_TOPIC)"
 
 getparam: $(OBJ) $(LDSCRIPT) all
-	@"$(R2P)/scripts/getparam.py" $(VERBOSITY) \
+	@"$(R2PY)/getparam.py" $(VERBOSITY) \
 		--boot-topic   "$(BOOT_TOPIC)" \
 		--app-name     "$(APP_NAME)" \
 		--param-offset "$(PARAM_OFFSET)" \
 		--param-length "$(PARAM_LENGTH)"
 
 setparam: $(OBJ) $(LDSCRIPT) all
-	@"$(R2P)/scripts/setparam.py" $(VERBOSITY) \
+	@"$(R2PY)/setparam.py" $(VERBOSITY) \
 		--boot-topic   "$(BOOT_TOPIC)" \
 		--app-name     "$(APP_NAME)" \
 		--param-offset "$(PARAM_OFFSET)" \
 		--param-bytes  "$(PARAM_BYTES)"
 
 remove_last:
-	@"$(R2P)/scripts/remove.py" $(VERBOSITY) \
+	@"$(R2PY)/remove.py" $(VERBOSITY) \
 		--boot-topic "$(BOOT_TOPIC)" \
 		--last
 
 remove_all:
-	@"$(R2P)/scripts/remove.py" $(VERBOSITY) \
+	@"$(R2PY)/remove.py" $(VERBOSITY) \
 		--boot-topic "$(BOOT_TOPIC)" \
 		--all
 
 reboot:
-	@"$(R2P)/scripts/reboot.py" $(VERBOSITY) \
+	@"$(R2PY)/reboot.py" $(VERBOSITY) \
 		--boot-topic "$(BOOT_TOPIC)"
 
 ##############################################################################

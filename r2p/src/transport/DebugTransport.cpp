@@ -12,7 +12,7 @@
 namespace r2p {
 
 /// Adds a delay after the starting '@', to allow full buffering of the message
-#define RECV_DELAY_     0//1
+#define RECV_DELAY_     1
 
 
 bool DebugTransport::skip_after_char(char c, systime_t timeout) {
@@ -164,8 +164,11 @@ bool DebugTransport::send_msg(const Message &msg, size_t msg_size,
 }
 
 
-bool DebugTransport::send_pubsub_msg(const Topic &topic,
-                                     MgmtMsg::TypeEnum type) {
+bool DebugTransport::send_mgmt_msg(const Topic &topic,
+                                   MgmtMsg::TypeEnum type) {
+
+  // Do not send management messages while in bootloader mode
+  if (!ok()) return true;
 
   Checksummer cs;
 
@@ -240,7 +243,7 @@ bool DebugTransport::send_pubsub_msg(const Topic &topic,
 }
 
 
-bool DebugTransport::send_stop_msg() {
+bool DebugTransport::send_signal_msg(char id) {
 
   Checksummer cs;
 
@@ -255,39 +258,9 @@ bool DebugTransport::send_stop_msg() {
   if (!send_value(static_cast<uint8_t>(0))) return false;
   if (!send_char(':')) return false;
 
-  // Stop command
-  if (!send_char('t')) return false;
-  cs.add('t');
-
-  // Send the checksum
-  if (!send_char(':')) return false;
-  if (!send_value(cs.compute_checksum())) return false;
-
-  // End of packet
-  if (!send_char('\r')) return false;
-  if (!send_char('\n')) return false;
-  return true;
-}
-
-
-bool DebugTransport::send_reboot_msg() {
-
-  Checksummer cs;
-
-  // Send the deadline
-  if (!send_char('@')) return false;
-  Time now = Time::now();
-  if (!send_value(now.raw)) return false;
-  if (!send_char(':')) return false;
-  cs.add(now.raw);
-
-  // Send the management topic name (null string)
-  if (!send_value(static_cast<uint8_t>(0))) return false;
-  if (!send_char(':')) return false;
-
-  // Reboot command
-  if (!send_char('r')) return false;
-  cs.add('r');
+  // Signal identifier
+  if (!send_char(id)) return false;
+  cs.add(id);
 
   // Send the checksum
   if (!send_char(':')) return false;
@@ -303,35 +276,42 @@ bool DebugTransport::send_reboot_msg() {
 bool DebugTransport::send_advertisement(const Topic &topic) {
 
   ScopedLock<Mutex> lock(send_lock);
-  return send_pubsub_msg(topic, MgmtMsg::CMD_ADVERTISE);
+  return send_mgmt_msg(topic, MgmtMsg::CMD_ADVERTISE);
 }
 
 
 bool DebugTransport::send_subscription_request(const Topic &topic) {
 
   ScopedLock<Mutex> lock(send_lock);
-  return send_pubsub_msg(topic, MgmtMsg::CMD_SUBSCRIBE_REQUEST);
+  return send_mgmt_msg(topic, MgmtMsg::CMD_SUBSCRIBE_REQUEST);
 }
 
 
 bool DebugTransport::send_subscription_response(const Topic &topic) {
 
   ScopedLock<Mutex> lock(send_lock);
-  return send_pubsub_msg(topic, MgmtMsg::CMD_SUBSCRIBE_RESPONSE);
+  return send_mgmt_msg(topic, MgmtMsg::CMD_SUBSCRIBE_RESPONSE);
 }
 
 
 bool DebugTransport::send_stop() {
 
   ScopedLock<Mutex> lock(send_lock);
-  return send_stop_msg();
+  return send_signal_msg('t');
 }
 
 
 bool DebugTransport::send_reboot() {
 
   ScopedLock<Mutex> lock(send_lock);
-  return send_reboot_msg();
+  return send_signal_msg('r');
+}
+
+
+bool DebugTransport::send_bootload() {
+
+  ScopedLock<Mutex> lock(send_lock);
+  return send_signal_msg('b');
 }
 
 
@@ -360,11 +340,21 @@ void DebugTransport::initialize(void *rx_stackp, size_t rx_stacklen,
   R2P_ASSERT(success);
   send_lock.release();
 
+  if (Middleware::instance.is_bootloader_mode()) {
+    // Register remote publisher and subscriber for the bootloader thread
+    const char *namep = Middleware::instance.get_boot_topic().get_name();
+    success = advertise(boot_rpub, namep, Time::INFINITE, sizeof(BootMsg));
+    R2P_ASSERT(success);
+    success = subscribe(boot_rsub, namep, boot_msgbuf,
+                        BOOT_BUFFER_LENGTH);
+    R2P_ASSERT(success);
+  }
+
   // Register remote publisher and subscriber for the management thread
   success = advertise(mgmt_rpub, "R2P", Time::INFINITE, sizeof(MgmtMsg));
   R2P_ASSERT(success);
-  success = subscribe(mgmt_rsub, "R2P", mgmt_msgbuf, MGMT_BUFFER_LENGTH,
-                      sizeof(MgmtMsg));
+  success = subscribe(mgmt_rsub, "R2P", mgmt_msgbuf,
+                      MGMT_BUFFER_LENGTH);
   R2P_ASSERT(success);
 
   Middleware::instance.add(*this);
@@ -485,6 +475,8 @@ bool DebugTransport::spin_rx() {
     return success;
   }
   else { // Management message
+    if (!ok()) return false;
+
     // Read the management message type character
     char typechar;
     size_t queue_length;
@@ -500,8 +492,8 @@ bool DebugTransport::spin_rx() {
         cs.add(length);
         queue_length = length;
         /* no break */
-    case 'p':
-    case 'e': {
+    case 'e':
+    case 'p': {
       // Get the module name (ignored)
       if (!expect_char(':')) return false;
       if (!recv_value(length)) return false;
@@ -578,6 +570,18 @@ bool DebugTransport::spin_rx() {
         return false;
       }
 
+      Middleware::instance.preload_bootloader_mode(false);
+      Middleware::instance.reboot();
+      return true;
+    }
+    case 'b': {
+      // Get the checksum
+      if (!expect_char(':') || !recv_value(length) ||
+          length != cs.compute_checksum()) {
+        return false;
+      }
+
+      Middleware::instance.preload_bootloader_mode(true);
       Middleware::instance.reboot();
       return true;
     }
@@ -624,7 +628,9 @@ DebugTransport::DebugTransport(const char *namep, BaseChannel *channelp,
   subp_sem(false),
   send_lock(false),
   mgmt_rsub(*this, mgmt_msgqueue_buf, MGMT_BUFFER_LENGTH),
-  mgmt_rpub(*this)
+  mgmt_rpub(*this),
+  boot_rsub(*this, boot_msgqueue_buf, BOOT_BUFFER_LENGTH),
+  boot_rpub(*this)
 {
   R2P_ASSERT(channelp != NULL);
   R2P_ASSERT(namebuf != NULL);

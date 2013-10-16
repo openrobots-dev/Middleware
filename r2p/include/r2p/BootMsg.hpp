@@ -77,7 +77,7 @@ public:
       LENGTH,
       CHUNK
     };
-    enum { MAX_TEXT_LENGTH = 20 };
+    enum { MAX_TEXT_LENGTH = 24 };
 
     uint16_t    line;
     uint8_t     reason;
@@ -155,7 +155,7 @@ public:
     AppInfoSummary      appinfo_summary;
     ParamRequest        param_request;
     ParamChunk          param_chunk;
-  };
+  } R2P_PACKED;
   uint8_t   type;
 } R2P_PACKED;
 

@@ -6,6 +6,8 @@
 #include <r2p/TimestampedMsgPtrQueue.hpp>
 #include <r2p/Mutex.hpp>
 #include <r2p/MgmtMsg.hpp>
+#include <r2p/Bootloader.hpp>
+#include <r2p/BootMsg.hpp>
 #include <r2p/Semaphore.hpp>
 
 #include <ch.h>
@@ -31,11 +33,19 @@ private:
 
   Mutex send_lock;
 
-  enum { MGMT_BUFFER_LENGTH = 2 };
-  MgmtMsg mgmt_msgbuf[MGMT_BUFFER_LENGTH];
+  enum { MGMT_BUFFER_LENGTH = 4 };
   TimestampedMsgPtrQueue::Entry mgmt_msgqueue_buf[MGMT_BUFFER_LENGTH];
+  MgmtMsg mgmt_msgbuf[MGMT_BUFFER_LENGTH];
   DebugSubscriber mgmt_rsub;
   DebugPublisher mgmt_rpub;
+
+#if R2P_USE_BOOTLOADER
+  enum { BOOT_BUFFER_LENGTH = 4 };
+  TimestampedMsgPtrQueue::Entry boot_msgqueue_buf[BOOT_BUFFER_LENGTH];
+  BootMsg boot_msgbuf[BOOT_BUFFER_LENGTH];
+  DebugSubscriber boot_rsub;
+  DebugPublisher boot_rpub;
+#endif
 
 public:
   bool send_advertisement(const Topic &topic);
@@ -43,6 +53,7 @@ public:
   bool send_subscription_response(const Topic &topic);
   bool send_stop();
   bool send_reboot();
+  bool send_bootload();
 
   void initialize(void *rx_stackp, size_t rx_stacklen,
                   Thread::Priority rx_priority,
@@ -91,9 +102,8 @@ private:
   bool recv_value(T &value, systime_t timeout = TIME_INFINITE);
   bool send_msg(const Message &msg, size_t msg_size, const char *topicp,
                 const Time &deadline);
-  bool send_pubsub_msg(const Topic &topic, MgmtMsg::TypeEnum type);
-  bool send_stop_msg();
-  bool send_reboot_msg();
+  bool send_mgmt_msg(const Topic &topic, MgmtMsg::TypeEnum type);
+  bool send_signal_msg(char id);
 
 public:
   DebugTransport(const char *namep, BaseChannel *channelp, char namebuf[]);
