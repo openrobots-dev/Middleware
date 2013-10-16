@@ -73,12 +73,11 @@ public:
   Topic &get_boot_topic();
   bool is_stopped() const;
 
-  void pre_init(void *mgmt_stackp, size_t mgmt_stacklen,
-                Thread::Priority mgmt_priority,
-                void *boot_stackp, size_t boot_stacklen,
-                Thread::Priority boot_priority);
-  void post_init();
-
+  void initialize(void *mgmt_stackp, size_t mgmt_stacklen,
+                  Thread::Priority mgmt_priority,
+                  void *boot_stackp = NULL, size_t boot_stacklen = 0,
+                  Thread::Priority boot_priority = Thread::LOWEST);
+  void start();
   void stop();
   void reboot();
   void preload_bootloader_mode(bool enable);

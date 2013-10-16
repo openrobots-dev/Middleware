@@ -19,10 +19,10 @@ uint32_t Middleware::rebooted_magic R2P_NORESET;
 uint32_t Middleware::boot_mode_magic R2P_NORESET;
 
 
-void Middleware::pre_init(void *mgmt_stackp, size_t mgmt_stacklen,
-                          Thread::Priority mgmt_priority,
-                          void *boot_stackp, size_t boot_stacklen,
-                          Thread::Priority boot_priority) {
+void Middleware::initialize(void *mgmt_stackp, size_t mgmt_stacklen,
+                            Thread::Priority mgmt_priority,
+                            void *boot_stackp, size_t boot_stacklen,
+                            Thread::Priority boot_priority) {
 
   R2P_ASSERT(mgmt_stackp != NULL);
   R2P_ASSERT(mgmt_stacklen > 0);
@@ -36,8 +36,8 @@ void Middleware::pre_init(void *mgmt_stackp, size_t mgmt_stacklen,
   this->boot_stacklen = boot_stacklen;
   this->boot_priority = boot_priority;
 
-#if R2P_USE_BOOTLOADER // TODO XXX: Add PRELOAD_BOOT_MODE management message
-  if (is_bootloader_mode()) { // Bootloader mode
+#if R2P_USE_BOOTLOADER
+  if (is_bootloader_mode()) {
     R2P_ASSERT(boot_stackp != NULL);
     R2P_ASSERT(boot_stacklen > 0);
 
@@ -48,7 +48,7 @@ void Middleware::pre_init(void *mgmt_stackp, size_t mgmt_stacklen,
 }
 
 
-void Middleware::post_init() {
+void Middleware::start() {
 
 #if R2P_USE_BOOTLOADER
   if (is_bootloader_mode()) {
@@ -428,8 +428,8 @@ Middleware::Middleware(const char *module_namep, const char *bootloader_namep)
   stopped(false),
   num_running_nodes(0)
 {
-	R2P_ASSERT(is_identifier(module_namep,
-	                         NamingTraits<Middleware>::MAX_LENGTH));
+	//R2P_ASSERT(is_identifier(module_namep,
+	//                         NamingTraits<Middleware>::MAX_LENGTH)); // FIXME
 	(void)bootloader_namep;
 }
 

@@ -53,6 +53,7 @@ public:
   bool send_subscription_response(const Topic &topic);
   bool send_stop();
   bool send_reboot();
+  bool send_bootload();
   bool send(Message * msgp, RTCANSubscriber * rsubp);
 
   rtcan_id_t topic_id(const char * namep) const; // FIXME

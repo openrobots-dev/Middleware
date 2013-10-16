@@ -475,8 +475,6 @@ bool DebugTransport::spin_rx() {
     return success;
   }
   else { // Management message
-    if (!ok()) return false;
-
     // Read the management message type character
     char typechar;
     size_t queue_length;
@@ -486,7 +484,7 @@ bool DebugTransport::spin_rx() {
     cs.add(typechar);
 
     switch (typechar) {
-    case 's': // FIXED: first get queue length [MARTINO]
+    case 's':
         // Get the queue length
         if (!recv_value(length) || length == 0) return false;
         cs.add(length);

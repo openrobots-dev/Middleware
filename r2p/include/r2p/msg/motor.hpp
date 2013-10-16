@@ -30,3 +30,5 @@ struct QEIMsg: public Message {
 #define PIDSETUP_ID		(25 << 8)
 #define PWM2_ID			(26 << 8)
 #define SPEED2_ID		(27 << 8)
+#define VELOCITY_ID     (28 << 8)
+

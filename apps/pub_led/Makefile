@@ -280,7 +280,6 @@ remove_all:
 		--all
 
 reboot:
-	@"$(R2PY)/reboot.py" $(VERBOSITY) \
-		--boot-topic "$(BOOT_TOPIC)"
+	@"$(R2PY)/reboot.py" $(VERBOSITY)
 
 ##############################################################################

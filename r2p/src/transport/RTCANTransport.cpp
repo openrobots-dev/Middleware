@@ -142,6 +142,12 @@ bool RTCANTransport::send_reboot() {
 	return true;
 }
 
+bool RTCANTransport::send_bootload() {
+
+	// TODO
+	return true;
+}
+
 bool RTCANTransport::send(Message * msgp, RTCANSubscriber * rsubp) {
 	rtcan_msg_t * rtcan_msg_p;
 
