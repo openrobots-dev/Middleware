@@ -92,9 +92,9 @@ bool RTCANTransport::send_adv_msg(const adv_msg_t &adv_msg) {
 	rtcanTransmit(&rtcan, rtcan_msg_p, 100);
 
 	// FIXME!!!
-//	while (rtcan_msg_p->status != RTCAN_MSG_READY) {
-	//		Thread::yield();
-	//	}
+	while (rtcan_msg_p->status != RTCAN_MSG_READY) {
+			Thread::yield();
+		}
 
 	return true;
 }
