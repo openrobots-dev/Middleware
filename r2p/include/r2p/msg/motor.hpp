@@ -2,23 +2,34 @@
 
 namespace r2p {
 
-struct PWMMsg: public Message {
+class PWMMsg: public Message {
+public:
 	uint16_t pwm;
 }R2P_PACKED;
 
-struct PWM2Msg: public Message {
+class PWM2Msg: public Message {
+public:
 	int16_t pwm1;
 	int16_t pwm2;
 }R2P_PACKED;
 
-struct PWM3Msg: public Message {
+class PWM3Msg: public Message {
+public:
 	int16_t pwm1;
 	int16_t pwm2;
 	int16_t pwm3;
 }R2P_PACKED;
 
-struct QEIMsg: public Message {
-	uint16_t delta;
+class QEIMsg: public Message {
+public:
+	int16_t delta;
+}R2P_PACKED;
+
+class Velocity3Msg: public Message {
+public:
+	float x;
+	float y;
+	float w;
 }R2P_PACKED;
 
 } /* namespace r2p */
@@ -30,5 +41,5 @@ struct QEIMsg: public Message {
 #define PIDSETUP_ID		(25 << 8)
 #define PWM2_ID			(26 << 8)
 #define SPEED2_ID		(27 << 8)
-#define VELOCITY_ID     (28 << 8)
+#define VELOCITY_ID		(28 << 8)
 

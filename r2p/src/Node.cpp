@@ -22,19 +22,21 @@ bool Node::advertise(LocalPublisher &pub, const char *namep,
 bool Node::subscribe(LocalSubscriber &sub, const char *namep,
                      Message msgpool_buf[], size_t msg_size) {
 
-  if (Middleware::instance.subscribe(sub, namep, msgpool_buf,
+  sub.nodep = this;
+  int index = subscribers.count();
+  subscribers.link(sub.by_node);
+  R2P_ASSERT(index >= 0);
+  R2P_ASSERT(index <= static_cast<int>(SpinEvent::MAX_INDEX));
+  sub.event_index = static_cast<uint_least8_t>(index);
+
+  if (!Middleware::instance.subscribe(sub, namep, msgpool_buf,
                                      sub.get_queue_length(), msg_size)) {
-    sub.nodep = this;
-    SysLock::acquire();
-    int index = subscribers.count_unsafe();
-    subscribers.link_unsafe(sub.by_node);
-    SysLock::release();
-    R2P_ASSERT(index >= 0);
-    R2P_ASSERT(index <= static_cast<int>(SpinEvent::MAX_INDEX));
-    sub.event_index = static_cast<uint_least8_t>(index);
-    return true;
+    subscribers.unlink(sub.by_node);
+    return false;
   }
-  return false;
+
+  return true;
+
 }
 
 

@@ -60,6 +60,8 @@ msg_t ledpub_node(void *arg) {
 	uint32_t cnt = 0;
 #endif
 
+	R2P_ASSERT(led);
+
 	chRegSetThreadName("ledpub");
 
 	node.advertise(led_pub, "leds");
