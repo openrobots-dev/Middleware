@@ -33,7 +33,8 @@ private:
 public:
   const char *get_name() const;
   const Time &get_publish_timeout() const;
-  size_t get_size() const;
+  size_t get_type_size() const;
+  size_t get_payload_size() const;
   size_t get_max_queue_length() const;
 
   bool has_local_publishers() const;
@@ -108,7 +109,14 @@ const Time &Topic::get_publish_timeout() const {
 
 
 inline
-size_t Topic::get_size() const {
+size_t Topic::get_type_size() const {
+
+  return msg_pool.get_item_size();
+}
+
+
+inline
+size_t Topic::get_payload_size() const {
 
   return Message::get_payload_size(msg_pool.get_item_size());
 }
@@ -168,7 +176,9 @@ bool Topic::is_awaiting_subscriptions() const {
 inline
 Message *Topic::alloc_unsafe() {
 
-  return reinterpret_cast<Message *>(msg_pool.alloc_unsafe());
+  register Message *msgp = reinterpret_cast<Message *>(msg_pool.alloc_unsafe());
+  msgp->reset_unsafe();
+  return msgp;
 }
 
 
@@ -195,13 +205,6 @@ inline
 void Topic::free_unsafe(Message &msg) {
 
   msg_pool.free_unsafe(reinterpret_cast<void *>(&msg));
-}
-
-
-inline
-Message *Topic::alloc() {
-
-  return reinterpret_cast<Message *>(msg_pool.alloc());
 }
 
 

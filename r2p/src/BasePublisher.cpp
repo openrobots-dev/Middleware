@@ -9,11 +9,7 @@ namespace r2p {
 bool BasePublisher::alloc_unsafe(Message *&msgp) {
 
   msgp = topicp->alloc_unsafe();
-  if (msgp != NULL) {
-    msgp->reset_unsafe();
-    return true;
-  }
-  return false;
+  return msgp != NULL;
 }
 
 

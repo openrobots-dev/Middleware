@@ -116,7 +116,6 @@ bool DebugTransport::recv_string(char *stringp, size_t length,
   for (; length-- > 0; ++stringp) {
     if (!recv_char(*stringp, timeout)) return false;
   }
-  *stringp = '\0'; // FIXED: needed terminator [MARTINO]
   return true;
 }
 
@@ -391,7 +390,7 @@ bool DebugTransport::spin_tx() {
 
     const Topic &topic = *sub.get_topic();
     send_lock.acquire();
-    if (!send_msg(*msgp, topic.get_size(), topic.get_name(),
+    if (!send_msg(*msgp, topic.get_payload_size(), topic.get_name(),
                   timestamp + topic.get_publish_timeout())) {
       bool success = send_char('\r');
       success = send_char('\n') && success;
@@ -443,7 +442,7 @@ bool DebugTransport::spin_rx() {
 
     // Get the payload length
     if (!recv_value(length)) return false;
-    if (length != topicp->get_size()) return false;
+    if (length != topicp->get_payload_size()) return false;
     cs.add(length);
 
     // Get the payload data
@@ -459,8 +458,7 @@ bool DebugTransport::spin_rx() {
     cs.add(msgp->get_raw_data(), length);
 
     // Get the checksum
-    if (!expect_char(':') || !recv_value(length) ||
-        length != cs.compute_checksum()) {
+    if (!expect_char(':') || !recv_value(length) || !cs.check(length)) {
       return false;
     }
 
@@ -539,8 +537,7 @@ bool DebugTransport::spin_rx() {
       }
 
       // Get the checksum
-      if (!expect_char(':') || !recv_value(length) ||
-          length != cs.compute_checksum()) {
+      if (!expect_char(':') || !recv_value(length) || !cs.check(length)) {
         return false;
       }
 
@@ -553,8 +550,7 @@ bool DebugTransport::spin_rx() {
     }
     case 't': {
       // Get the checksum
-      if (!expect_char(':') || !recv_value(length) ||
-          length != cs.compute_checksum()) {
+      if (!expect_char(':') || !recv_value(length) || !cs.check(length)) {
         return false;
       }
 
@@ -563,8 +559,7 @@ bool DebugTransport::spin_rx() {
     }
     case 'r': {
       // Get the checksum
-      if (!expect_char(':') || !recv_value(length) ||
-          length != cs.compute_checksum()) {
+      if (!expect_char(':') || !recv_value(length) || !cs.check(length)) {
         return false;
       }
 
@@ -574,8 +569,7 @@ bool DebugTransport::spin_rx() {
     }
     case 'b': {
       // Get the checksum
-      if (!expect_char(':') || !recv_value(length) ||
-          length != cs.compute_checksum()) {
+      if (!expect_char(':') || !recv_value(length) || !cs.check(length)) {
         return false;
       }
 

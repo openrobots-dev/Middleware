@@ -14,7 +14,7 @@ namespace r2p {
 #endif
 
 #if !defined(R2P_MESSAGE_TRACKS_SOURCE) || defined(__DOXYGEN__)
-#define R2P_MESSAGE_TRACKS_SOURCE   0
+#define R2P_MESSAGE_TRACKS_SOURCE   1
 #endif
 
 
@@ -143,7 +143,7 @@ inline
 size_t Message::get_payload_size(size_t type_size) {
 
 #if R2P_MESSAGE_TRACKS_SOURCE
-  return type_size - sizeof(RefcountType) - sizeof(Transport *);
+  return type_size - (sizeof(Transport *) + sizeof(RefcountType));
 #else
   return type_size - sizeof(RefcountType);
 #endif

@@ -62,11 +62,11 @@ msg_t ledpub_node(void *arg) {
 
 	R2P_ASSERT(led);
 
-	chRegSetThreadName("ledpub");
-
 	node.advertise(led_pub, "leds");
 
 	for (;;) {
+	    r2p::Thread::sleep(Time::ms(500)); continue; // XXX
+	
 		LedMsg *msgp;
 		if (led_pub.alloc(msgp)) {
 			msgp->led = led;
@@ -76,13 +76,13 @@ msg_t ledpub_node(void *arg) {
 			msgp->cnt = cnt;
 			cnt++;
 #endif
-			if(!led_pub.publish(*msgp)) {
-				chSysHalt();
+			if (!led_pub.publish(*msgp)) {
+				R2P_ASSERT(false);
 			}
 
 		}
 
-		r2p::Thread::sleep(Time::ms(500)); //TODO: Node::sleep()
+		r2p::Thread::sleep(r2p::Time::ms(500)); //TODO: Node::sleep()
 	}
 	return CH_SUCCESS;
 }
@@ -100,17 +100,15 @@ bool callback(const LedMsg &msg) {
 
 msg_t ledsub_node(void * arg) {
 	LedMsg sub_msgbuf[5], *sub_queue[5];
-	Node node("ledpub");
+	Node node("ledsub");
     Subscriber<LedMsg> sub(sub_queue, 5, callback);
 
     (void)arg;
 
-	chRegSetThreadName("ledsub");
-
 	node.subscribe(sub, "leds", sub_msgbuf);
 
 	for (;;) {
-		if (!node.spin(MS2ST(1000))) {
+		if (!node.spin(Time::ms(1000))) {
 			palTogglePad((GPIO_TypeDef *)led2gpio(4), led2pin(4));
 		} else {
 			palSetPad((GPIO_TypeDef *)led2gpio(4), led2pin(4));

@@ -46,7 +46,7 @@ bool Transport::touch_subscriber(Topic &topic, size_t queue_length, uint8_t * ra
   TimestampedMsgPtrQueue::Entry *queue_bufp = NULL;
 
   msgpool_bufp = reinterpret_cast<Message *>(
-    new uint8_t[(topic.get_size() + sizeof(Message)) * queue_length]
+    new uint8_t[topic.get_type_size() * queue_length]
   );
   if (msgpool_bufp != NULL) {
     queue_bufp = new TimestampedMsgPtrQueue::Entry[queue_length];

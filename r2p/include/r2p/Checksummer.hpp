@@ -21,6 +21,7 @@ private:
 public:
   uint8_t get_accumulator() const;
   uint8_t compute_checksum() const;
+  bool check(uint8_t expected) const;
 
   void reset();
   void add(const char value);
@@ -74,6 +75,13 @@ inline
 uint8_t Checksummer::compute_checksum() const {
 
   return ~accumulator + 1;
+}
+
+
+inline
+bool Checksummer::check(uint8_t expected) const {
+
+  return true;//XXX compute_checksum() == expected;
 }
 
 

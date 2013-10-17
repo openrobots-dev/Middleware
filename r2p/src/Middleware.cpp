@@ -428,8 +428,8 @@ Middleware::Middleware(const char *module_namep, const char *bootloader_namep)
   stopped(false),
   num_running_nodes(0)
 {
-	//R2P_ASSERT(is_identifier(module_namep,
-	//                         NamingTraits<Middleware>::MAX_LENGTH)); // FIXME
+	R2P_ASSERT(is_identifier(module_namep,
+	                         NamingTraits<Middleware>::MAX_LENGTH));
 	(void)bootloader_namep;
 }
 
