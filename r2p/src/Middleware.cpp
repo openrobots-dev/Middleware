@@ -32,9 +32,11 @@ void Middleware::initialize(void *mgmt_stackp, size_t mgmt_stacklen,
   this->mgmt_stackp = mgmt_stackp;
   this->mgmt_stacklen = mgmt_stacklen;
   this->mgmt_priority = mgmt_priority;
+#if R2P_USE_BOOTLOADER
   this->boot_stackp = boot_stackp;
   this->boot_stacklen = boot_stacklen;
   this->boot_priority = boot_priority;
+#endif
 
 #if R2P_USE_BOOTLOADER
   if (is_bootloader_mode()) {
@@ -302,6 +304,7 @@ void Middleware::do_mgmt_thread() {
           sub.release(*msgp);
           break;
         }
+#if R2P_USE_BOOTLOADER
         case MgmtMsg::CMD_REBOOT: {
           if (0 == strncmp(module_namep, msgp->module.name,
                            NamingTraits<Middleware>::MAX_LENGTH)) {
@@ -320,6 +323,7 @@ void Middleware::do_mgmt_thread() {
           sub.release(*msgp);
           break;
         }
+#endif
         default: {
           sub.release(*msgp);
           break;
