@@ -191,16 +191,17 @@ Topic &Middleware::get_mgmt_topic() {
 
 
 inline
-Topic &Middleware::get_boot_topic() {
-
-  return boot_topic;
-}
-
-
-inline
 bool Middleware::is_stopped() const {
 
   return stopped;
+}
+
+
+#if R2P_USE_BOOTLOADER
+inline
+Topic &Middleware::get_boot_topic() {
+
+  return boot_topic;
 }
 
 
@@ -223,7 +224,7 @@ bool Middleware::is_bootloader_mode() {
 
   return boot_mode_magic == BOOT_MODE_MAGIC;
 }
-
+#endif
 
 inline
 bool ok() {
