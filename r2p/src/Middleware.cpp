@@ -69,8 +69,6 @@ void Middleware::start() {
   R2P_ASSERT(mgmt_threadp != NULL);
 
   // Wait until the info topic is fully initialized
-  Thread::Priority oldprio = Thread::get_priority();
-  Thread::set_priority(Thread::IDLE);
   SysLock::acquire();
   while (!mgmt_topic.has_local_publishers() || !mgmt_topic.has_local_subscribers()) {
     SysLock::release();
@@ -78,7 +76,6 @@ void Middleware::start() {
     SysLock::acquire();
   }
   SysLock::release();
-  Thread::set_priority(oldprio);
 
 #if R2P_USE_BOOTLOADER
   if (!is_bootloader_mode()) {
@@ -275,7 +272,7 @@ void Middleware::do_mgmt_thread() {
 
   MgmtMsg *msgp;
   Time deadline;
-  do {
+  for (;;) {
     if (node.spin(Time::ms(MGMT_TIMEOUT_MS))) {
       while (sub.fetch(msgp, deadline)) {
         switch (msgp->type) {
@@ -374,7 +371,7 @@ void Middleware::do_mgmt_thread() {
       }
     }
 #endif // R2P_ITERATE_PUBSUB
-  } while (!instance.is_stopped());
+  }
 }
 
 
