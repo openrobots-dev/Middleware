@@ -8,6 +8,7 @@
 #include <r2p/MgmtMsg.hpp>
 #include <r2p/Semaphore.hpp>
 #include <r2p/Thread.hpp>
+#include <r2p/MemoryPool.hpp>
 
 #include "rtcan.h"
 #include "RTCANPublisher.hpp"
@@ -25,6 +26,7 @@ public:
   struct adv_msg_t {
     char type;
     uint8_t queue_length;
+    uint16_t payload_size;
     rtcan_id_t rtcan_id;
     char topic[NamingTraits<Topic>::MAX_LENGTH];
   } R2P_PACKED;

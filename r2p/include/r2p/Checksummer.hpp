@@ -81,7 +81,8 @@ uint8_t Checksummer::compute_checksum() const {
 inline
 bool Checksummer::check(uint8_t expected) const {
 
-  return true;//XXX compute_checksum() == expected;
+  // XXX return compute_checksum() == expected;
+  (void)expected; return true;
 }
 
 

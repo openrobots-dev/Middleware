@@ -23,7 +23,7 @@ bool Topic::notify_locals_unsafe(Message &msg, const Time &timestamp) {
   return true;
 }
 
-#include <hal.h> // XXX
+
 bool Topic::notify_remotes_unsafe(Message &msg, const Time &timestamp) {
 
   if (has_remote_subscribers()) {
@@ -31,10 +31,9 @@ bool Topic::notify_remotes_unsafe(Message &msg, const Time &timestamp) {
          remote_subscribers.begin_unsafe();
          i != remote_subscribers.end_unsafe(); ++i) {
 
-#if R2P_MESSAGE_TRACKS_SOURCE
+#if R2P_USE_BRIDGE_MODE
       R2P_ASSERT(i->get_transport() != NULL);
       if (msg.get_source() == i->get_transport()) {
-        palTogglePad(LED_GPIO, LED2); // XXX
         continue; // Do not send back to source transport
       }
 #endif

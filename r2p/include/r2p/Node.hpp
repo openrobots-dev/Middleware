@@ -31,6 +31,8 @@ private:
 
 public:
   const char *get_name() const;
+  const StaticList<LocalPublisher> &get_publishers() const;
+  const StaticList<LocalSubscriber> &get_subscribers() const;
   bool get_enabled() const;
   void set_enabled(bool enabled);
 
@@ -79,6 +81,20 @@ inline
 const char *Node::get_name() const {
 
   return namep;
+}
+
+
+inline
+const StaticList<LocalPublisher> &Node::get_publishers() const {
+
+  return publishers;
+}
+
+
+inline
+const StaticList<LocalSubscriber> &Node::get_subscribers() const {
+
+  return subscribers;
 }
 
 

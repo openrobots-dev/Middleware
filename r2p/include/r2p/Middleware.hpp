@@ -4,6 +4,7 @@
 #include <r2p/StaticList.hpp>
 #include <r2p/Topic.hpp>
 #include <r2p/Thread.hpp>
+#include <r2p/MemoryPool.hpp>
 #include <r2p/MgmtMsg.hpp>
 #include <r2p/Publisher.hpp>
 #include <r2p/Subscriber.hpp>
@@ -12,6 +13,11 @@
 #include <r2p/ReMutex.hpp>
 
 namespace r2p {
+
+#if !defined(R2P_ITERATE_PUBSUB) || defined(__DOXYGEN__)
+#define R2P_ITERATE_PUBSUB      0
+#endif
+
 
 class Node;
 class Transport;
@@ -24,6 +30,17 @@ class RemoteSubscriber;
 
 
 class Middleware : private Uncopyable {
+public:
+
+  struct PubSubStep {
+    PubSubStep  *nextp;
+    Time        timestamp;
+    Transport   *transportp;
+    size_t      payload_size;
+    char        topic[NamingTraits<Topic>::MAX_LENGTH];
+    uint8_t     type;
+  };
+
 private:
   const char *const module_namep;
   StaticList<Node> nodes;
@@ -33,7 +50,7 @@ private:
 
 
   enum { MGMT_BUFFER_LENGTH = 5 };
-  enum { MGMT_TIMEOUT_MS = 20 };
+  enum { MGMT_TIMEOUT_MS = 33 };
   Topic mgmt_topic;
   void *mgmt_stackp;
   size_t mgmt_stacklen;
@@ -50,11 +67,19 @@ private:
   size_t boot_stacklen;
   Thread *boot_threadp;
   Thread::Priority boot_priority;
-#endif
+#endif // R2P_USE_BOOTLOADER
+#if R2P_USE_BRIDGE_MODE
+  PubSubStep    *pubsub_stepsp;
+  MemoryPool<PubSubStep> pubsub_pool;
+#endif // R2P_USE_BRIDGE_MODE
 
-  enum { TOPIC_CHECK_TIMEOUT_MS = 100 };
-  StaticList<Topic>::Iterator topic_iter;
-  Time topic_lastiter_time;
+#if R2P_ITERATE_PUBSUB
+  enum { ITER_TIMEOUT_MS = 234 };
+  StaticList<Node>::ConstIterator iter_nodes;
+  StaticList<LocalPublisher>::ConstIterator iter_publishers;
+  StaticList<LocalSubscriber>::ConstIterator iter_subscribers;
+  Time iter_lasttime;
+#endif
 
   bool stopped;
   size_t num_running_nodes;
@@ -106,11 +131,18 @@ private:
   Topic *touch_topic(const char *namep, size_t type_size);
 
 private:
-  Middleware(const char *module_namep, const char *bootloader_namep);
+  Middleware(const char *module_namep, const char *bootloader_namep,
+             PubSubStep pubsub_buf[] = NULL, size_t pubsub_length = 0);
 
 private:
   static Thread::Return mgmt_threadf(Thread::Argument);
   void do_mgmt_thread();
+  void do_cmd_advertise(const MgmtMsg &msg);
+  void do_cmd_subscribe_request(const MgmtMsg &msg);
+  void do_cmd_subscribe_response(const MgmtMsg &msg);
+#if R2P_USE_BRIDGE_MODE
+  PubSubStep *alloc_pubsub_step();
+#endif
 
 #if R2P_USE_BOOTLOADER
   static Thread::Return boot_threadf(Thread::Argument);

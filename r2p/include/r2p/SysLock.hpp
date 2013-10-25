@@ -7,6 +7,13 @@ namespace r2p {
 
 
 class SysLock : private Uncopyable {
+public:
+  class Scope : private Uncopyable {
+  public:
+    Scope()  { SysLock::acquire(); }
+    ~Scope() { SysLock::release(); }
+  };
+
 private:
   SysLock();
 

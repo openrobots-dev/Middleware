@@ -18,10 +18,9 @@ public:
     INFO_ADVERTISEMENT          = 0x11,
     INFO_SUBSCRIPTION           = 0x12,
 
-    CMD_GET_NETWORK_STATE       = 0x20,
-    CMD_ADVERTISE               = 0x21,
-    CMD_SUBSCRIBE_REQUEST       = 0x22,
-    CMD_SUBSCRIBE_RESPONSE      = 0x23,
+    CMD_ADVERTISE               = 0x20,
+    CMD_SUBSCRIBE_REQUEST       = 0x21,
+    CMD_SUBSCRIBE_RESPONSE      = 0x22,
 
     CMD_STOP                    = 0x30,
     CMD_REBOOT                  = 0x31,
@@ -44,8 +43,8 @@ public:
     };
 
     char topic[NamingTraits<Topic>::MAX_LENGTH];
-    Transport *transportp;
-    size_t queue_length;
+    uint8_t payload_size;
+    uint8_t queue_length;
     uint8_t raw_params[MAX_RAW_PARAMS_LENGTH];
   } R2P_PACKED;
 
@@ -57,14 +56,13 @@ public:
   } R2P_PACKED;
 
 public:
-  uint8_t type;
-
   union {
     uint8_t payload[MAX_PAYLOAD_LENGTH];
     Path    path;
     PubSub  pubsub;
     Module  module;
   } R2P_PACKED;
+  uint8_t type;
 
 } R2P_PACKED;
 

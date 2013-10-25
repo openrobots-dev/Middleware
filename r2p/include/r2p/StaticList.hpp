@@ -36,6 +36,7 @@ public:
     const Link *curp;
 
   public:
+    IteratorUnsafe() : curp(NULL) {}
     IteratorUnsafe(const IteratorUnsafe &rhs) : curp(rhs.curp) {}
 
   private:
@@ -74,6 +75,10 @@ public:
     bool operator != (const IteratorUnsafe &rhs) const {
       return this->curp != rhs.curp;
     }
+
+    bool is_valid() const {
+      return curp != NULL;
+    }
   };
 
   class ConstIteratorUnsafe {
@@ -83,6 +88,7 @@ public:
     const ConstLink *curp;
 
   public:
+    ConstIteratorUnsafe() : curp(NULL) {}
     ConstIteratorUnsafe(const ConstIteratorUnsafe &rhs) : curp(rhs.curp) {}
 
   private:
@@ -121,6 +127,10 @@ public:
     bool operator != (const ConstIteratorUnsafe &rhs) const {
       return this->curp != rhs.curp;
     }
+
+    bool is_valid() const {
+      return curp != NULL;
+    }
   };
 
   class Iterator {
@@ -130,6 +140,7 @@ public:
     const Link *curp;
 
   public:
+    Iterator() : curp(NULL) {}
     Iterator(const Iterator &rhs) : curp(rhs.curp) {}
 
   private:
@@ -172,6 +183,10 @@ public:
     bool operator != (const Iterator &rhs) const {
       return this->curp != rhs.curp;
     }
+
+    bool is_valid() const {
+      return curp != NULL;
+    }
   };
 
   class ConstIterator {
@@ -181,6 +196,7 @@ public:
     const ConstLink *curp;
 
   public:
+    ConstIterator() : curp(NULL) {}
     ConstIterator(const ConstIterator &rhs) : curp(rhs.curp) {}
 
   private:
@@ -222,6 +238,10 @@ public:
 
     bool operator != (const ConstIterator &rhs) const {
       return this->curp != rhs.curp;
+    }
+
+    bool is_valid() const {
+      return curp != NULL;
     }
   };
 
@@ -456,7 +476,9 @@ public:
   }
 
   const ConstIterator begin() const {
-    return ConstIterator(get_head_unsafe());
+    return ConstIterator(
+      reinterpret_cast<const ConstLink *>(get_head_unsafe())
+    );
   }
 
   const ConstIterator end() const {

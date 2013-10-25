@@ -30,6 +30,8 @@ private:
 
 public:
   const char *get_name() const;
+  const StaticList<RemotePublisher> &get_publishers() const;
+  const StaticList<RemoteSubscriber> &get_subscribers() const;
 
   bool notify_advertisement(const Topic &topic);
   bool notify_subscription_request(const Topic &topic);
@@ -39,13 +41,13 @@ public:
   bool notify_bootload();
 
 protected:
-  bool touch_publisher(Topic &topic, uint8_t * raw_params = NULL);
+  bool touch_publisher(Topic &topic, const uint8_t *raw_params = NULL);
   bool touch_subscriber(Topic &topic, size_t queue_length,
-                        uint8_t *raw_params = NULL);
+                        const uint8_t *raw_params = NULL);
 
-  bool advertise_cb(Topic &topic, uint8_t * raw_params = NULL);
+  bool advertise_cb(Topic &topic, const uint8_t *raw_params = NULL);
   bool subscribe_cb(Topic &topic, size_t queue_length,
-                    uint8_t *raw_params = NULL);
+                    const uint8_t *raw_params = NULL);
 
   bool advertise(RemotePublisher &pub, const char *namep,
                  const Time &publish_timeout, size_t type_size);
@@ -98,6 +100,20 @@ inline
 const char *Transport::get_name() const {
 
   return namep;
+}
+
+
+inline
+const StaticList<RemotePublisher> &Transport::get_publishers() const {
+
+  return publishers;
+}
+
+
+inline
+const StaticList<RemoteSubscriber> &Transport::get_subscribers() const {
+
+  return subscribers;
 }
 
 

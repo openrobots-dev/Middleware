@@ -240,20 +240,21 @@ load: $(OBJS) $(LDSCRIPT) all
 	@rm -f $(BUILDDIR)/$(PROJECT).hex $(BUILDDIR)/$(PROJECT).bin $(BUILDDIR)/$(PROJECT).dmp
 	
 	@"$(R2PY)/load.py" $(VERBOSITY) \
-		--boot-topic      "$(BOOT_TOPIC)" \
-		--app-name        "$(APP_NAME)" \
-		--app-stack-size  "$(APP_STACK_SIZE)" \
-		--sys-elf         "$(SYS_ELF)" \
-		--app-elf         "$(BUILDDIR)/$(PROJECT).elf" \
-		--app-hex         "$(BUILDDIR)/$(PROJECT).hex" \
-		--ld-cmd          "$(TRGT)ld" \
-		--ld-script       "$(LDSCRIPT)" \
-		--ld-map          "$(BUILDDIR)/$(PROJECT).map" \
-		--ld-objects $(OBJS)
+		--boot-topic     "$(BOOT_TOPIC)" \
+		--boot-module    "$(PROJECT)" \
+		--app-name       "$(APP_NAME)" \
+		--app-stack-size "$(APP_STACK_SIZE)" \
+		--sys-elf        "$(SYS_ELF)" \
+		--app-elf        "$(BUILDDIR)/$(PROJECT).elf" \
+		--app-hex        "$(BUILDDIR)/$(PROJECT).hex" \
+		--ld-cmd         "$(TRGT)ld" \
+		--ld-script      "$(LDSCRIPT)" \
+		--ld-map         "$(BUILDDIR)/$(PROJECT).map" \
+		--ld-objects     $(OBJS)
 
 getappinfo: $(OBJ) $(LDSCRIPT) all
 	@"$(R2PY)/getappinfo.py" $(VERBOSITY) \
-		--boot-topic "$(BOOT_TOPIC)"
+		--boot-topic  "$(BOOT_TOPIC)"
 
 getparam: $(OBJ) $(LDSCRIPT) all
 	@"$(R2PY)/getparam.py" $(VERBOSITY) \
@@ -271,12 +272,12 @@ setparam: $(OBJ) $(LDSCRIPT) all
 
 remove_last:
 	@"$(R2PY)/remove.py" $(VERBOSITY) \
-		--boot-topic "$(BOOT_TOPIC)" \
+		--boot-topic  "$(BOOT_TOPIC)" \
 		--last
 
 remove_all:
 	@"$(R2PY)/remove.py" $(VERBOSITY) \
-		--boot-topic "$(BOOT_TOPIC)" \
+		--boot-topic  "$(BOOT_TOPIC)" \
 		--all
 
 reboot:

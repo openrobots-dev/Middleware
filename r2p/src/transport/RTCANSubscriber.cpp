@@ -42,7 +42,10 @@ RTCANSubscriber::RTCANSubscriber(RTCANTransport &transport,
                                  size_t queue_length)
 :
   RemoteSubscriber(transport)
-{}
+{
+  (void)queue_buf;
+  (void)queue_length;
+}
 
 
 RTCANSubscriber::~RTCANSubscriber() {}

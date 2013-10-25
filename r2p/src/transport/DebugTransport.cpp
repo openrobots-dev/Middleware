@@ -11,8 +11,8 @@
 
 namespace r2p {
 
-/// Adds a delay after the starting '@', to allow full buffering of the message
-#define RECV_DELAY_     1
+// Adds a delay after the starting '@', to allow full buffering of the message
+#define RECV_DELAY_MS   5
 
 
 bool DebugTransport::skip_after_char(char c, systime_t timeout) {
@@ -32,22 +32,22 @@ bool DebugTransport::recv_byte(uint8_t &byte, systime_t timeout) {
 
   c = chnGetTimeout(channelp, timeout);
   if        ((c >= '0' && c <= '9')) {
-    byte = (static_cast<uint8_t>(c) - '0') << 4;
+    byte = static_cast<uint8_t>(c - '0') << 4;
   } else if ((c >= 'A' && c <= 'F')) {
-    byte = (static_cast<uint8_t>(c) + (10 - 'A')) << 4;
+    byte = static_cast<uint8_t>(c + (10 - 'A')) << 4;
   } else if ((c >= 'a' && c <= 'f')) {
-    byte = (static_cast<uint8_t>(c) + (10 - 'a')) << 4;
+    byte = static_cast<uint8_t>(c + (10 - 'a')) << 4;
   } else {
     return false;
   }
 
   c = chnGetTimeout(channelp, timeout);
   if        ((c >= '0' && c <= '9')) {
-    byte |= static_cast<uint8_t>(c) - '0';
+    byte |= static_cast<uint8_t>(c - '0');
   } else if ((c >= 'A' && c <= 'F')) {
-    byte |= static_cast<uint8_t>(c) + (10 - 'A');
+    byte |= static_cast<uint8_t>(c + (10 - 'A'));
   } else if ((c >= 'a' && c <= 'f')) {
-    byte |= static_cast<uint8_t>(c) + (10 - 'a');
+    byte |= static_cast<uint8_t>(c + (10 - 'a'));
   } else {
     return false;
   }
@@ -123,7 +123,7 @@ bool DebugTransport::recv_string(char *stringp, size_t length,
 bool DebugTransport::send_msg(const Message &msg, size_t msg_size,
                               const char *topicp, const Time &deadline) {
 
-#if R2P_MESSAGE_TRACKS_SOURCE
+#if R2P_USE_BRIDGE_MODE
   R2P_ASSERT(msg.get_source() != this);
 #endif
 
@@ -157,8 +157,7 @@ bool DebugTransport::send_msg(const Message &msg, size_t msg_size,
   if (!send_value(cs.compute_checksum())) return false;
 
   // End of packet
-  if (!send_char('\r')) return false;
-  if (!send_char('\n')) return false;
+  if (!send_char('\r') || !send_char('\n')) return false;
   return true;
 }
 
@@ -231,13 +230,18 @@ bool DebugTransport::send_mgmt_msg(const Topic &topic,
   cs.add(namelen);
   cs.add(namep, namelen);
 
+  // Send the payload size
+  if (!send_char(':')) return false;
+  { uint16_t type_size = static_cast<uint16_t>(topic.get_payload_size());
+  if (!send_value(type_size)) return false;
+  cs.add(type_size); }
+
   // Send the checksum
   if (!send_char(':')) return false;
   if (!send_value(cs.compute_checksum())) return false;
 
   // End of packet
-  if (!send_char('\r')) return false;
-  if (!send_char('\n')) return false;
+  if (!send_char('\r') || !send_char('\n')) return false;
   return true;
 }
 
@@ -266,8 +270,7 @@ bool DebugTransport::send_signal_msg(char id) {
   if (!send_value(cs.compute_checksum())) return false;
 
   // End of packet
-  if (!send_char('\r')) return false;
-  if (!send_char('\n')) return false;
+  if (!send_char('\r') || !send_char('\n')) return false;
   return true;
 }
 
@@ -414,7 +417,7 @@ bool DebugTransport::spin_rx() {
 
   // Skip the deadline
   if (!skip_after_char('@')) return false;
-#if RECV_DELAY_
+#if RECV_DELAY_MS
   Thread::sleep(Time::ms(100));
 #endif
   { Time deadline;
@@ -426,6 +429,7 @@ bool DebugTransport::spin_rx() {
   uint8_t length;
   if (!recv_value(length)) return false;
   if (length > NamingTraits<Topic>::MAX_LENGTH) return false;
+  memset(namebufp, 0, NamingTraits<Topic>::MAX_LENGTH);
   if (!recv_string(namebufp, length)) return false;
   if (!expect_char(':')) return false;
   cs.add(length);
@@ -448,8 +452,8 @@ bool DebugTransport::spin_rx() {
     // Get the payload data
     Message *msgp;
     if (!pubp->alloc(msgp)) return false;
+#if R2P_USE_BRIDGE_MODE
     MessageGuard guard(*msgp, *topicp);
-#if R2P_MESSAGE_TRACKS_SOURCE
     msgp->set_source(this);
 #endif
     if (!recv_chunk(const_cast<uint8_t *>(msgp->get_raw_data()), length)) {
@@ -463,14 +467,14 @@ bool DebugTransport::spin_rx() {
     }
 
     // Forward the message locally
+#if R2P_USE_BRIDGE_MODE
     bool success;
-#if R2P_MESSAGE_TRACKS_SOURCE
     success = pubp->publish_locally(*msgp);
-    success = pubp->publish_remotely(*msgp) && success;
-#else
-    success = pubp->publish_locally(*msgp);
-#endif
+    success = pubp->publish_remotely(*msgp) && success; // Forward
     return success;
+#else
+    return pubp->publish_locally(*msgp);
+#endif
   }
   else { // Management message
     // Read the management message type character
@@ -496,6 +500,7 @@ bool DebugTransport::spin_rx() {
       if (length < 1 || length > NamingTraits<Middleware>::MAX_LENGTH) {
         return false;
       }
+      memset(namebufp, 0, NamingTraits<Topic>::MAX_LENGTH);
       if (!recv_string(namebufp, length)) return false;
       cs.add(length);
       cs.add(namebufp, length);
@@ -506,19 +511,25 @@ bool DebugTransport::spin_rx() {
       if (length < 1 || length > NamingTraits<Topic>::MAX_LENGTH) {
         return false;
       }
+      memset(namebufp, 0, NamingTraits<Topic>::MAX_LENGTH);
       if (!recv_string(namebufp, length)) return false;
       cs.add(length);
       cs.add(namebufp, length);
 
+      // Get the payload size
+      if (!expect_char(':')) return false;
+      uint16_t type_size;
+      if (!recv_value(type_size)) return false;
+      cs.add(type_size);
+
       MgmtMsg *msgp;
       if (!mgmt_rpub.alloc(reinterpret_cast<Message *&>(msgp))) return false;
-      MessageGuard(*msgp, *mgmt_rpub.get_topic());
-#if R2P_MESSAGE_TRACKS_SOURCE
+#if R2P_USE_BRIDGE_MODE
+      MessageGuard guard(*msgp, *mgmt_rpub.get_topic());
       msgp->set_source(this);
 #endif
-      Message::reset_payload(*msgp);
-      msgp->pubsub.transportp = this;
       strncpy(msgp->pubsub.topic, namebufp, NamingTraits<Topic>::MAX_LENGTH);
+      msgp->pubsub.payload_size = type_size;
 
       switch (typechar) {
       case 'p': {
@@ -527,7 +538,7 @@ bool DebugTransport::spin_rx() {
       }
       case 's': {
         msgp->type = MgmtMsg::CMD_SUBSCRIBE_REQUEST;
-        msgp->pubsub.queue_length = queue_length;
+        msgp->pubsub.queue_length = static_cast<uint16_t>(queue_length);
         break;
       }
       case 'e': {
@@ -541,9 +552,11 @@ bool DebugTransport::spin_rx() {
         return false;
       }
 
-#if R2P_MESSAGE_TRACKS_SOURCE
-      return mgmt_rpub.publish_locally(*msgp) &&
-             mgmt_rpub.publish_remotely(*msgp);
+#if R2P_USE_BRIDGE_MODE
+      bool success;
+      success = mgmt_rpub.publish_locally(*msgp);
+      success = mgmt_rpub.publish_remotely(*msgp) && success; // Forward
+      return success;
 #else
       return mgmt_rpub.publish_locally(*msgp);
 #endif

@@ -83,6 +83,17 @@ public:
 };
 
 
+class MessageGuardUnsafe : private Uncopyable {
+private:
+  Message &msg;
+  Topic &topic;
+
+public:
+  MessageGuardUnsafe(Message &msg, Topic &topic);
+  ~MessageGuardUnsafe();
+};
+
+
 } // namespace r2p
 
 #include <r2p/Message.hpp>
@@ -282,6 +293,23 @@ inline
 MessageGuard::~MessageGuard() {
 
   topic.release(msg);
+}
+
+
+inline
+MessageGuardUnsafe::MessageGuardUnsafe(Message &msg, Topic &topic)
+:
+  msg(msg),
+  topic(topic)
+{
+  msg.acquire_unsafe();
+}
+
+
+inline
+MessageGuardUnsafe::~MessageGuardUnsafe() {
+
+  topic.release_unsafe(msg);
 }
 
 

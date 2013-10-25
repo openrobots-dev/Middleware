@@ -11,7 +11,6 @@
 
 namespace r2p {
 
-
 #ifndef R2P_MEMORY_ALIGNED
 #define R2P_MEMORY_ALIGNED  __attribute__(( aligned(sizeof(unsigned)) ))
 #endif
@@ -22,6 +21,10 @@ namespace r2p {
 #define R2P_NORESET         __attribute__(( section(".noreset") ))
 
 #define R2P_APP_CONFIG      __attribute__(( section("app_config") ))
+
+#if !defined(R2P_USE_BRIDGE_MODE) || defined(__DOXYGEN__)
+#define R2P_USE_BRIDGE_MODE 0
+#endif
 
 
 template<typename Test, typename Base> R2P_FORCE_INLINE

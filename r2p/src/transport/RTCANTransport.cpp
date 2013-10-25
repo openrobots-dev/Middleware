@@ -1,4 +1,3 @@
-#include <cstring>
 
 #include <r2p/transport/RTCANTransport.hpp>
 #include <r2p/transport/RTCANPublisher.hpp>
@@ -29,45 +28,57 @@ void RTCANTransport::recv_adv_msg(const adv_msg_t &adv_msg) {
 	switch (adv_msg.type) {
 	case 'P':
 		if (mgmt_rpub.alloc_unsafe(reinterpret_cast<Message *&>(msgp))) {
-			msgp->type = MgmtMsg::CMD_ADVERTISE;
+#if R2P_USE_BRIDGE_MODE
+            MessageGuardUnsafe guard(*msgp, *mgmt_rpub.get_topic());
+            msgp->set_source(this);
+#endif
+		    msgp->type = MgmtMsg::CMD_ADVERTISE;
 			::strncpy(msgp->pubsub.topic, adv_msg.topic, NamingTraits<Topic>::MAX_LENGTH);
-			msgp->pubsub.transportp = this;
+			msgp->pubsub.payload_size = adv_msg.payload_size;
 
 			mgmt_rpub.publish_locally_unsafe(*msgp);
-#if R2P_MESSAGE_TRACKS_SOURCE
+#if R2P_USE_BRIDGE_MODE
 			mgmt_rpub.publish_remotely_unsafe(*msgp);
 #endif
 		}
 		break;
 	case 'S':
 		if (mgmt_rpub.alloc_unsafe(reinterpret_cast<Message *&>(msgp))) {
+#if R2P_USE_BRIDGE_MODE
+            MessageGuardUnsafe guard(*msgp, *mgmt_rpub.get_topic());
+            msgp->set_source(this);
+#endif
 			msgp->type = MgmtMsg::CMD_SUBSCRIBE_REQUEST;
 			::strncpy(msgp->pubsub.topic, adv_msg.topic, NamingTraits<Topic>::MAX_LENGTH);
-			msgp->pubsub.transportp = this;
-			msgp->pubsub.queue_length = static_cast<size_t>(adv_msg.queue_length);
+            msgp->pubsub.payload_size = adv_msg.payload_size;
+			msgp->pubsub.queue_length = static_cast<uint16_t>(adv_msg.queue_length);
 
             mgmt_rpub.publish_locally_unsafe(*msgp);
-#if R2P_MESSAGE_TRACKS_SOURCE
+#if R2P_USE_BRIDGE_MODE
             mgmt_rpub.publish_remotely_unsafe(*msgp);
 #endif
 		}
 		break;
 	case 'E':
 		if (mgmt_rpub.alloc_unsafe(reinterpret_cast<Message *&>(msgp))) {
+#if R2P_USE_BRIDGE_MODE
+            MessageGuardUnsafe guard(*msgp, *mgmt_rpub.get_topic());
+            msgp->set_source(this);
+#endif
 			msgp->type = MgmtMsg::CMD_SUBSCRIBE_RESPONSE;
 			::strncpy(msgp->pubsub.topic, adv_msg.topic, NamingTraits<Topic>::MAX_LENGTH);
 			memcpy(msgp->pubsub.raw_params, &(adv_msg.rtcan_id), sizeof(adv_msg.rtcan_id));
-			msgp->pubsub.transportp = this;
+            msgp->pubsub.payload_size = adv_msg.payload_size;
 
             mgmt_rpub.publish_locally_unsafe(*msgp);
-#if R2P_MESSAGE_TRACKS_SOURCE
+#if R2P_USE_BRIDGE_MODE
             mgmt_rpub.publish_remotely_unsafe(*msgp);
 #endif
 		}
 		break;
 
 	default:
-		// Non handled messages
+		// Unhandled messages
 		break;
 	}
 }
@@ -92,8 +103,8 @@ bool RTCANTransport::send_adv_msg(const adv_msg_t &adv_msg) {
 
 	// FIXME!!!
 	while (rtcan_msg_p->status != RTCAN_MSG_READY) {
-			Thread::yield();
-		}
+        Thread::sleep(Time::ms(10));
+    }
 
 	return true;
 }
@@ -103,6 +114,7 @@ bool RTCANTransport::send_advertisement(const Topic &topic) {
 	adv_tx_msg.type = 'P';
 	adv_tx_msg.queue_length = 0;
 	::strncpy(adv_tx_msg.topic, topic.get_name(), NamingTraits<Topic>::MAX_LENGTH);
+	adv_tx_msg.payload_size = topic.get_payload_size();
 	adv_tx_msg.rtcan_id = 0;
 
 	return send_adv_msg(adv_tx_msg);
@@ -113,6 +125,7 @@ bool RTCANTransport::send_subscription_request(const Topic &topic) {
 	adv_tx_msg.type = 'S';
 	adv_tx_msg.queue_length = topic.get_max_queue_length();
 	::strncpy(adv_tx_msg.topic, topic.get_name(), NamingTraits<Topic>::MAX_LENGTH);
+    adv_tx_msg.payload_size = topic.get_payload_size();
 	adv_tx_msg.rtcan_id = 0;
 
 	return send_adv_msg(adv_tx_msg);
@@ -123,6 +136,7 @@ bool RTCANTransport::send_subscription_response(const Topic &topic) {
 	adv_tx_msg.type = 'E';
 	adv_tx_msg.queue_length = 0;
 	::strncpy(adv_tx_msg.topic, topic.get_name(), NamingTraits<Topic>::MAX_LENGTH);
+    adv_tx_msg.payload_size = topic.get_payload_size();
 	// TODO: ID arbitration
 	adv_tx_msg.rtcan_id = topic_id(topic.get_name());
 
@@ -150,7 +164,7 @@ bool RTCANTransport::send_bootload() {
 bool RTCANTransport::send(Message * msgp, RTCANSubscriber * rsubp) {
 	rtcan_msg_t * rtcan_msg_p;
 
-#if R2P_MESSAGE_TRACKS_SOURCE
+#if R2P_USE_BRIDGE_MODE
 	R2P_ASSERT(msgp->get_source() != this);
 #endif
 
@@ -184,18 +198,19 @@ void RTCANTransport::send_cb(rtcan_msg_t &rtcan_msg) {
 
 void RTCANTransport::recv_cb(rtcan_msg_t &rtcan_msg) {
 	RTCANPublisher* pubp = static_cast<RTCANPublisher *>(rtcan_msg.params);
-	Message &msg = const_cast<Message &>(Message::get_msg_from_raw_data(rtcan_msg.data));
+	Message *msgp = const_cast<Message *>(&Message::get_msg_from_raw_data(rtcan_msg.data));
 
-#if R2P_MESSAGE_TRACKS_SOURCE
-	Transport * transportp = pubp->get_transport();
-	msg.set_source(transportp);
-	pubp->publish_locally_unsafe(msg) && pubp->publish_remotely_unsafe(msg);
+#if !R2P_USE_BRIDGE_MODE
+    pubp->publish_locally_unsafe(*msgp);
 #else
-	pubp->publish_locally_unsafe(msg);
+	R2P_ASSERT(pubp->get_transport() != NULL);
+	MessageGuardUnsafe(*msgp, *pubp->get_topic());
+	msgp->set_source(pubp->get_transport());
+    pubp->publish_locally_unsafe(*msgp);
+	pubp->publish_remotely_unsafe(*msgp);
 #endif
 
 	// allocate again for next message from RTCAN
-	Message * msgp;
 	if (pubp->alloc_unsafe(msgp)) {
 		rtcan_msg.data = msgp->get_raw_data();
 	} else {
@@ -285,20 +300,20 @@ RTCANTransport::~RTCANTransport() {
 #include <r2p/msg/imu.hpp>
 
 rtcan_id_t RTCANTransport::topic_id(const char * namep) const {
-	if (strcmp(namep, "R2P") == 0)
+	if (strncmp(namep, "R2P", NamingTraits<Topic>::MAX_LENGTH) == 0)
 		return 1 << 8 | stm32_id8();
-	if (strcmp(namep, "leds") == 0)
+	if (strncmp(namep, "leds", NamingTraits<Topic>::MAX_LENGTH) == 0)
 		return LEDS_ID | stm32_id8();
 
-	if (strcmp(namep, "pwm2") == 0)
+	if (strncmp(namep, "pwm2", NamingTraits<Topic>::MAX_LENGTH) == 0)
 		return PWM2_ID | stm32_id8();
-	if (strcmp(namep, "qei") == 0)
+	if (strncmp(namep, "qei", NamingTraits<Topic>::MAX_LENGTH) == 0)
 		return QEI_ID | stm32_id8();
 
-	if (strcmp(namep, "tilt") == 0)
+	if (strncmp(namep, "tilt", NamingTraits<Topic>::MAX_LENGTH) == 0)
 		return TILT_ID | stm32_id8();
 
-	if (strcmp(namep, "velocity") == 0)
+	if (strncmp(namep, "velocity", NamingTraits<Topic>::MAX_LENGTH) == 0)
 		return VELOCITY_ID | stm32_id8();
 
 	return 255 << 8;

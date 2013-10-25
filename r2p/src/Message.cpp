@@ -36,7 +36,7 @@ void Message::copy(Message &to, const Message &from, size_t msg_size) {
 
   memcpy(
     &to.refcount + 1, &from.refcount + 1,
-#if R2P_MESSAGE_TRACKS_SOURCE
+#if R2P_USE_BRIDGE_MODE
     msg_size - (sizeof(Transport *) + sizeof(RefcountType))
 #else
     msg_size - sizeof(RefcountType)

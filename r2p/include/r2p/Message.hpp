@@ -13,11 +13,6 @@ namespace r2p {
 #define R2P_MESSAGE_LENGTH_TYPE     uint8_t
 #endif
 
-#if !defined(R2P_MESSAGE_TRACKS_SOURCE) || defined(__DOXYGEN__)
-#define R2P_MESSAGE_TRACKS_SOURCE   1
-#endif
-
-
 class Transport;
 
 
@@ -28,14 +23,14 @@ public:
   typedef R2P_MESSAGE_LENGTH_TYPE LengthType;
 
 private:
-#if R2P_MESSAGE_TRACKS_SOURCE
+#if R2P_USE_BRIDGE_MODE
   Transport *sourcep R2P_PACKED;
 #endif
   RefcountType refcount R2P_PACKED;
 
 public:
   const uint8_t *get_raw_data() const;
-#if R2P_MESSAGE_TRACKS_SOURCE
+#if R2P_USE_BRIDGE_MODE
   Transport *get_source() const;
   void set_source(Transport *sourcep);
 #endif
@@ -55,6 +50,7 @@ public:
   static void copy(Message &to, const Message &from, size_t msg_size);
   static const Message &get_msg_from_raw_data(const uint8_t *datap);
   static size_t get_payload_size(size_t type_size);
+  static size_t get_type_size(size_t payload_size);
 
   template<typename MessageType>
   static size_t get_payload_size();
@@ -73,7 +69,7 @@ const uint8_t *Message::get_raw_data() const {
 // TODO: menate di stile
 inline
 const Message &Message::get_msg_from_raw_data(const uint8_t * datap) {
-#if R2P_MESSAGE_TRACKS_SOURCE
+#if R2P_USE_BRIDGE_MODE
   return *reinterpret_cast<const Message *>(
     datap - (sizeof(Transport *) + sizeof(RefcountType))
   );
@@ -83,7 +79,7 @@ const Message &Message::get_msg_from_raw_data(const uint8_t * datap) {
 }
 
 
-#if R2P_MESSAGE_TRACKS_SOURCE
+#if R2P_USE_BRIDGE_MODE
 
 inline
 Transport *Message::get_source() const {
@@ -98,7 +94,7 @@ void Message::set_source(Transport *sourcep) {
   this->sourcep = sourcep;
 }
 
-#endif // R2P_MESSAGE_TRACKS_SOURCE
+#endif // R2P_USE_BRIDGE_MODE
 
 
 inline
@@ -122,7 +118,7 @@ bool Message::release_unsafe() {
 inline
 void Message::reset_unsafe() {
 
-#if R2P_MESSAGE_TRACKS_SOURCE
+#if R2P_USE_BRIDGE_MODE
   sourcep = NULL;
 #endif
   refcount = 0;
@@ -132,7 +128,7 @@ void Message::reset_unsafe() {
 inline
 Message::Message()
 :
-#if R2P_MESSAGE_TRACKS_SOURCE
+#if R2P_USE_BRIDGE_MODE
   sourcep(NULL),
 #endif
   refcount(0)
@@ -142,10 +138,21 @@ Message::Message()
 inline
 size_t Message::get_payload_size(size_t type_size) {
 
-#if R2P_MESSAGE_TRACKS_SOURCE
+#if R2P_USE_BRIDGE_MODE
   return type_size - (sizeof(Transport *) + sizeof(RefcountType));
 #else
   return type_size - sizeof(RefcountType);
+#endif
+}
+
+
+inline
+size_t Message::get_type_size(size_t payload_size) {
+
+#if R2P_USE_BRIDGE_MODE
+  return payload_size + (sizeof(Transport *) + sizeof(RefcountType));
+#else
+  return payload_size + sizeof(RefcountType);
 #endif
 }
 
