@@ -74,7 +74,7 @@ void Middleware::start() {
   SysLock::acquire();
   while (!mgmt_topic.has_local_publishers() || !mgmt_topic.has_local_subscribers()) {
     SysLock::release();
-    Thread::sleep(Time::ms(500));
+    Thread::sleep(Time::ms(500)); // TODO: configure
     SysLock::acquire();
   }
   SysLock::release();
