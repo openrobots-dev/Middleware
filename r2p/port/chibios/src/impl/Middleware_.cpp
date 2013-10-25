@@ -13,7 +13,9 @@ void Middleware::reboot() {
   chSysDisable();
 
   // Set the reboot magic number
+#if R2P_USE_BOOTLOADER
   rebooted_magic = REBOOTED_MAGIC;
+#endif
 
   // Ensure completion of memory access.
   __DSB();

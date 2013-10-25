@@ -72,7 +72,7 @@ void Middleware::start() {
 
   // Wait until the info topic is fully initialized
   Thread::Priority oldprio = Thread::get_priority();
-  Thread::set_priority(Thread::IDLE);
+  Thread::set_priority(Thread::LOWEST);
   SysLock::acquire();
   while (!mgmt_topic.has_local_publishers() || !mgmt_topic.has_local_subscribers()) {
     SysLock::release();

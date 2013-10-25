@@ -102,7 +102,7 @@ bool RTCANTransport::send_adv_msg(const adv_msg_t &adv_msg) {
 	rtcanTransmit(&rtcan, rtcan_msg_p, 100);
 
 	// FIXME!!!
-	while (rtcan_msg_p->status != RTCAN_MSG_READY) {
+	while ((rtcan_msg_p->status != RTCAN_MSG_READY) && (rtcan_msg_p->status != RTCAN_MSG_TIMEOUT)) {
         Thread::sleep(Time::ms(10));
     }
 
