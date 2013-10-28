@@ -310,8 +310,10 @@ void Middleware::do_mgmt_thread() {
             NamingTraits<Middleware>::MAX_LENGTH);
     SysLock::acquire();
     msgp->module.flags.stopped = is_stopped() ? 1 : 0;
+#if R2P_USE_BOOTLOADER
     msgp->module.flags.rebooted = has_rebooted() ? 1 : 0;
     msgp->module.flags.boot_mode = is_bootloader_mode() ? 1 : 0;
+#endif
     SysLock::release();
     mgmt_pub.publish(*msgp);
   }
@@ -393,8 +395,10 @@ void Middleware::do_mgmt_thread() {
                   NamingTraits<Middleware>::MAX_LENGTH);
           SysLock::acquire();
           msgp->module.flags.stopped = is_stopped() ? 1 : 0;
+#if R2P_USE_BOOTLOADER
           msgp->module.flags.rebooted = has_rebooted() ? 1 : 0;
           msgp->module.flags.boot_mode = is_bootloader_mode() ? 1 : 0;
+#endif
           SysLock::release();
           mgmt_pub.publish(*msgp);
         }
