@@ -12,13 +12,25 @@
 #include <r2p/NamingTraits.hpp>
 #include <r2p/Bootloader.hpp>
 #include <r2p/transport/DebugTransport.hpp>
+#include <r2p/transport/RTCANTransport.hpp>
+
+#include <r2p/node/led.hpp>
+#include <r2p/msg/motor.hpp>
 
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
 #ifndef R2P_MODULE_NAME
-#define R2P_MODULE_NAME "R2PMODX"
+#define R2P_MODULE_NAME "IMU_GW"
+#endif
+
+#ifndef DEBUGTRA
+#define DEBUGTRA    1
+#endif
+
+#ifndef RTCANTRA
+#define RTCANTRA    1
 #endif
 
 
@@ -39,22 +51,36 @@ extern "C" {
 
 #define BOOT_STACKLEN   1024
 
-static WORKING_AREA(wa_info, 2048);
+#if R2P_USE_BRIDGE_MODE
+enum { PUBSUB_BUFFER_LENGTH = 16 };
+r2p::Middleware::PubSubStep pubsub_buf[PUBSUB_BUFFER_LENGTH];
+#endif
 
-r2p::Middleware r2p::Middleware::instance(R2P_MODULE_NAME,
-                                          "BOOT_"R2P_MODULE_NAME);
+static WORKING_AREA(wa_info, 1024);
+
+r2p::Middleware r2p::Middleware::instance(
+  R2P_MODULE_NAME, "BOOT_"R2P_MODULE_NAME
+#if R2P_USE_BRIDGE_MODE
+, pubsub_buf, PUBSUB_BUFFER_LENGTH
+#endif
+);
 
 static WORKING_AREA(wa1, 1024);
 static WORKING_AREA(wa2, 1024);
 static WORKING_AREA(wa3, 1024);
 
+#if DEBUGTRA
 static char dbgtra_namebuf[64];
-
 static r2p::DebugTransport dbgtra("SD2", reinterpret_cast<BaseChannel *>(&SD2),
                                   dbgtra_namebuf);
-
 static WORKING_AREA(wa_rx_dbgtra, 1024);
 static WORKING_AREA(wa_tx_dbgtra, 1024);
+#endif // DEBUGTRA
+
+#if RTCANTRA
+static r2p::RTCANTransport rtcantra(RTCAND1);
+static RTCANConfig rtcan_config = { 1000000, 100, 60 };
+#endif // RTCANTRA
 
 size_t num_msgs = 0;
 systime_t start_time, cur_time;
@@ -141,15 +167,11 @@ msg_t Thread3(void *) {
 }
 
 
-#include <r2p/BootMsg.hpp> // XXX
-
 extern "C" {
 int main(void) {
 
   halInit();
   chSysInit();
-
-  sdStart(&SD2, NULL);
 
   r2p::Thread::set_priority(r2p::Thread::HIGHEST);
 
@@ -162,16 +184,24 @@ int main(void) {
     boot_stackp = stackp;
   }
 
-  r2p::Middleware::instance.pre_init(
+  r2p::Middleware::instance.initialize(
     wa_info, sizeof(wa_info), r2p::Thread::LOWEST,
     boot_stackp, BOOT_STACKLEN, r2p::Thread::LOWEST
   );
 
-   dbgtra.initialize(wa_rx_dbgtra, sizeof(wa_rx_dbgtra), r2p::Thread::LOWEST + 11,
-                     wa_tx_dbgtra, sizeof(wa_tx_dbgtra), r2p::Thread::LOWEST + 10);
+#if DEBUGTRA
+  sdStart(&SD2, NULL);
+  dbgtra.initialize(wa_rx_dbgtra, sizeof(wa_rx_dbgtra), r2p::Thread::LOWEST + 11,
+                    wa_tx_dbgtra, sizeof(wa_tx_dbgtra), r2p::Thread::LOWEST + 10);
+#endif
 
-   r2p::Middleware::instance.post_init();
+#if RTCANTRA
+  rtcantra.initialize(rtcan_config);
+#endif
 
+  r2p::Middleware::instance.start();
+
+  (void)wa1; (void)wa2; (void)wa3;
 //  r2p::Thread::create_static(wa3, sizeof(wa3), r2p::Thread::NORMAL - 2, Thread3, NULL, "Thread3");
 //  r2p::Thread::create_static(wa2, sizeof(wa2), r2p::Thread::NORMAL + 1, Thread2, NULL, "Thread2");
 //  r2p::Thread::create_static(wa1, sizeof(wa1), r2p::Thread::NORMAL + 0, Thread1, NULL, "Thread1");

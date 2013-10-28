@@ -185,7 +185,7 @@ CPPWARN = -Wall -Wextra
 #
 
 # List all default C defines here, like -D_DEBUG=1
-DDEFS = -DPORT_INT_REQUIRED_STACK=128
+DDEFS = -DPORT_INT_REQUIRED_STACK=256
 
 # List all default ASM defines here, like -D_DEBUG=1
 DADEFS =
@@ -208,7 +208,7 @@ DLIBS = -lm
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS += -DR2MW_TEST -DR2P_MODULE_NAME='"$(R2P_MODULE_NAME)"'
+UDEFS += -DR2MW_TEST -DR2P_USE_BRIDGE_MODE=1 -DR2P_ITERATE_PUBSUB=0
 
 # Define ASM defines here
 UADEFS +=

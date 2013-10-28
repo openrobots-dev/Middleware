@@ -28,8 +28,8 @@
 /*
  * Board identifier.
  */
-#define BOARD_R2D_IMU_MODULE
-#define BOARD_NAME              "R2D IMU module"
+#define BOARD_R2P_IMU_MODULE
+#define BOARD_NAME              "R2P IMU module"
 
 /*
  * Board frequencies.
@@ -46,13 +46,17 @@
  * IO pins assignments.
  */
 #define LED_GPIO				GPIOB
+#define LED1_GPIO				GPIOB
 #define LED1					12
+#define LED2_GPIO				GPIOB
 #define LED2					13
+#define LED3_GPIO				GPIOB
 #define LED3					14
+#define LED4_GPIO				GPIOB
 #define LED4					15
 
-//#define SERIAL_DRIVER           SD1
 #define SERIAL_DRIVER           SD2
+//#define GPS_SERIAL_DRIVER       SD2
 #define SPI_DRIVER              SPID1
 #define I2C_DRIVER              I2CD1
 
@@ -146,27 +150,13 @@
 #define VAL_GPIOCCRH            0x88888888      /* PC15...PC8 */
 #define VAL_GPIOCODR            0xFFFFFFFF
 
-/*
- * Port D setup.
- * Everything input with pull-up except:
- */
-#define VAL_GPIODCRL            0x88888888      /*  PD7...PD0 */
-#define VAL_GPIODCRH            0x88888888      /* PD15...PD8 */
-#define VAL_GPIODODR            0xFFFFFFFF
-
-/*
- * Port E setup.
- * Everything input with pull-up except:
- */
-#define VAL_GPIOECRL            0x88888888      /*  PE7...PE0 */
-#define VAL_GPIOECRH            0x88888888      /* PE15...PE8 */
-#define VAL_GPIOEODR            0xFFFFFFFF
-
 #if !defined(_FROM_ASM_)
 #ifdef __cplusplus
 extern "C" {
 #endif
 void boardInit(void);
+void * led2gpio(unsigned led_id);
+unsigned led2pin(unsigned led_id);
 #ifdef __cplusplus
 }
 #endif

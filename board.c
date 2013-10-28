@@ -32,8 +32,6 @@ const PALConfig pal_default_config =
   {VAL_GPIOAODR, VAL_GPIOACRL, VAL_GPIOACRH},
   {VAL_GPIOBODR, VAL_GPIOBCRL, VAL_GPIOBCRH},
   {VAL_GPIOCODR, VAL_GPIOCCRL, VAL_GPIOCCRH},
-  {VAL_GPIODODR, VAL_GPIODCRL, VAL_GPIODCRH},
-  {VAL_GPIOEODR, VAL_GPIOECRL, VAL_GPIOECRH},
 };
 #endif
 
@@ -54,4 +52,34 @@ void boardInit(void) {
 
 //  AFIO->MAPR |= AFIO_MAPR_CAN_REMAP_REMAP2;
   AFIO->MAPR |= AFIO_MAPR_I2C1_REMAP;
+}
+
+
+void * led2gpio(unsigned led_id) {
+
+	switch (led_id) {
+	case 1:
+	case 2:
+	case 3:
+	case 4:
+		return LED_GPIO;
+	}
+
+	chSysHalt();
+}
+
+unsigned led2pin(unsigned led_id) {
+
+	switch (led_id) {
+	case 1:
+		return LED1;
+	case 2:
+		return LED2;
+	case 3:
+		return LED3;
+	case 4:
+		return LED4;
+	}
+
+	chSysHalt();
 }
