@@ -48,9 +48,6 @@ private:
 #endif
 
 public:
-  bool send_advertisement(const Topic &topic);
-  bool send_subscription_request(const Topic &topic);
-  bool send_subscription_response(const Topic &topic);
   bool send_stop();
   bool send_reboot();
   bool send_bootload();
@@ -102,7 +99,6 @@ private:
   bool recv_value(T &value, systime_t timeout = TIME_INFINITE);
   bool send_msg(const Message &msg, size_t msg_size, const char *topicp,
                 const Time &deadline);
-  bool send_mgmt_msg(const Topic &topic, MgmtMsg::TypeEnum type);
   bool send_signal_msg(char id);
 
 public:

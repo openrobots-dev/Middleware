@@ -33,9 +33,6 @@ public:
   const StaticList<RemotePublisher> &get_publishers() const;
   const StaticList<RemoteSubscriber> &get_subscribers() const;
 
-  bool notify_advertisement(const Topic &topic);
-  bool notify_subscription_request(const Topic &topic);
-  bool notify_subscription_response(const Topic &topic);
   bool notify_stop();
   bool notify_reboot();
   bool notify_bootload();
@@ -62,13 +59,6 @@ protected:
   template<typename MessageType>
   bool subscribe(RemoteSubscriber &sub, const char *namep,
                  MessageType msgpool_buf[], size_t msgpool_buflen);
-
-  virtual bool send_advertisement(const Topic &topic) = 0;
-  virtual bool send_subscription_request(const Topic &topic) = 0;
-  virtual bool send_subscription_response(const Topic &topic) = 0;
-  virtual bool send_stop() = 0;
-  virtual bool send_reboot() = 0;
-  virtual bool send_bootload() = 0;
 
   virtual RemotePublisher *create_publisher(Topic &topic,
                                             const uint8_t *raw_params = NULL)
@@ -114,48 +104,6 @@ inline
 const StaticList<RemoteSubscriber> &Transport::get_subscribers() const {
 
   return subscribers;
-}
-
-
-inline
-bool Transport::notify_advertisement(const Topic &topic) {
-
-  return send_advertisement(topic);
-}
-
-
-inline
-bool Transport::notify_subscription_request(const Topic &topic) {
-
-  return send_subscription_request(topic);
-}
-
-
-inline
-bool Transport::notify_subscription_response(const Topic &topic) {
-
-  return send_subscription_response(topic);
-}
-
-
-inline
-bool Transport::notify_stop() {
-
-  return send_stop();
-}
-
-
-inline
-bool Transport::notify_reboot() {
-
-  return send_reboot();
-}
-
-
-inline
-bool Transport::notify_bootload() {
-
-  return send_bootload();
 }
 
 

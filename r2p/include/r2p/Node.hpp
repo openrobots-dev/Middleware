@@ -44,9 +44,6 @@ public:
   bool subscribe(Subscriber<MessageType> &sub, const char *namep,
                  MessageType msgpool_buf[]);
 
-  void publish_publishers(Publisher<MgmtMsg> &info_pub);
-  void publish_subscribers(Publisher<MgmtMsg> &info_pub);
-
   void notify_unsafe(unsigned event_index);
   void notify_stop_unsafe();
 

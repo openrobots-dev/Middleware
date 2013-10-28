@@ -12,19 +12,21 @@ class Transport;
 class MgmtMsg : public Message {
 public:
   enum TypeEnum {
-    RAW                         = 0x00,
+    RAW                 = 0x00,
 
-    INFO_MODULE                 = 0x10,
-    INFO_ADVERTISEMENT          = 0x11,
-    INFO_SUBSCRIPTION           = 0x12,
+    // Module messages
+    ALIVE               = 0x11,
+    STOP                = 0x12,
+    REBOOT              = 0x13,
+    BOOTLOAD            = 0x14,
 
-    CMD_ADVERTISE               = 0x20,
-    CMD_SUBSCRIBE_REQUEST       = 0x21,
-    CMD_SUBSCRIBE_RESPONSE      = 0x22,
+    // PubSub messages
+    ADVERTISE           = 0x21,
+    SUBSCRIBE_REQUEST   = 0x22,
+    SUBSCRIBE_RESPONSE  = 0x23,
 
-    CMD_STOP                    = 0x30,
-    CMD_REBOOT                  = 0x31,
-    CMD_BOOTLOAD                = 0x32,
+    // Path messages
+    PATH                = 0x31,
   };
 
   enum { MAX_PAYLOAD_LENGTH = 31 };
@@ -38,8 +40,7 @@ public:
   struct PubSub {
     enum {
       MAX_RAW_PARAMS_LENGTH =
-        MAX_PAYLOAD_LENGTH - NamingTraits<Topic>::MAX_LENGTH -
-        sizeof(Transport *) - sizeof(size_t)
+        MAX_PAYLOAD_LENGTH - NamingTraits<Topic>::MAX_LENGTH - sizeof(size_t)
     };
 
     char topic[NamingTraits<Topic>::MAX_LENGTH];
@@ -51,7 +52,9 @@ public:
   struct Module {
     char name[NamingTraits<Middleware>::MAX_LENGTH];
     struct {
-      unsigned stopped    : 1;
+      unsigned  stopped     : 1;
+      unsigned  rebooted    : 1;
+      unsigned  boot_mode   : 1;
     } flags;
   } R2P_PACKED;
 

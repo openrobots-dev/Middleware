@@ -40,56 +40,6 @@ bool Node::subscribe(LocalSubscriber &sub, const char *namep,
 }
 
 
-void Node::publish_publishers(Publisher<MgmtMsg> &info_pub) {
-
-  MgmtMsg *msgp;
-
-  for (StaticList<LocalPublisher>::Iterator i = publishers.begin();
-       i != publishers.end(); ++i) {
-    while (!info_pub.alloc(msgp)) {
-      Thread::yield();
-    }
-
-    msgp->type = MgmtMsg::INFO_ADVERTISEMENT;
-    strncpy(msgp->path.module, Middleware::instance.get_module_name(),
-            NamingTraits<Middleware>::MAX_LENGTH);
-    strncpy(msgp->path.node, this->get_name(),
-            NamingTraits<Node>::MAX_LENGTH);
-    strncpy(msgp->path.topic, i->get_topic()->get_name(),
-            NamingTraits<Topic>::MAX_LENGTH);
-
-    while (!info_pub.publish_remotely(*msgp)) {
-      Thread::yield();
-    }
-  }
-}
-
-
-void Node::publish_subscribers(Publisher<MgmtMsg> &info_pub) {
-
-  MgmtMsg *msgp;
-
-  for (StaticList<LocalSubscriber>::Iterator i = subscribers.begin();
-       i != subscribers.end(); ++i) {
-    while (!info_pub.alloc(msgp)) {
-      Thread::yield();
-    }
-
-    msgp->type = MgmtMsg::INFO_SUBSCRIPTION;
-    strncpy(msgp->path.module, Middleware::instance.get_module_name(),
-            NamingTraits<Middleware>::MAX_LENGTH);
-    strncpy(msgp->path.node, this->get_name(),
-            NamingTraits<Node>::MAX_LENGTH);
-    strncpy(msgp->path.topic, i->get_topic()->get_name(),
-            NamingTraits<Topic>::MAX_LENGTH);
-
-    while (!info_pub.publish_remotely(*msgp)) {
-      Thread::yield();
-    }
-  }
-}
-
-
 bool Node::spin(const Time &timeout) {
 
   SpinEvent::Mask mask;

@@ -188,8 +188,11 @@ inline
 Message *Topic::alloc_unsafe() {
 
   register Message *msgp = reinterpret_cast<Message *>(msg_pool.alloc_unsafe());
-  msgp->reset_unsafe();
-  return msgp;
+  if (msgp != NULL) {
+    msgp->reset_unsafe();
+    return msgp;
+  }
+  return NULL;
 }
 
 

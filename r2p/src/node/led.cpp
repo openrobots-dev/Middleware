@@ -65,8 +65,6 @@ msg_t ledpub_node(void *arg) {
 	node.advertise(led_pub, "leds");
 
 	for (;;) {
-	    r2p::Thread::sleep(Time::ms(500)); continue; // XXX
-	
 		LedMsg *msgp;
 		if (led_pub.alloc(msgp)) {
 			msgp->led = led;

@@ -12,7 +12,7 @@
 namespace r2p {
 
 // Adds a delay after the starting '@', to allow full buffering of the message
-#define RECV_DELAY_MS   5
+#define RECV_DELAY_MS   0//5
 
 
 bool DebugTransport::skip_after_char(char c, systime_t timeout) {
@@ -162,161 +162,6 @@ bool DebugTransport::send_msg(const Message &msg, size_t msg_size,
 }
 
 
-bool DebugTransport::send_mgmt_msg(const Topic &topic,
-                                   MgmtMsg::TypeEnum type) {
-
-  // Do not send management messages while in bootloader mode
-  if (!ok()) return true;
-
-  Checksummer cs;
-
-  // Send the deadline
-  if (!send_char('@')) return false;
-  Time now = Time::now();
-  if (!send_value(now.raw)) return false;
-  if (!send_char(':')) return false;
-  cs.add(now.raw);
-
-  // Send the management topic name (null string)
-  if (!send_value(static_cast<uint8_t>(0))) return false;
-  if (!send_char(':')) return false;
-
-  // Discriminate between publisher and subscriber
-  switch (type) {
-  case MgmtMsg::CMD_ADVERTISE: {
-    if (!send_char('p')) return false;
-    cs.add('p');
-    break;
-  }
-  case MgmtMsg::CMD_SUBSCRIBE_REQUEST: {
-    if (!send_char('s')) return false;
-    SysLock::acquire();
-    uint8_t length = static_cast<uint8_t>(topic.get_max_queue_length());
-    SysLock::release();
-    if (!send_value(length)) return false;
-    cs.add('s');
-    cs.add(length);
-    break;
-  }
-  case MgmtMsg::CMD_SUBSCRIBE_RESPONSE: {
-    if (!send_char('e')) return false;
-    cs.add('e');
-    break;
-  }
-  default: {
-    R2P_ASSERT(false && "unreachable");
-    break;
-  }
-  }
-  if (!send_char(':')) return false;
-
-  // Send the module and topic names
-  const char *namep = Middleware::instance.get_module_name();
-  uint8_t namelen = static_cast<uint8_t>(
-    strnlen(namep, NamingTraits<Middleware>::MAX_LENGTH)
-  );
-  if (!send_value(namelen)) return false;
-  if (!send_string(namep, namelen)) return false;
-  if (!send_char(':')) return false;
-  cs.add(namelen);
-  cs.add(namep, namelen);
-
-  namep = topic.get_name();
-  namelen = static_cast<uint8_t>(
-    strnlen(namep, NamingTraits<Topic>::MAX_LENGTH)
-  );
-  if (!send_value(namelen)) return false;
-  if (!send_string(namep, namelen)) return false;
-  cs.add(namelen);
-  cs.add(namep, namelen);
-
-  // Send the payload size
-  if (!send_char(':')) return false;
-  { uint16_t type_size = static_cast<uint16_t>(topic.get_payload_size());
-  if (!send_value(type_size)) return false;
-  cs.add(type_size); }
-
-  // Send the checksum
-  if (!send_char(':')) return false;
-  if (!send_value(cs.compute_checksum())) return false;
-
-  // End of packet
-  if (!send_char('\r') || !send_char('\n')) return false;
-  return true;
-}
-
-
-bool DebugTransport::send_signal_msg(char id) {
-
-  Checksummer cs;
-
-  // Send the deadline
-  if (!send_char('@')) return false;
-  Time now = Time::now();
-  if (!send_value(now.raw)) return false;
-  if (!send_char(':')) return false;
-  cs.add(now.raw);
-
-  // Send the management topic name (null string)
-  if (!send_value(static_cast<uint8_t>(0))) return false;
-  if (!send_char(':')) return false;
-
-  // Signal identifier
-  if (!send_char(id)) return false;
-  cs.add(id);
-
-  // Send the checksum
-  if (!send_char(':')) return false;
-  if (!send_value(cs.compute_checksum())) return false;
-
-  // End of packet
-  if (!send_char('\r') || !send_char('\n')) return false;
-  return true;
-}
-
-
-bool DebugTransport::send_advertisement(const Topic &topic) {
-
-  ScopedLock<Mutex> lock(send_lock);
-  return send_mgmt_msg(topic, MgmtMsg::CMD_ADVERTISE);
-}
-
-
-bool DebugTransport::send_subscription_request(const Topic &topic) {
-
-  ScopedLock<Mutex> lock(send_lock);
-  return send_mgmt_msg(topic, MgmtMsg::CMD_SUBSCRIBE_REQUEST);
-}
-
-
-bool DebugTransport::send_subscription_response(const Topic &topic) {
-
-  ScopedLock<Mutex> lock(send_lock);
-  return send_mgmt_msg(topic, MgmtMsg::CMD_SUBSCRIBE_RESPONSE);
-}
-
-
-bool DebugTransport::send_stop() {
-
-  ScopedLock<Mutex> lock(send_lock);
-  return send_signal_msg('t');
-}
-
-
-bool DebugTransport::send_reboot() {
-
-  ScopedLock<Mutex> lock(send_lock);
-  return send_signal_msg('r');
-}
-
-
-bool DebugTransport::send_bootload() {
-
-  ScopedLock<Mutex> lock(send_lock);
-  return send_signal_msg('b');
-}
-
-
 void DebugTransport::initialize(void *rx_stackp, size_t rx_stacklen,
                                 Thread::Priority rx_priority,
                                 void *tx_stackp, size_t tx_stacklen,
@@ -338,7 +183,7 @@ void DebugTransport::initialize(void *rx_stackp, size_t rx_stacklen,
   // Clear any previous crap caused by serial port initialization
   bool success; (void)success;
   send_lock.acquire();
-  success = send_string("\r\n\r\n\r\n", 6);
+  success = send_string("\r\n\r\n", 4);
   R2P_ASSERT(success);
   send_lock.release();
 
@@ -347,16 +192,14 @@ void DebugTransport::initialize(void *rx_stackp, size_t rx_stacklen,
     const char *namep = Middleware::instance.get_boot_topic().get_name();
     success = advertise(boot_rpub, namep, Time::INFINITE, sizeof(BootMsg));
     R2P_ASSERT(success);
-    success = subscribe(boot_rsub, namep, boot_msgbuf,
-                        BOOT_BUFFER_LENGTH);
+    success = subscribe(boot_rsub, namep, boot_msgbuf, BOOT_BUFFER_LENGTH);
     R2P_ASSERT(success);
   }
 
   // Register remote publisher and subscriber for the management thread
   success = advertise(mgmt_rpub, "R2P", Time::INFINITE, sizeof(MgmtMsg));
   R2P_ASSERT(success);
-  success = subscribe(mgmt_rsub, "R2P", mgmt_msgbuf,
-                      MGMT_BUFFER_LENGTH);
+  success = subscribe(mgmt_rsub, "R2P", mgmt_msgbuf, MGMT_BUFFER_LENGTH);
   R2P_ASSERT(success);
 
   Middleware::instance.add(*this);
@@ -398,7 +241,7 @@ bool DebugTransport::spin_tx() {
       bool success = send_char('\r');
       success = send_char('\n') && success;
       while (!success) {
-        Thread::yield();
+        Thread::sleep(Time::ms(123)); // TODO: configure
       }
       send_lock.release();
       sub.release(*msgp);
@@ -533,16 +376,16 @@ bool DebugTransport::spin_rx() {
 
       switch (typechar) {
       case 'p': {
-        msgp->type = MgmtMsg::CMD_ADVERTISE;
+        msgp->type = MgmtMsg::ADVERTISE;
         break;
       }
       case 's': {
-        msgp->type = MgmtMsg::CMD_SUBSCRIBE_REQUEST;
+        msgp->type = MgmtMsg::SUBSCRIBE_REQUEST;
         msgp->pubsub.queue_length = static_cast<uint16_t>(queue_length);
         break;
       }
       case 'e': {
-        msgp->type = MgmtMsg::CMD_SUBSCRIBE_RESPONSE;
+        msgp->type = MgmtMsg::SUBSCRIBE_RESPONSE;
         break;
       }
       }

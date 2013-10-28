@@ -8,6 +8,8 @@ namespace r2p {
 
 bool BasePublisher::alloc_unsafe(Message *&msgp) {
 
+  R2P_ASSERT(topicp != NULL);
+
   msgp = topicp->alloc_unsafe();
   return msgp != NULL;
 }
@@ -15,11 +17,14 @@ bool BasePublisher::alloc_unsafe(Message *&msgp) {
 
 bool BasePublisher::publish_unsafe(Message &msg) {
 
+  R2P_ASSERT(topicp != NULL);
+
   msg.acquire_unsafe();
 
   Time now = Time::now();
-  bool success = topicp->notify_locals_unsafe(msg, now) &&
-                 topicp->notify_remotes_unsafe(msg, now);
+  bool success;
+  success = topicp->notify_locals_unsafe(msg, now);
+  success = topicp->notify_remotes_unsafe(msg, now) && success;
 
   if (!msg.release_unsafe()) {
     topicp->free_unsafe(msg);
@@ -31,11 +36,14 @@ bool BasePublisher::publish_unsafe(Message &msg) {
 
 bool BasePublisher::publish(Message &msg) {
 
+  R2P_ASSERT(topicp != NULL);
+
   msg.acquire();
 
   Time now = Time::now();
-  bool success = topicp->notify_locals(msg, now) &&
-                 topicp->notify_remotes(msg, now);
+  bool success;
+  success = topicp->notify_locals(msg, now);
+  success = topicp->notify_remotes(msg, now) && success;
 
   if (!msg.release()) {
     topicp->free(msg);

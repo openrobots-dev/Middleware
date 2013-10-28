@@ -15,7 +15,7 @@
 namespace r2p {
 
 #if !defined(R2P_ITERATE_PUBSUB) || defined(__DOXYGEN__)
-#define R2P_ITERATE_PUBSUB      0
+#define R2P_ITERATE_PUBSUB      1
 #endif
 
 
@@ -56,6 +56,11 @@ private:
   size_t mgmt_stacklen;
   Thread *mgmt_threadp;
   Thread::Priority mgmt_priority;
+  Node mgmt_node;
+  Publisher<MgmtMsg> mgmt_pub;
+  Subscriber<MgmtMsg> mgmt_sub;
+  MgmtMsg *mgmt_queue_buf[MGMT_BUFFER_LENGTH];
+  MgmtMsg mgmt_msg_buf[MGMT_BUFFER_LENGTH];
 
 #if R2P_USE_BOOTLOADER
   enum { REBOOTED_MAGIC = 0xFEB007ED };
@@ -74,7 +79,7 @@ private:
 #endif // R2P_USE_BRIDGE_MODE
 
 #if R2P_ITERATE_PUBSUB
-  enum { ITER_TIMEOUT_MS = 234 };
+  enum { ITER_TIMEOUT_MS = 456 };
   StaticList<Node>::ConstIterator iter_nodes;
   StaticList<LocalPublisher>::ConstIterator iter_publishers;
   StaticList<LocalSubscriber>::ConstIterator iter_subscribers;
@@ -106,6 +111,9 @@ public:
   void stop();
   void reboot();
   void preload_bootloader_mode(bool enable);
+
+  bool stop_remote(const char *namep);
+  bool reboot_remote(const char *namep, bool bootload = false);
 
   void add(Node &node);
   void add(Transport &transport);

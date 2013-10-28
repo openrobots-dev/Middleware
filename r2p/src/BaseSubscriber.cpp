@@ -8,6 +8,8 @@ namespace r2p {
 
 bool BaseSubscriber::release_unsafe(Message &msg) {
 
+  R2P_ASSERT(topicp != NULL);
+
   if (!msg.release_unsafe()) {
     topicp->free_unsafe(msg);
     return false;
@@ -17,6 +19,8 @@ bool BaseSubscriber::release_unsafe(Message &msg) {
 
 
 bool BaseSubscriber::release(Message &msg) {
+
+  R2P_ASSERT(topicp != NULL);
 
   if (!msg.release()) {
     topicp->free(msg);
