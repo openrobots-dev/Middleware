@@ -62,7 +62,7 @@ void RTCANTransport::recv_cb(rtcan_msg_t &rtcan_msg) {
 		rtcan_msg.data = msgp->get_raw_data();
 	} else {
 		rtcan_msg.status = RTCAN_MSG_BUSY;
-		R2P_ASSERT(false);
+//		R2P_ASSERT(false);
 	}
 }
 
