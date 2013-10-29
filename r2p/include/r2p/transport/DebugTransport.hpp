@@ -66,7 +66,7 @@ private:
     Topic &topic,
     TimestampedMsgPtrQueue::Entry queue_buf[],
     size_t queue_length,
-    const uint8_t *raw_params = NULL
+    uint8_t *raw_params = NULL
   ) const;
 
   bool spin_tx();
@@ -135,7 +135,7 @@ RemoteSubscriber *DebugTransport::create_subscriber(
   Topic &topic,
   TimestampedMsgPtrQueue::Entry queue_buf[],
   size_t queue_length,
-  const uint8_t *raw_params) const {
+  uint8_t *raw_params) const {
 
   (void)topic;
   (void)raw_params;

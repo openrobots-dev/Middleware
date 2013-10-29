@@ -28,11 +28,11 @@ private:
 
   BaseSubscriberQueue subp_queue;
 
-  enum { MGMT_BUFFER_LENGTH = 2 };
+  enum { MGMT_BUFFER_LENGTH = 4 };
   MgmtMsg mgmt_msgbuf[MGMT_BUFFER_LENGTH];
   TimestampedMsgPtrQueue::Entry mgmt_msgqueue_buf[MGMT_BUFFER_LENGTH];
-  RTCANSubscriber mgmt_rsub;
-  RTCANPublisher mgmt_rpub;
+  RTCANSubscriber * mgmt_rsub;
+  RTCANPublisher * mgmt_rpub;
 
 public:
   bool send(Message * msgp, RTCANSubscriber * rsubp);
@@ -47,8 +47,9 @@ private:
     Topic &topic,
     TimestampedMsgPtrQueue::Entry queue_buf[], // TODO: remove
     size_t queue_length,
-    const uint8_t *raw_params = NULL
+    uint8_t *raw_params = NULL
   ) const;
+  void fill_raw_params(Topic & topic, uint8_t * raw_paramsp);
 
 public:
   RTCANTransport(RTCANDriver &rtcan);
