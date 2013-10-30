@@ -578,6 +578,7 @@ bool Bootloader::remove_all() {
   }
 
   bool success; (void)success;
+  R2P_ASSERT(Flasher::is_aligned(Flasher::get_program_start()));
   success = flasher.erase(Flasher::get_program_start(),
                           Flasher::get_program_length());
   R2P_ASSERT(success);

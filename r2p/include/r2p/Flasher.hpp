@@ -5,8 +5,9 @@
 
 namespace r2p {
 
-#define R2P_FLASH_ALIGNED \
-  __attribute__((aligned(Flasher::WORD_ALIGNMENT)))
+#if !defined(R2P_FLASH_ALIGNED) || defined(__DOXYGEN__)
+#define R2P_FLASH_ALIGNED   __attribute__((aligned(Flasher::WORD_ALIGNMENT)))
+#endif
 
 
 class Flasher : private Uncopyable {
@@ -28,13 +29,16 @@ public:
 
   void begin();
   bool end();
-  bool flash(const uint8_t *address, const Data *bufp, size_t buflen);
+  bool flash_aligned(const Data *address, const Data *bufp, size_t buflen);
+  bool erase_aligned(const Data *address, size_t length);
+  bool flash(const uint8_t *address, const uint8_t *bufp, size_t buflen);
   bool erase(const uint8_t *address, size_t length);
 
 public:
   Flasher(Data page_buf[]);
 
 public:
+  static bool is_aligned(const void *ptr);
   static bool is_within_bounds(const void *ptr);
   static bool is_erased(PageID page);
   static bool erase(PageID page);
@@ -61,6 +65,13 @@ public:
 
   static void jump_to(const uint8_t *address);
 };
+
+
+inline
+bool Flasher::is_aligned(const void *ptr) {
+
+  return Flasher_::is_aligned(ptr);
+}
 
 
 inline
@@ -92,7 +103,23 @@ bool Flasher::end() {
 
 
 inline
-bool Flasher::flash(const uint8_t *address, const Data *bufp, size_t buflen) {
+bool Flasher::flash_aligned(const Data *address, const Data *bufp,
+                            size_t buflen) {
+
+  return impl.flash_aligned(address, bufp, buflen);
+}
+
+
+inline
+bool Flasher::erase_aligned(const Data *address, size_t length) {
+
+  return impl.erase_aligned(address, length);
+}
+
+
+inline
+bool Flasher::flash(const uint8_t *address, const uint8_t *bufp,
+                    size_t buflen) {
 
   return impl.flash(address, bufp, buflen);
 }

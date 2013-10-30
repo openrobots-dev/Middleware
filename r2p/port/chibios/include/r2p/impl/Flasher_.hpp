@@ -23,6 +23,10 @@ namespace r2p {
 #define FLASH_BASE_ADDRESS  0x08000000
 #endif
 
+#if !defined(R2P_FLASH_ALIGNED)
+#define R2P_FLASH_ALIGNED   __attribute__((aligned(Flasher_::WORD_ALIGNMENT)))
+#endif
+
 
 class Flasher_ : private Uncopyable {
 public:
@@ -48,13 +52,16 @@ public:
 
   void begin();
   bool end();
-  bool flash(const uint8_t *address, const Data *bufp, size_t buflen);
+  bool flash_aligned(const Data *address, const Data *bufp, size_t buflen);
+  bool erase_aligned(const Data *address, size_t length);
+  bool flash(const uint8_t *address, const uint8_t *bufp, size_t buflen);
   bool erase(const uint8_t *address, size_t length);
 
 public:
   Flasher_(Data page_buf[]);
 
 public:
+  static bool is_aligned(const void *ptr);
   static bool is_within_bounds(const void *address);
   static bool is_erased(PageID page);
   static bool erase(PageID page);
@@ -76,7 +83,17 @@ public:
   static size_t get_ram_length();
 
   static void jump_to(const uint8_t *address);
+
+public:
+  static const Data erased_word R2P_FLASH_ALIGNED;
 };
+
+
+inline
+bool Flasher_::is_aligned(const void *ptr) {
+
+  return (reinterpret_cast<uintptr_t>(ptr) & (WORD_ALIGNMENT - 1)) == 0;
+}
 
 
 inline

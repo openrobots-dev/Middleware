@@ -78,4 +78,18 @@ bool check_bounds(const void *valuep, size_t valuelen,
 }
 
 
+inline
+size_t compute_segment(const void *ptr, size_t segment_size) {
+
+  return reinterpret_cast<size_t>(ptr) & ~(segment_size - 1);
+}
+
+
+inline
+size_t compute_offset(const void *ptr, size_t segment_size) {
+
+  return reinterpret_cast<size_t>(ptr) & (segment_size - 1);
+}
+
+
 } // namespace r2p

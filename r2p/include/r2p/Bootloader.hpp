@@ -267,8 +267,7 @@ inline
 bool Bootloader::write(const void *dstp, const void *srcp, size_t length) {
 
   return flasher.flash(reinterpret_cast<const uint8_t *>(dstp),
-                       reinterpret_cast<const Flasher::Data *>(srcp),
-                       length);
+                       reinterpret_cast<const uint8_t *>(srcp), length);
 }
 
 

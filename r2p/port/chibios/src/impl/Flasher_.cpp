@@ -6,6 +6,10 @@
 namespace r2p {
 
 
+const Flasher_::Data Flasher_::erased_word R2P_FLASH_ALIGNED =
+  Flasher_::ERASED_WORD;
+
+
 inline
 static void flash_lock(void) {
 
@@ -78,12 +82,14 @@ bool Flasher_::erase(PageID page) {
 
 int Flasher_::compare(PageID page, volatile const Data *bufp) {
 
+  R2P_ASSERT(is_aligned(const_cast<const Data *>(bufp)));
+
   volatile const Data *const flashp =
     reinterpret_cast<volatile const Data *>(address_of(page));
 
   bool identical = true;
 
-  for (size_t pos = 0; pos < PAGE_SIZE / sizeof(Data); ++pos) {
+  for (size_t pos = 0; pos < PAGE_SIZE / WORD_ALIGNMENT; ++pos) {
     if (flashp[pos] != bufp[pos]) {
       // Keep track if the buffer is identical to page -> mark not identical
       identical = false;
@@ -103,6 +109,8 @@ int Flasher_::compare(PageID page, volatile const Data *bufp) {
 
 bool Flasher_::read(PageID page, Data *bufp) {
 
+  R2P_ASSERT(is_aligned(bufp));
+
   memcpy(static_cast<void *>(bufp),
          reinterpret_cast<const void *>(address_of(page)),
          PAGE_SIZE);
@@ -111,6 +119,8 @@ bool Flasher_::read(PageID page, Data *bufp) {
 
 
 bool Flasher_::write(PageID page, volatile const Data *bufp) {
+
+  R2P_ASSERT(is_aligned(const_cast<const Data *>(bufp)));
 
   if (!check_bounds(address_of(page), PAGE_SIZE, get_program_start(),
                     get_program_length())) {
@@ -131,7 +141,7 @@ bool Flasher_::write(PageID page, volatile const Data *bufp) {
   }
   flash_busy_wait();
 
-  for (size_t pos = 0; pos < PAGE_SIZE / sizeof(Data); ++pos) {
+  for (size_t pos = 0; pos < PAGE_SIZE / WORD_ALIGNMENT; ++pos) {
     // Enter flash programming mode
     FLASH->CR |= FLASH_CR_PG;
 
@@ -158,6 +168,8 @@ bool Flasher_::write(PageID page, volatile const Data *bufp) {
 
 
 bool Flasher_::write_if_needed(PageID page, volatile const Data *bufp) {
+
+  R2P_ASSERT(is_aligned(const_cast<const Data *>(bufp)));
 
   // TODO: Only write on pages in the user area
 
@@ -194,14 +206,19 @@ bool Flasher_::end() {
 }
 
 
-bool Flasher_::flash(const uint8_t *address, const Data *bufp, size_t buflen) {
+bool Flasher_::flash_aligned(const Data *address, const Data *bufp,
+                             size_t buflen) {
+
+  R2P_ASSERT(is_aligned(address));
+  R2P_ASSERT(is_aligned(bufp));
+  R2P_ASSERT(is_aligned(reinterpret_cast<const void *>(buflen)));
 
   bool writeback = false;
 
   // Process all given words
   while (buflen > 0) {
     PageID old_page = page;
-    page = page_of(address);
+    page = page_of(reinterpret_cast<const uint8_t *>(address));
     ptrdiff_t offset = reinterpret_cast<ptrdiff_t>(address) -
                        reinterpret_cast<ptrdiff_t>(address_of(page));
     size_t length = (PAGE_SIZE - offset);
@@ -223,7 +240,7 @@ bool Flasher_::flash(const uint8_t *address, const Data *bufp, size_t buflen) {
     }
 
     // Copy buffer into page buffer and mark as tainted
-    memcpy(&page_bufp[offset / sizeof(Data)], bufp, length);
+    memcpy(&page_bufp[offset / WORD_ALIGNMENT], bufp, length);
     page_modified = true;
     buflen -= length;
 
@@ -237,21 +254,123 @@ bool Flasher_::flash(const uint8_t *address, const Data *bufp, size_t buflen) {
 }
 
 
-bool Flasher_::erase(const uint8_t *address, size_t length) {
+bool Flasher_::erase_aligned(const Data *address, size_t length) {
 
-  static const Data erased_word_value = ERASED_WORD;
-
-  // const uint8_t *and length must be aligned
-  R2P_ASSERT((reinterpret_cast<uintptr_t>(address) &
-             bit_mask(sizeof(Data))) == 0);
-  R2P_ASSERT((length & bit_mask(sizeof(Data))) == 0);
+  R2P_ASSERT(is_aligned(address));
+  R2P_ASSERT(is_aligned(reinterpret_cast<const void *>(length)));
 
   while (length > 0) {
-    flash(address, &erased_word_value, sizeof(Data));
-    address += sizeof(Data);
-    length -= sizeof(Data);
+    flash_aligned(address, &erased_word, WORD_ALIGNMENT);
+    address += WORD_ALIGNMENT;
+    length -= WORD_ALIGNMENT;
   }
   return true;
+}
+
+
+bool Flasher_::flash(const uint8_t *address, const uint8_t *bufp,
+                     size_t buflen) {
+
+  if (buflen == 0) return true;
+
+  Data partial R2P_FLASH_ALIGNED;
+
+  // Write the unaligned buffer beginning
+  size_t offset = compute_offset(address, WORD_ALIGNMENT);
+  address -= offset;
+  partial = *reinterpret_cast<const Data *>(address);
+  if (offset + buflen <= WORD_ALIGNMENT) {
+    // A single word to write
+    memcpy(reinterpret_cast<uint8_t *>(&partial) + offset, bufp, buflen);
+    return flash_aligned(reinterpret_cast<const Data *>(address), &partial,
+                         WORD_ALIGNMENT);
+  } else {
+    memcpy(reinterpret_cast<uint8_t *>(&partial) + offset, bufp,
+           WORD_ALIGNMENT - offset);
+    if (!flash_aligned(reinterpret_cast<const Data *>(address), &partial,
+                       WORD_ALIGNMENT)) {
+      return false;
+    }
+  }
+  address += WORD_ALIGNMENT;
+  bufp += WORD_ALIGNMENT - offset;
+  buflen -= WORD_ALIGNMENT - offset;
+
+  // Write the aligned buffer middle
+  offset = compute_offset(address + buflen, WORD_ALIGNMENT);
+  while (buflen > offset) {
+    partial = *reinterpret_cast<const Data *>(bufp);
+    if (!flash_aligned(reinterpret_cast<const Data *>(address), &partial,
+                       WORD_ALIGNMENT)) {
+      return false;
+    }
+    address += WORD_ALIGNMENT;
+    bufp += WORD_ALIGNMENT;
+    buflen -= WORD_ALIGNMENT;
+  }
+
+  // Write the unaligned buffer end
+  if (offset > 0) {
+    partial = *reinterpret_cast<const Data *>(address);
+    memcpy(&partial, bufp, offset);
+    if (!flash_aligned(reinterpret_cast<const Data *>(address), &partial,
+                       WORD_ALIGNMENT)) {
+      return false;
+    }
+  }
+  return  true;
+}
+
+
+bool Flasher_::erase(const uint8_t *address, size_t length) {
+
+  if (length == 0) return true;
+
+  Data partial R2P_FLASH_ALIGNED;
+
+  // Erase the unaligned buffer beginning
+  size_t offset = compute_offset(address, WORD_ALIGNMENT);
+  address -= offset;
+  partial = *reinterpret_cast<const Data *>(address);
+  if (offset + length <= WORD_ALIGNMENT) {
+    // A single word to write
+    memcpy(reinterpret_cast<uint8_t *>(&partial) + offset,
+           reinterpret_cast<const uint8_t *>(&erased_word) + offset, length);
+    return flash_aligned(reinterpret_cast<const Data *>(address), &partial,
+                         WORD_ALIGNMENT);
+  } else {
+    memcpy(reinterpret_cast<uint8_t *>(&partial) + offset,
+           reinterpret_cast<const uint8_t *>(&erased_word) + offset,
+           WORD_ALIGNMENT - offset);
+    if (!flash_aligned(reinterpret_cast<const Data *>(address), &partial,
+                       WORD_ALIGNMENT)) {
+      return false;
+    }
+  }
+  address += WORD_ALIGNMENT;
+  length -= WORD_ALIGNMENT - offset;
+
+  // Erase the aligned buffer middle
+  offset = compute_offset(address + length, WORD_ALIGNMENT);
+  while (length > offset) {
+    if (!flash_aligned(reinterpret_cast<const Data *>(address), &erased_word,
+                       WORD_ALIGNMENT)) {
+      return false;
+    }
+    address += WORD_ALIGNMENT;
+    length -= WORD_ALIGNMENT;
+  }
+
+  // Erase the unaligned buffer end
+  if (offset > 0) {
+    partial = *reinterpret_cast<const Data *>(address);
+    memcpy(&partial, &erased_word, offset);
+    if (!flash_aligned(reinterpret_cast<const Data *>(address), &partial,
+                       WORD_ALIGNMENT)) {
+      return false;
+    }
+  }
+  return  true;
 }
 
 
