@@ -1,4 +1,3 @@
-
 #include <r2p/transport/RTCANTransport.hpp>
 #include <r2p/transport/RTCANPublisher.hpp>
 #include <r2p/transport/RTCANSubscriber.hpp>
@@ -11,8 +10,6 @@
 #include <hal.h>
 
 namespace r2p {
-
-RTCANTransport * myrtcan; // FIXME !!!!
 
 bool RTCANTransport::send(Message * msgp, RTCANSubscriber * rsubp) {
 	rtcan_msg_t * rtcan_msg_p;
@@ -38,11 +35,8 @@ bool RTCANTransport::send(Message * msgp, RTCANSubscriber * rsubp) {
 }
 
 void RTCANTransport::send_cb(rtcan_msg_t &rtcan_msg) {
-//  RTCANTransport &transport = reinterpret_cast<RTCANTransport &>(rtcan_msg.params);
-//  transport.recv_adv_msg(reinterpret_cast<const adv_msg_t &>(rtcan_msg.data));
-
-	RTCANSubscriber * rsubp = (RTCANSubscriber *) rtcan_msg.params;
-	RTCANTransport * transport = (RTCANTransport *) rsubp->get_transport();
+	RTCANSubscriber * rsubp = reinterpret_cast<RTCANSubscriber *>(rtcan_msg.params);
+	RTCANTransport * transport = reinterpret_cast<RTCANTransport *>(rsubp->get_transport());
 	Message &msg = const_cast<Message &>(Message::get_msg_from_raw_data(rtcan_msg.data));
 
 	rsubp->release_unsafe(msg);
@@ -54,12 +48,12 @@ void RTCANTransport::recv_cb(rtcan_msg_t &rtcan_msg) {
 	Message *msgp = const_cast<Message *>(&Message::get_msg_from_raw_data(rtcan_msg.data));
 
 #if !R2P_USE_BRIDGE_MODE
-    pubp->publish_locally_unsafe(*msgp);
+	pubp->publish_locally_unsafe(*msgp);
 #else
 	R2P_ASSERT(pubp->get_transport() != NULL);
 	MessageGuardUnsafe(*msgp, *pubp->get_topic());
 	msgp->set_source(pubp->get_transport());
-    pubp->publish_locally_unsafe(*msgp);
+	pubp->publish_locally_unsafe(*msgp);
 	pubp->publish_remotely_unsafe(*msgp);
 #endif
 
@@ -76,7 +70,6 @@ void RTCANTransport::free_header(rtcan_msg_t &rtcan_msg) {
 	RTCANTransport * transport = (RTCANTransport *) rtcan_msg.params;
 	transport->header_pool.free_unsafe(&rtcan_msg);
 }
-
 
 RemotePublisher *RTCANTransport::create_publisher(Topic &topic, const uint8_t *raw_params) const {
 	RTCANPublisher * rpubp = new RTCANPublisher(*const_cast<RTCANTransport *>(this));
@@ -101,41 +94,42 @@ RemotePublisher *RTCANTransport::create_publisher(Topic &topic, const uint8_t *r
 }
 
 RemoteSubscriber *RTCANTransport::create_subscriber(Topic &topic, TimestampedMsgPtrQueue::Entry queue_buf[],
-		size_t queue_length, const uint8_t *raw_params) const {
+		size_t queue_length, uint8_t *raw_params) const {
 	RTCANSubscriber *rsubp = new RTCANSubscriber(*const_cast<RTCANTransport *>(this), queue_buf, queue_length);
 
 	// TODO: dynamic ID arbitration
-	// FIXME: ID da raw_params se esiste gia' (altri publisher su stesso topic)
-	(void)raw_params;
+
 	rsubp->rtcan_id = topic_id(topic.get_name());
 
 	return rsubp;
 }
 
+void RTCANTransport::fill_raw_params(Topic & topic, uint8_t * raw_paramsp) {
+	*reinterpret_cast<rtcan_id_t *>(raw_paramsp) = topic_id(topic.get_name());
+}
 
 void RTCANTransport::initialize(const RTCANConfig &rtcan_config) {
+	Topic & mgmt_topic = Middleware::instance.get_mgmt_topic();
+	rtcan_id_t rtcan_id = topic_id(mgmt_topic.get_name());
 
 	rtcanInit();
 	rtcanStart(&rtcan, &rtcan_config);
 
+	mgmt_rsub = reinterpret_cast<RTCANSubscriber *>(create_subscriber(mgmt_topic, mgmt_msgqueue_buf, MGMT_BUFFER_LENGTH, (uint8_t *)&rtcan_id));
+	subscribe(*mgmt_rsub, "R2P", mgmt_msgbuf, MGMT_BUFFER_LENGTH, sizeof(MgmtMsg));
 
-	advertise(mgmt_rpub, "R2P", Time::INFINITE, sizeof(MgmtMsg));
-	subscribe(mgmt_rsub, "R2P", mgmt_msgbuf, MGMT_BUFFER_LENGTH, sizeof(MgmtMsg));
-
-	mgmt_rsub.rtcan_id = topic_id(mgmt_rsub.get_topic()->get_name());
+	mgmt_rpub = reinterpret_cast<RTCANPublisher *>(create_publisher(mgmt_topic, (const uint8_t *)&rtcan_id));
+	advertise(*mgmt_rpub, "R2P", Time::INFINITE, sizeof(MgmtMsg));
 
 	Middleware::instance.add(*this);
 }
 
 RTCANTransport::RTCANTransport(RTCANDriver &rtcan) :
-		Transport("rtcan"), rtcan(rtcan), header_pool(header_buffer, 10), mgmt_rsub(*this, mgmt_msgqueue_buf,
-				MGMT_BUFFER_LENGTH), mgmt_rpub(*this) {
+		Transport("rtcan"), rtcan(rtcan), header_pool(header_buffer, 10) {
 }
 
 RTCANTransport::~RTCANTransport() {
 }
-
-
 
 // FIXME: to implement
 
@@ -162,6 +156,5 @@ rtcan_id_t RTCANTransport::topic_id(const char * namep) const {
 
 	return 255 << 8;
 }
-
 
 } // namespace r2p

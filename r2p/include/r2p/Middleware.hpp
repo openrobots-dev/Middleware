@@ -79,7 +79,7 @@ private:
 #endif // R2P_USE_BRIDGE_MODE
 
 #if R2P_ITERATE_PUBSUB
-  enum { ITER_TIMEOUT_MS = 456 };
+  enum { ITER_TIMEOUT_MS = 500 };
   StaticList<Node>::ConstIterator iter_nodes;
   StaticList<LocalPublisher>::ConstIterator iter_publishers;
   StaticList<LocalSubscriber>::ConstIterator iter_subscribers;

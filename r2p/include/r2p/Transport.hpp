@@ -40,11 +40,11 @@ public:
 protected:
   bool touch_publisher(Topic &topic, const uint8_t *raw_params = NULL);
   bool touch_subscriber(Topic &topic, size_t queue_length,
-                        const uint8_t *raw_params = NULL);
+                        uint8_t *raw_params = NULL);
 
   bool advertise_cb(Topic &topic, const uint8_t *raw_params = NULL);
   bool subscribe_cb(Topic &topic, size_t queue_length,
-                    const uint8_t *raw_params = NULL);
+                    uint8_t *raw_params = NULL);
 
   bool advertise(RemotePublisher &pub, const char *namep,
                  const Time &publish_timeout, size_t type_size);
@@ -67,8 +67,10 @@ protected:
     Topic &topic,
     TimestampedMsgPtrQueue::Entry queue_buf[], // TODO: Make as generic <const void *> argument
     size_t queue_length,
-    const uint8_t *raw_params = NULL
+    uint8_t *raw_params = NULL
   ) const = 0;
+
+  virtual void fill_raw_params(Topic & topic, uint8_t * raw_paramsp);
 
 protected:
   Transport(const char *namep);
@@ -134,5 +136,11 @@ bool Transport::has_name(const Transport &transport, const char *namep) {
                       NamingTraits<Transport>::MAX_LENGTH);
 }
 
+inline
+void Transport::fill_raw_params(Topic & topic, uint8_t * raw_paramsp) {
+
+	(void)topic;
+	(void)raw_paramsp;
+}
 
 } // namespace r2p

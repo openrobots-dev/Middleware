@@ -165,16 +165,18 @@ bool Middleware::advertise(LocalPublisher &pub, const char *namep,
   topicp->advertise(pub, publish_timeout);
   lists_lock.release();
 
-  { SysLock::Scope lock;
-  if (mgmt_pub.get_topic() == NULL) return true; }
+  if (topicp != &mgmt_topic) {
+    { SysLock::Scope lock;
+    if (mgmt_pub.get_topic() == NULL) return true; }
 
-  MgmtMsg *msgp;
-  if (mgmt_pub.alloc(msgp)) {
-    msgp->type = MgmtMsg::ADVERTISE;
-    strncpy(msgp->pubsub.topic, topicp->get_name(),
-            NamingTraits<Topic>::MAX_LENGTH);
-    msgp->pubsub.payload_size = topicp->get_payload_size();
-    mgmt_pub.publish_remotely(*msgp);
+    MgmtMsg *msgp;
+    if (mgmt_pub.alloc(msgp)) {
+      msgp->type = MgmtMsg::ADVERTISE;
+      strncpy(msgp->pubsub.topic, topicp->get_name(),
+              NamingTraits<Topic>::MAX_LENGTH);
+      msgp->pubsub.payload_size = topicp->get_payload_size();
+     mgmt_pub.publish_remotely(*msgp);
+    }
   }
   return true;
 }
@@ -206,19 +208,21 @@ bool Middleware::subscribe(LocalSubscriber &sub, const char *namep,
   topicp->subscribe(sub, msgpool_buflen);
   lists_lock.release();
 
-  for (StaticList<Transport>::Iterator i = transports.begin();
-      i != transports.end(); ++i) {
-    { SysLock::Scope lock;
-    if (mgmt_pub.get_topic() == NULL) return true; }
+  if (topicp != &mgmt_topic) {
+    for (StaticList<Transport>::Iterator i = transports.begin();
+        i != transports.end(); ++i) {
+      { SysLock::Scope lock;
+      if (mgmt_pub.get_topic() == NULL) return true; }
 
-    MgmtMsg *msgp;
-    if (mgmt_pub.alloc(msgp)) {
-      msgp->type = MgmtMsg::SUBSCRIBE_REQUEST;
-      strncpy(msgp->pubsub.topic, topicp->get_name(),
-              NamingTraits<Topic>::MAX_LENGTH);
-      msgp->pubsub.payload_size = topicp->get_payload_size();
-      msgp->pubsub.queue_length = msgpool_buflen;
-      mgmt_pub.publish_remotely(*msgp);
+      MgmtMsg *msgp;
+      if (mgmt_pub.alloc(msgp)) {
+        msgp->type = MgmtMsg::SUBSCRIBE_REQUEST;
+        strncpy(msgp->pubsub.topic, topicp->get_name(),
+                NamingTraits<Topic>::MAX_LENGTH);
+        msgp->pubsub.payload_size = topicp->get_payload_size();
+        msgp->pubsub.queue_length = msgpool_buflen;
+        mgmt_pub.publish_remotely(*msgp);
+      }
     }
   }
   return true;
@@ -315,7 +319,7 @@ void Middleware::do_mgmt_thread() {
     msgp->module.flags.boot_mode = is_bootloader_mode() ? 1 : 0;
 #endif
     SysLock::release();
-    mgmt_pub.publish(*msgp);
+    mgmt_pub.publish_remotely(*msgp); // [MARTINO]: I think local publishing is useless
   }
 
   // Message dispatcher
@@ -383,6 +387,7 @@ void Middleware::do_mgmt_thread() {
       if (!iter_nodes.is_valid()) {
         // Restart nodes iteration
         nodes.restart(iter_nodes);
+        if (&*iter_nodes == &mgmt_node) ++iter_nodes;
         if (iter_nodes.is_valid()) {
           iter_nodes->get_publishers().restart(iter_publishers);
           iter_nodes->get_subscribers().restart(iter_subscribers);
@@ -400,7 +405,7 @@ void Middleware::do_mgmt_thread() {
           msgp->module.flags.boot_mode = is_bootloader_mode() ? 1 : 0;
 #endif
           SysLock::release();
-          mgmt_pub.publish(*msgp);
+          mgmt_pub.publish_remotely(*msgp); // [MARTINO]: I think local publishing is useless
         }
       }
       else if (iter_publishers.is_valid()) {
@@ -439,6 +444,7 @@ void Middleware::do_mgmt_thread() {
       }
       else {
         ++iter_nodes;
+        if (&*iter_nodes == &mgmt_node) ++iter_nodes;
         if (iter_nodes.is_valid()) {
           iter_nodes->get_publishers().restart(iter_publishers);
           iter_nodes->get_subscribers().restart(iter_subscribers);
@@ -505,11 +511,9 @@ void Middleware::do_cmd_subscribe_request(const MgmtMsg &msg) {
 #if R2P_USE_BRIDGE_MODE
   R2P_ASSERT(msg.get_source() != NULL);
   if (topicp != NULL) {
-    msg.get_source()->subscribe_cb(*topicp, msg.pubsub.queue_length);
 #else // R2P_USE_BRIDGE_MODE
   R2P_ASSERT(transports.count() == 1);
   if (topicp != NULL && topicp->has_local_publishers()) {
-    transports.begin()->subscribe_cb(*topicp, msg.pubsub.queue_length);
 #endif // R2P_USE_BRIDGE_MODE
     { SysLock::Scope lock;
     if (mgmt_pub.get_topic() == NULL) return; }
@@ -520,6 +524,13 @@ void Middleware::do_cmd_subscribe_request(const MgmtMsg &msg) {
       strncpy(msgp->pubsub.topic, topicp->get_name(),
               NamingTraits<Topic>::MAX_LENGTH);
       msgp->pubsub.payload_size = topicp->get_payload_size();
+#if R2P_USE_BRIDGE_MODE
+      msg.get_source()->subscribe_cb(*topicp, msg.pubsub.queue_length,
+                                     msgp->pubsub.raw_params);
+#else // R2P_USE_BRIDGE_MODE
+      transports.begin()->subscribe_cb(*topicp, msg.pubsub.queue_length,
+                                       msgp->pubsub.raw_params);
+#endif // R2P_USE_BRIDGE_MODE
       mgmt_pub.publish_remotely(*msgp);
     }
   }

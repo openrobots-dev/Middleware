@@ -33,14 +33,17 @@ bool Transport::touch_publisher(Topic &topic, const uint8_t *raw_params) {
 
 
 bool Transport::touch_subscriber(Topic &topic, size_t queue_length,
-                                 const uint8_t *raw_params) {
+                                 uint8_t *raw_params) {
 
   ScopedLock<Mutex> lock(subscribers_lock);
 
   // Check if the remote subscriber already exists
   RemoteSubscriber *subp;
   subp = subscribers.find_first(BaseSubscriber::has_topic, topic.get_name());
-  if (subp != NULL) return true;
+  if (subp != NULL) {
+	  fill_raw_params(topic, raw_params);
+	  return true;
+  }
 
   // Create a new remote subscriber
   Message *msgpool_bufp = NULL;
@@ -58,6 +61,7 @@ bool Transport::touch_subscriber(Topic &topic, size_t queue_length,
         subp->notify_subscribed(topic);
         topic.subscribe(*subp, queue_length);
         subscribers.link(subp->by_transport);
+        fill_raw_params(topic, raw_params);
         return true;
       }
     }
@@ -89,7 +93,7 @@ bool Transport::advertise_cb(Topic &topic, const uint8_t *raw_params) {
 
 
 bool Transport::subscribe_cb(Topic &topic, size_t queue_length,
-                             const uint8_t *raw_params) {
+                             uint8_t *raw_params) {
 
 #if !R2P_USE_BRIDGE_MODE
   // Process only if there are local publishers
