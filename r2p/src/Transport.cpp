@@ -11,7 +11,7 @@
 namespace r2p {
 
 
-bool Transport::touch_publisher(Topic &topic, const uint8_t *raw_params) {
+bool Transport::touch_publisher(Topic &topic, const uint8_t raw_params[]) {
 
   ScopedLock<Mutex> lock(publishers_lock);
 
@@ -33,7 +33,7 @@ bool Transport::touch_publisher(Topic &topic, const uint8_t *raw_params) {
 
 
 bool Transport::touch_subscriber(Topic &topic, size_t queue_length,
-                                 uint8_t *raw_params) {
+                                 uint8_t raw_params[]) {
 
   ScopedLock<Mutex> lock(subscribers_lock);
 
@@ -55,7 +55,7 @@ bool Transport::touch_subscriber(Topic &topic, size_t queue_length,
   if (msgpool_bufp != NULL) {
     queue_bufp = new TimestampedMsgPtrQueue::Entry[queue_length];
     if (queue_bufp != NULL) {
-      subp = create_subscriber(topic, queue_bufp, queue_length, raw_params);
+      subp = create_subscriber(topic, queue_bufp, queue_length);
       if (subp != NULL) {
         topic.extend_pool(msgpool_bufp, queue_length);
         subp->notify_subscribed(topic);
@@ -74,14 +74,14 @@ bool Transport::touch_subscriber(Topic &topic, size_t queue_length,
 }
 
 
-bool Transport::advertise_cb(Topic &topic, const uint8_t *raw_params) {
+bool Transport::advertise_cb(Topic &topic, const uint8_t raw_params[]) {
 
   return touch_publisher(topic, raw_params);
 }
 
 
 bool Transport::subscribe_cb(Topic &topic, size_t queue_length,
-                             uint8_t *raw_params) {
+                             uint8_t raw_params[]) {
 
   return touch_subscriber(topic, queue_length, raw_params);
 }
@@ -119,10 +119,10 @@ bool Transport::subscribe(RemoteSubscriber &sub, const char *namep,
 }
 
 
-void Transport::fill_raw_params(const Topic &topic, uint8_t *raw_paramsp) {
+void Transport::fill_raw_params(const Topic &topic, uint8_t raw_params[]) {
 
     (void)topic;
-    (void)raw_paramsp;
+    (void)raw_params;
 }
 
 

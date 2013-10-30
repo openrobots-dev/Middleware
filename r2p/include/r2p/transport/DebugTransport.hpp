@@ -61,12 +61,11 @@ public:
 
 private:
   RemotePublisher *create_publisher(Topic &topic,
-                                    const uint8_t *raw_params = NULL) const;
+                                    const uint8_t raw_params[] = NULL) const;
   RemoteSubscriber *create_subscriber(
     Topic &topic,
     TimestampedMsgPtrQueue::Entry queue_buf[],
-    size_t queue_length,
-    uint8_t *raw_params = NULL
+    size_t queue_length
   ) const;
 
   bool spin_tx();
@@ -121,7 +120,7 @@ void DebugTransport::notify_first_sub_unsafe(const DebugSubscriber &sub) {
 
 inline
 RemotePublisher *DebugTransport::create_publisher(Topic &topic,
-                                                  const uint8_t *raw_params)
+                                                  const uint8_t raw_params[])
 const {
 
   (void)topic;
@@ -134,11 +133,9 @@ inline
 RemoteSubscriber *DebugTransport::create_subscriber(
   Topic &topic,
   TimestampedMsgPtrQueue::Entry queue_buf[],
-  size_t queue_length,
-  uint8_t *raw_params) const {
+  size_t queue_length) const {
 
   (void)topic;
-  (void)raw_params;
   return new DebugSubscriber(*const_cast<DebugTransport *>(this),
                              queue_buf, queue_length);
 }

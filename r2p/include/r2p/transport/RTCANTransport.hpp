@@ -42,14 +42,13 @@ public:
   void initialize(const RTCANConfig &rtcan_config);
 
 private:
-  RemotePublisher *create_publisher(Topic &topic, const uint8_t *raw_params = NULL) const;
+  RemotePublisher *create_publisher(Topic &topic, const uint8_t raw_params[] = NULL) const;
   RemoteSubscriber *create_subscriber(
     Topic &topic,
     TimestampedMsgPtrQueue::Entry queue_buf[], // TODO: remove
-    size_t queue_length,
-    uint8_t *raw_params = NULL
+    size_t queue_length
   ) const;
-  void fill_raw_params(const Topic &topic, uint8_t *raw_paramsp);
+  void fill_raw_params(const Topic &topic, uint8_t raw_params[]);
 
 public:
   RTCANTransport(RTCANDriver &rtcan);

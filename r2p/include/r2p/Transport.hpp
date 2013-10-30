@@ -38,13 +38,13 @@ public:
   bool notify_bootload();
 
 protected:
-  bool touch_publisher(Topic &topic, const uint8_t *raw_params = NULL);
+  bool touch_publisher(Topic &topic, const uint8_t raw_params[] = NULL);
   bool touch_subscriber(Topic &topic, size_t queue_length,
-                        uint8_t *raw_params = NULL);
+                        uint8_t raw_params[] = NULL);
 
-  bool advertise_cb(Topic &topic, const uint8_t *raw_params = NULL);
+  bool advertise_cb(Topic &topic, const uint8_t raw_params[] = NULL);
   bool subscribe_cb(Topic &topic, size_t queue_length,
-                    uint8_t *raw_params = NULL);
+                    uint8_t raw_params[] = NULL);
 
   bool advertise(RemotePublisher &pub, const char *namep,
                  const Time &publish_timeout, size_t type_size);
@@ -61,16 +61,15 @@ protected:
                  MessageType msgpool_buf[], size_t msgpool_buflen);
 
   virtual RemotePublisher *create_publisher(Topic &topic,
-                                            const uint8_t *raw_params = NULL)
+                                            const uint8_t raw_params[] = NULL)
                                             const = 0;
   virtual RemoteSubscriber *create_subscriber(
     Topic &topic,
     TimestampedMsgPtrQueue::Entry queue_buf[],
-    size_t queue_length,
-    uint8_t *raw_params = NULL
+    size_t queue_length
   ) const = 0;
 
-  virtual void fill_raw_params(const Topic &topic, uint8_t *raw_paramsp);
+  virtual void fill_raw_params(const Topic &topic, uint8_t raw_params[]);
 
 protected:
   Transport(const char *namep);

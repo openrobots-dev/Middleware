@@ -71,7 +71,7 @@ void RTCANTransport::free_header(rtcan_msg_t &rtcan_msg) {
 	transport->header_pool.free_unsafe(&rtcan_msg);
 }
 
-RemotePublisher *RTCANTransport::create_publisher(Topic &topic, const uint8_t *raw_params) const {
+RemotePublisher *RTCANTransport::create_publisher(Topic &topic, const uint8_t raw_params[]) const {
 	RTCANPublisher * rpubp = new RTCANPublisher(*const_cast<RTCANTransport *>(this));
 	Message * msgp;
 	bool success;
@@ -94,7 +94,7 @@ RemotePublisher *RTCANTransport::create_publisher(Topic &topic, const uint8_t *r
 }
 
 RemoteSubscriber *RTCANTransport::create_subscriber(Topic &topic, TimestampedMsgPtrQueue::Entry queue_buf[],
-		size_t queue_length, uint8_t *raw_params) const {
+		size_t queue_length) const {
 	RTCANSubscriber *rsubp = new RTCANSubscriber(*const_cast<RTCANTransport *>(this), queue_buf, queue_length);
 
 	// TODO: dynamic ID arbitration
@@ -104,8 +104,8 @@ RemoteSubscriber *RTCANTransport::create_subscriber(Topic &topic, TimestampedMsg
 	return rsubp;
 }
 
-void RTCANTransport::fill_raw_params(const Topic &topic, uint8_t *raw_paramsp) {
-	*reinterpret_cast<rtcan_id_t *>(raw_paramsp) = topic_id(topic.get_name());
+void RTCANTransport::fill_raw_params(const Topic &topic, uint8_t raw_params[]) {
+	*reinterpret_cast<rtcan_id_t *>(raw_params) = topic_id(topic.get_name());
 }
 
 void RTCANTransport::initialize(const RTCANConfig &rtcan_config) {
@@ -115,10 +115,10 @@ void RTCANTransport::initialize(const RTCANConfig &rtcan_config) {
 	rtcanInit();
 	rtcanStart(&rtcan, &rtcan_config);
 
-	mgmt_rsub = reinterpret_cast<RTCANSubscriber *>(create_subscriber(mgmt_topic, mgmt_msgqueue_buf, MGMT_BUFFER_LENGTH, (uint8_t *)&rtcan_id));
+	mgmt_rsub = reinterpret_cast<RTCANSubscriber *>(create_subscriber(mgmt_topic, mgmt_msgqueue_buf, MGMT_BUFFER_LENGTH));
 	subscribe(*mgmt_rsub, "R2P", mgmt_msgbuf, MGMT_BUFFER_LENGTH, sizeof(MgmtMsg));
 
-	mgmt_rpub = reinterpret_cast<RTCANPublisher *>(create_publisher(mgmt_topic, (const uint8_t *)&rtcan_id));
+	mgmt_rpub = reinterpret_cast<RTCANPublisher *>(create_publisher(mgmt_topic, reinterpret_cast<const uint8_t *>(&rtcan_id)));
 	advertise(*mgmt_rpub, "R2P", Time::INFINITE, sizeof(MgmtMsg));
 
 	Middleware::instance.add(*this);
