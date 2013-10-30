@@ -65,12 +65,12 @@ protected:
                                             const = 0;
   virtual RemoteSubscriber *create_subscriber(
     Topic &topic,
-    TimestampedMsgPtrQueue::Entry queue_buf[], // TODO: Make as generic <const void *> argument
+    TimestampedMsgPtrQueue::Entry queue_buf[],
     size_t queue_length,
     uint8_t *raw_params = NULL
   ) const = 0;
 
-  virtual void fill_raw_params(Topic & topic, uint8_t * raw_paramsp);
+  virtual void fill_raw_params(const Topic &topic, uint8_t *raw_paramsp);
 
 protected:
   Transport(const char *namep);
@@ -136,11 +136,5 @@ bool Transport::has_name(const Transport &transport, const char *namep) {
                       NamingTraits<Transport>::MAX_LENGTH);
 }
 
-inline
-void Transport::fill_raw_params(Topic & topic, uint8_t * raw_paramsp) {
-
-	(void)topic;
-	(void)raw_paramsp;
-}
 
 } // namespace r2p

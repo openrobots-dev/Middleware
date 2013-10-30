@@ -49,7 +49,7 @@ private:
     size_t queue_length,
     uint8_t *raw_params = NULL
   ) const;
-  void fill_raw_params(Topic & topic, uint8_t * raw_paramsp);
+  void fill_raw_params(const Topic &topic, uint8_t *raw_paramsp);
 
 public:
   RTCANTransport(RTCANDriver &rtcan);

@@ -104,7 +104,7 @@ RemoteSubscriber *RTCANTransport::create_subscriber(Topic &topic, TimestampedMsg
 	return rsubp;
 }
 
-void RTCANTransport::fill_raw_params(Topic & topic, uint8_t * raw_paramsp) {
+void RTCANTransport::fill_raw_params(const Topic &topic, uint8_t *raw_paramsp) {
 	*reinterpret_cast<rtcan_id_t *>(raw_paramsp) = topic_id(topic.get_name());
 }
 

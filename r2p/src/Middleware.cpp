@@ -319,7 +319,7 @@ void Middleware::do_mgmt_thread() {
     msgp->module.flags.boot_mode = is_bootloader_mode() ? 1 : 0;
 #endif
     SysLock::release();
-    mgmt_pub.publish_remotely(*msgp); // [MARTINO]: I think local publishing is useless
+    mgmt_pub.publish_remotely(*msgp);
   }
 
   // Message dispatcher
@@ -405,7 +405,7 @@ void Middleware::do_mgmt_thread() {
           msgp->module.flags.boot_mode = is_bootloader_mode() ? 1 : 0;
 #endif
           SysLock::release();
-          mgmt_pub.publish_remotely(*msgp); // [MARTINO]: I think local publishing is useless
+          mgmt_pub.publish_remotely(*msgp);
         }
       }
       else if (iter_publishers.is_valid()) {
@@ -611,7 +611,7 @@ void Middleware::do_cmd_subscribe_response(const MgmtMsg &msg) {
   R2P_ASSERT(transports.count() == 1);
 
   Topic *topicp = find_topic(msg.pubsub.topic);
-  if (topicp != NULL) {
+  if (topicp != NULL && topicp->has_local_subscribers()) {
     transports.begin()->advertise_cb(*topicp, msg.pubsub.raw_params);
   }
 #endif // R2P_USE_BRIDGE_MODE

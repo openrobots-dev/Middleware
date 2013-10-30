@@ -76,38 +76,14 @@ bool Transport::touch_subscriber(Topic &topic, size_t queue_length,
 
 bool Transport::advertise_cb(Topic &topic, const uint8_t *raw_params) {
 
-#if !R2P_USE_BRIDGE_MODE
-  // Process only if there are local subscribers
-  SysLock::acquire();
-  if (topic.has_local_subscribers()) {
-    SysLock::release();
-    return touch_publisher(topic, raw_params);
-  } else {
-    SysLock::release();
-    return true;
-  }
-#else
   return touch_publisher(topic, raw_params);
-#endif
 }
 
 
 bool Transport::subscribe_cb(Topic &topic, size_t queue_length,
                              uint8_t *raw_params) {
 
-#if !R2P_USE_BRIDGE_MODE
-  // Process only if there are local publishers
-  SysLock::acquire();
-  if (topic.has_local_publishers()) { // FIXME: isn't this already checked? and probably also for advertise_cb() [MARTINO]
-    SysLock::release();
-    return touch_subscriber(topic, queue_length, raw_params);
-  } else {
-    SysLock::release();
-    return true;
-  }
-#else
   return touch_subscriber(topic, queue_length, raw_params);
-#endif
 }
 
 
@@ -140,6 +116,13 @@ bool Transport::subscribe(RemoteSubscriber &sub, const char *namep,
     subscribers_lock.release();
     return false;
   }
+}
+
+
+void Transport::fill_raw_params(const Topic &topic, uint8_t *raw_paramsp) {
+
+    (void)topic;
+    (void)raw_paramsp;
 }
 
 
