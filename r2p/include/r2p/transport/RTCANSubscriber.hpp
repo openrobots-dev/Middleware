@@ -32,8 +32,8 @@ public:
 
 public:
   RTCANSubscriber(RTCANTransport &transport,
-          TimestampedMsgPtrQueue::Entry queue_buf[],
-          size_t queue_length);
+                  TimestampedMsgPtrQueue::Entry queue_buf[],
+                  size_t queue_length);
   virtual ~RTCANSubscriber();
 };
 

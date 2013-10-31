@@ -51,11 +51,13 @@ public:
 
   struct Module {
     char name[NamingTraits<Middleware>::MAX_LENGTH];
+    uint8_t reserved_;
     struct {
       unsigned  stopped     : 1;
       unsigned  rebooted    : 1;
       unsigned  boot_mode   : 1;
-    } flags;
+      unsigned  reserved_   : 5;
+    } R2P_PACKED flags;
   } R2P_PACKED;
 
 public:

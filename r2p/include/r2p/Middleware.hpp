@@ -49,7 +49,7 @@ private:
   ReMutex lists_lock;
 
 
-  enum { MGMT_BUFFER_LENGTH = 5 };
+  enum { MGMT_BUFFER_LENGTH = 10 };
   enum { MGMT_TIMEOUT_MS = 33 };
   Topic mgmt_topic;
   void *mgmt_stackp;

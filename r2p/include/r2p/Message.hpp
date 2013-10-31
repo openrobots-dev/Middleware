@@ -53,6 +53,9 @@ public:
   static size_t get_type_size(size_t payload_size);
 
   template<typename MessageType>
+  static void copy(MessageType &to, const MessageType &from);
+
+  template<typename MessageType>
   static size_t get_payload_size();
 
   template<typename MessageType>
@@ -154,6 +157,14 @@ size_t Message::get_type_size(size_t payload_size) {
 #else
   return payload_size + sizeof(RefcountType);
 #endif
+}
+
+
+template<typename MessageType>
+void Message::copy(MessageType &to, const MessageType &from) {
+
+  static_cast_check<MessageType, Message>();
+  return copy(to, from, sizeof(MessageType));
 }
 
 

@@ -114,7 +114,7 @@ bool Middleware::stop_remote(const char *namep) {
   if (mgmt_pub.alloc(msgp)) {
     msgp->type = MgmtMsg::STOP;
     strncpy(msgp->module.name, namep, NamingTraits<Middleware>::MAX_LENGTH);
-    return mgmt_pub.publish(*msgp);
+    return mgmt_pub.publish_remotely(*msgp);
   }
   return false;
 }
@@ -126,7 +126,7 @@ bool Middleware::reboot_remote(const char *namep, bool bootload) {
   if (mgmt_pub.alloc(msgp)) {
     msgp->type = bootload ? MgmtMsg::BOOTLOAD : MgmtMsg::REBOOT;
     strncpy(msgp->module.name, namep, NamingTraits<Middleware>::MAX_LENGTH);
-    return mgmt_pub.publish(*msgp);
+    return mgmt_pub.publish_remotely(*msgp);
   }
   return false;
 }
@@ -309,6 +309,7 @@ void Middleware::do_mgmt_thread() {
   // Tell it is alive
   MgmtMsg *msgp;
   if (mgmt_pub.alloc(msgp)) {
+    Message::reset_payload(*msgp);
     msgp->type = MgmtMsg::ALIVE;
     strncpy(msgp->module.name, module_namep,
             NamingTraits<Middleware>::MAX_LENGTH);
@@ -330,16 +331,19 @@ void Middleware::do_mgmt_thread() {
         switch (msgp->type) {
         case MgmtMsg::ADVERTISE: {
           do_cmd_advertise(*msgp);
+          mgmt_topic.forward(*msgp, deadline);
           mgmt_sub.release(*msgp);
           break;
         }
         case MgmtMsg::SUBSCRIBE_REQUEST: {
           do_cmd_subscribe_request(*msgp);
+          mgmt_topic.forward(*msgp, deadline);
           mgmt_sub.release(*msgp);
           break;
         }
         case MgmtMsg::SUBSCRIBE_RESPONSE: {
           do_cmd_subscribe_response(*msgp);
+          mgmt_topic.forward(*msgp, deadline);
           mgmt_sub.release(*msgp);
           break;
         }
@@ -348,6 +352,7 @@ void Middleware::do_mgmt_thread() {
                            NamingTraits<Middleware>::MAX_LENGTH)) {
             stop();
           }
+          mgmt_topic.notify_remotes(*msgp, deadline);
           mgmt_sub.release(*msgp);
           break;
         }
@@ -359,6 +364,7 @@ void Middleware::do_mgmt_thread() {
 #endif
             reboot();
           }
+          mgmt_topic.notify_remotes(*msgp, deadline);
           mgmt_sub.release(*msgp);
           break;
         }
@@ -369,11 +375,13 @@ void Middleware::do_mgmt_thread() {
             preload_bootloader_mode(true);
             reboot();
           }
+          mgmt_topic.notify_remotes(*msgp, deadline);
           mgmt_sub.release(*msgp);
           break;
         }
 #endif
         default: {
+          mgmt_topic.notify_remotes(*msgp, deadline);
           mgmt_sub.release(*msgp);
           break;
         }
@@ -395,6 +403,7 @@ void Middleware::do_mgmt_thread() {
 
         // Tell it is alive
         if (mgmt_pub.alloc(msgp)) {
+          Message::reset_payload(*msgp);
           msgp->type = MgmtMsg::ALIVE;
           strncpy(msgp->module.name, module_namep,
                   NamingTraits<Middleware>::MAX_LENGTH);
@@ -471,6 +480,7 @@ void Middleware::do_cmd_advertise(const MgmtMsg &msg) {
 
     MgmtMsg *msgp;
     if (mgmt_pub.alloc(msgp)) {
+      Message::reset_payload(*msgp);
       msgp->type = MgmtMsg::SUBSCRIBE_REQUEST;
       strncpy(msgp->pubsub.topic, topicp->get_name(),
               NamingTraits<Topic>::MAX_LENGTH);
@@ -520,6 +530,7 @@ void Middleware::do_cmd_subscribe_request(const MgmtMsg &msg) {
 
     MgmtMsg *msgp;
     if (mgmt_pub.alloc(msgp)) {
+      Message::reset_payload(*msgp);
       msgp->type = MgmtMsg::SUBSCRIBE_RESPONSE;
       strncpy(msgp->pubsub.topic, topicp->get_name(),
               NamingTraits<Topic>::MAX_LENGTH);
@@ -584,6 +595,8 @@ void Middleware::do_cmd_subscribe_response(const MgmtMsg &msg) {
 
   Topic *topicp = find_topic(msg.pubsub.topic);
   if (topicp != NULL) {
+    msg.get_source()->subscribe_cb(*topicp, topicp->get_max_queue_length(),
+                                   msg.pubsub.raw_params);
     msg.get_source()->advertise_cb(*topicp, msg.pubsub.raw_params);
   }
   else {
@@ -645,7 +658,7 @@ Middleware::Middleware(const char *module_namep, const char *bootloader_namep,
 :
   module_namep(module_namep),
   lists_lock(false),
-  mgmt_topic("R2P", sizeof(MgmtMsg)),
+  mgmt_topic("R2P", sizeof(MgmtMsg), false),
   mgmt_stackp(NULL),
   mgmt_stacklen(0),
   mgmt_threadp(NULL),

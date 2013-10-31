@@ -6,15 +6,6 @@
 namespace r2p {
 
 
-bool BasePublisher::alloc_unsafe(Message *&msgp) {
-
-  R2P_ASSERT(topicp != NULL);
-
-  msgp = topicp->alloc_unsafe();
-  return msgp != NULL;
-}
-
-
 bool BasePublisher::publish_unsafe(Message &msg) {
 
   R2P_ASSERT(topicp != NULL);
@@ -30,6 +21,32 @@ bool BasePublisher::publish_unsafe(Message &msg) {
     topicp->free_unsafe(msg);
   }
 
+  return success;
+}
+
+
+bool BasePublisher::publish_locally_unsafe(Message &msg) {
+
+  R2P_ASSERT(topicp != NULL);
+
+  msg.acquire_unsafe();
+  bool success = topicp->notify_locals_unsafe(msg, Time::now());
+  if (!msg.release_unsafe()) {
+    topicp->free_unsafe(msg);
+  }
+  return success;
+}
+
+
+bool BasePublisher::publish_remotely_unsafe(Message &msg) {
+
+  R2P_ASSERT(topicp != NULL);
+
+  msg.acquire_unsafe();
+  bool success = topicp->notify_remotes_unsafe(msg, Time::now());
+  if (!msg.release_unsafe()) {
+    topicp->free_unsafe(msg);
+  }
   return success;
 }
 

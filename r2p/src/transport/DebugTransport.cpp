@@ -221,6 +221,7 @@ bool DebugTransport::spin_tx() {
   R2P_ASSERT(queue_length > 0);
   SysLock::release();
 
+  bool requeued = false;
   while (queue_length-- > 0) {
     SysLock::acquire();
     sub.fetch_unsafe(msgp, timestamp);
@@ -228,27 +229,25 @@ bool DebugTransport::spin_tx() {
       subp_queue.skip_unsafe();
 
       // Check if there are more messages than the ones expected
-      if (sub.get_queue_count() > 0) {
+      if (!requeued && sub.get_queue_count() > 0) {
+        requeued = true;
         notify_first_sub_unsafe(sub);   // Put this sub into the queue again
       }
     }
     SysLock::release();
 
-    const Topic &topic = *sub.get_topic();
     send_lock.acquire();
+    const Topic &topic = *sub.get_topic();
     if (!send_msg(*msgp, topic.get_payload_size(), topic.get_name(),
                   timestamp + topic.get_publish_timeout())) {
-      bool success = send_char('\r');
-      success = send_char('\n') && success;
-      while (!success) {
-        Thread::sleep(Time::ms(123)); // TODO: configure
-      }
-      send_lock.release();
       sub.release(*msgp);
+      send_char('\r');
+      send_char('\n');
+      send_lock.release();
       return false;
     }
-    send_lock.release();
     sub.release(*msgp);
+    send_lock.release();
   }
   return true;
 }
@@ -271,171 +270,52 @@ bool DebugTransport::spin_rx() {
   if (!expect_char(':')) return false;
   uint8_t length;
   if (!recv_value(length)) return false;
-  if (length > NamingTraits<Topic>::MAX_LENGTH) return false;
+  if (length == 0 || length > NamingTraits<Topic>::MAX_LENGTH) return false;
   memset(namebufp, 0, NamingTraits<Topic>::MAX_LENGTH);
   if (!recv_string(namebufp, length)) return false;
   if (!expect_char(':')) return false;
   cs.add(length);
   cs.add(namebufp, length);
 
-  // Check if it is a management message
-  if (length > 0) { // Normal message
-    // Check if the topic is known
-    Topic *topicp = Middleware::instance.find_topic(namebufp);
-    if (topicp == NULL) return false;
-    RemotePublisher *pubp;
-    pubp = publishers.find_first(BasePublisher::has_topic, topicp->get_name());
-    if (pubp == NULL) return false;
+  // Check if the topic is known
+  Topic *topicp = Middleware::instance.find_topic(namebufp);
+  if (topicp == NULL) return false;
+  RemotePublisher *pubp;
+  pubp = publishers.find_first(BasePublisher::has_topic, topicp->get_name());
+  if (pubp == NULL) return false;
 
-    // Get the payload length
-    if (!recv_value(length)) return false;
-    if (length != topicp->get_payload_size()) return false;
-    cs.add(length);
+  // Get the payload length
+  if (!recv_value(length)) return false;
+  if (length != topicp->get_payload_size()) return false;
+  cs.add(length);
 
-    // Get the payload data
-    Message *msgp;
-    if (!pubp->alloc(msgp)) return false;
+  // Get the payload data
+  Message *msgp;
+  if (!pubp->alloc(msgp)) return false;
 #if R2P_USE_BRIDGE_MODE
-    MessageGuard guard(*msgp, *topicp);
-    msgp->set_source(this);
+  MessageGuard guard(*msgp, *topicp);
+  msgp->set_source(this);
 #endif
-    if (!recv_chunk(const_cast<uint8_t *>(msgp->get_raw_data()), length)) {
-      return false;
-    }
-    cs.add(msgp->get_raw_data(), length);
-
-    // Get the checksum
-    if (!expect_char(':') || !recv_value(length) || !cs.check(length)) {
-      return false;
-    }
-
-    // Forward the message locally
-#if R2P_USE_BRIDGE_MODE
-    bool success;
-    success = pubp->publish_locally(*msgp);
-    success = pubp->publish_remotely(*msgp) && success; // Forward
-    return success;
-#else
-    return pubp->publish_locally(*msgp);
-#endif
+  if (!recv_chunk(const_cast<uint8_t *>(msgp->get_raw_data()), length)) {
+    return false;
   }
-  else { // Management message
-    // Read the management message type character
-    char typechar;
-    size_t queue_length;
+  cs.add(msgp->get_raw_data(), length);
 
-    if (!recv_char(typechar)) return false;
-    typechar = static_cast<char>(tolower(typechar));
-    cs.add(typechar);
-
-    switch (typechar) {
-    case 's':
-        // Get the queue length
-        if (!recv_value(length) || length == 0) return false;
-        cs.add(length);
-        queue_length = length;
-        /* no break */
-    case 'e':
-    case 'p': {
-      // Get the module name (ignored)
-      if (!expect_char(':')) return false;
-      if (!recv_value(length)) return false;
-      if (length < 1 || length > NamingTraits<Middleware>::MAX_LENGTH) {
-        return false;
-      }
-      memset(namebufp, 0, NamingTraits<Topic>::MAX_LENGTH);
-      if (!recv_string(namebufp, length)) return false;
-      cs.add(length);
-      cs.add(namebufp, length);
-
-      // Get the topic name
-      if (!expect_char(':')) return false;
-      if (!recv_value(length)) return false;
-      if (length < 1 || length > NamingTraits<Topic>::MAX_LENGTH) {
-        return false;
-      }
-      memset(namebufp, 0, NamingTraits<Topic>::MAX_LENGTH);
-      if (!recv_string(namebufp, length)) return false;
-      cs.add(length);
-      cs.add(namebufp, length);
-
-      // Get the payload size
-      if (!expect_char(':')) return false;
-      uint16_t type_size;
-      if (!recv_value(type_size)) return false;
-      cs.add(type_size);
-
-      MgmtMsg *msgp;
-      if (!mgmt_rpub.alloc(reinterpret_cast<Message *&>(msgp))) return false;
-#if R2P_USE_BRIDGE_MODE
-      MessageGuard guard(*msgp, *mgmt_rpub.get_topic());
-      msgp->set_source(this);
-#endif
-      strncpy(msgp->pubsub.topic, namebufp, NamingTraits<Topic>::MAX_LENGTH);
-      msgp->pubsub.payload_size = type_size;
-
-      switch (typechar) {
-      case 'p': {
-        msgp->type = MgmtMsg::ADVERTISE;
-        break;
-      }
-      case 's': {
-        msgp->type = MgmtMsg::SUBSCRIBE_REQUEST;
-        msgp->pubsub.queue_length = static_cast<uint16_t>(queue_length);
-        break;
-      }
-      case 'e': {
-        msgp->type = MgmtMsg::SUBSCRIBE_RESPONSE;
-        break;
-      }
-      }
-
-      // Get the checksum
-      if (!expect_char(':') || !recv_value(length) || !cs.check(length)) {
-        return false;
-      }
-
-#if R2P_USE_BRIDGE_MODE
-      bool success;
-      success = mgmt_rpub.publish_locally(*msgp);
-      success = mgmt_rpub.publish_remotely(*msgp) && success; // Forward
-      return success;
-#else
-      return mgmt_rpub.publish_locally(*msgp);
-#endif
-    }
-    case 't': {
-      // Get the checksum
-      if (!expect_char(':') || !recv_value(length) || !cs.check(length)) {
-        return false;
-      }
-
-      Middleware::instance.stop();
-      return true;
-    }
-    case 'r': {
-      // Get the checksum
-      if (!expect_char(':') || !recv_value(length) || !cs.check(length)) {
-        return false;
-      }
-
-      Middleware::instance.preload_bootloader_mode(false);
-      Middleware::instance.reboot();
-      return true;
-    }
-    case 'b': {
-      // Get the checksum
-      if (!expect_char(':') || !recv_value(length) || !cs.check(length)) {
-        return false;
-      }
-
-      Middleware::instance.preload_bootloader_mode(true);
-      Middleware::instance.reboot();
-      return true;
-    }
-    default: return false;
-    }
+  // Get the checksum
+  if (!expect_char(':') || !recv_value(length) || !cs.check(length)) {
+    return false;
   }
+
+  // Forward the message locally
+#if R2P_USE_BRIDGE_MODE
+  bool success = pubp->publish_locally(*msgp);
+  if (pubp->get_topic()->is_forwarding()) {
+    success = success && pubp->publish_remotely(*msgp);
+  }
+  return success;
+#else
+  return pubp->publish_locally(*msgp);
+#endif
 }
 
 

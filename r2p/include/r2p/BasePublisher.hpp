@@ -61,20 +61,12 @@ void BasePublisher::notify_advertised(Topic &topic) {
 
 
 inline
-bool BasePublisher::publish_locally_unsafe(Message &msg) {
+bool BasePublisher::alloc_unsafe(Message *&msgp) {
 
   R2P_ASSERT(topicp != NULL);
 
-  return topicp->notify_locals_unsafe(msg, Time::now());
-}
-
-
-inline
-bool BasePublisher::publish_remotely_unsafe(Message &msg) {
-
-  R2P_ASSERT(topicp != NULL);
-
-  return topicp->notify_remotes_unsafe(msg, Time::now());
+  msgp = topicp->alloc_unsafe();
+  return msgp != NULL;
 }
 
 

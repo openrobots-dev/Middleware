@@ -40,6 +40,7 @@ public:
   rtcan_id_t topic_id(const char * namep) const; // FIXME
 
   void initialize(const RTCANConfig &rtcan_config);
+  void fill_raw_params(const Topic &topic, uint8_t raw_params[]);
 
 private:
   RemotePublisher *create_publisher(Topic &topic, const uint8_t raw_params[] = NULL) const;
@@ -48,7 +49,6 @@ private:
     TimestampedMsgPtrQueue::Entry queue_buf[], // TODO: remove
     size_t queue_length
   ) const;
-  void fill_raw_params(const Topic &topic, uint8_t raw_params[]);
 
 public:
   RTCANTransport(RTCANDriver &rtcan);

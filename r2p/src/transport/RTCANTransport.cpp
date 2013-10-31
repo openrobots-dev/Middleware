@@ -47,14 +47,16 @@ void RTCANTransport::recv_cb(rtcan_msg_t &rtcan_msg) {
 	RTCANPublisher* pubp = static_cast<RTCANPublisher *>(rtcan_msg.params);
 	Message *msgp = const_cast<Message *>(&Message::get_msg_from_raw_data(rtcan_msg.data));
 
-#if !R2P_USE_BRIDGE_MODE
-	pubp->publish_locally_unsafe(*msgp);
-#else
+#if R2P_USE_BRIDGE_MODE
 	R2P_ASSERT(pubp->get_transport() != NULL);
-	MessageGuardUnsafe(*msgp, *pubp->get_topic());
+	{ MessageGuardUnsafe guard(*msgp, *pubp->get_topic());
 	msgp->set_source(pubp->get_transport());
-	pubp->publish_locally_unsafe(*msgp);
-	pubp->publish_remotely_unsafe(*msgp);
+    pubp->publish_locally_unsafe(*msgp);
+    if (pubp->get_topic()->is_forwarding()) {
+      pubp->publish_remotely_unsafe(*msgp);
+    } }
+#else
+    pubp->publish_locally_unsafe(*msgp);
 #endif
 
 	// allocate again for next message from RTCAN
@@ -125,7 +127,7 @@ void RTCANTransport::initialize(const RTCANConfig &rtcan_config) {
 }
 
 RTCANTransport::RTCANTransport(RTCANDriver &rtcan) :
-		Transport("rtcan"), rtcan(rtcan), header_pool(header_buffer, 10) {
+		Transport("rtcan"), rtcan(rtcan), header_pool(header_buffer, 10), mgmt_rsub(NULL), mgmt_rpub(NULL) {
 }
 
 RTCANTransport::~RTCANTransport() {
@@ -153,6 +155,9 @@ rtcan_id_t RTCANTransport::topic_id(const char * namep) const {
 
 	if (strncmp(namep, "velocity", NamingTraits<Topic>::MAX_LENGTH) == 0)
 		return VELOCITY_ID | stm32_id8();
+
+    if (strncmp(namep, "BOOT_IMU", NamingTraits<Topic>::MAX_LENGTH) == 0)
+        return 201 << 8 | stm32_id8();
 
 	return 255 << 8;
 }

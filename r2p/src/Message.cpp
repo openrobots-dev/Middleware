@@ -30,16 +30,16 @@ void Message::reset() {
 }
 
 
-void Message::copy(Message &to, const Message &from, size_t msg_size) {
+void Message::copy(Message &to, const Message &from, size_t type_size) {
 
-  R2P_ASSERT(msg_size >= sizeof(RefcountType));
+  R2P_ASSERT(type_size >= sizeof(RefcountType));
 
-  memcpy(
+  memcpy( // TODO: just copy the payload with payload_size instead of type_size
     &to.refcount + 1, &from.refcount + 1,
 #if R2P_USE_BRIDGE_MODE
-    msg_size - (sizeof(Transport *) + sizeof(RefcountType))
+    type_size - (sizeof(Transport *) + sizeof(RefcountType))
 #else
-    msg_size - sizeof(RefcountType)
+    type_size - sizeof(RefcountType)
 #endif
   );
 }

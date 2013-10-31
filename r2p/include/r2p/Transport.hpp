@@ -37,6 +37,8 @@ public:
   bool notify_reboot();
   bool notify_bootload();
 
+  virtual void fill_raw_params(const Topic &topic, uint8_t raw_params[]);
+
 protected:
   bool touch_publisher(Topic &topic, const uint8_t raw_params[] = NULL);
   bool touch_subscriber(Topic &topic, size_t queue_length,
@@ -68,8 +70,6 @@ protected:
     TimestampedMsgPtrQueue::Entry queue_buf[],
     size_t queue_length
   ) const = 0;
-
-  virtual void fill_raw_params(const Topic &topic, uint8_t raw_params[]);
 
 protected:
   Transport(const char *namep);

@@ -8,6 +8,11 @@
 
 namespace r2p {
 
+#if !defined(R2P_DEFAULT_FORWARDING) || defined(__DOXYGEN__)
+#define R2P_DEFAULT_FORWARDING_RULE     R2P_USE_BRIDGE_MODE
+#endif
+
+
 class Message;
 class LocalPublisher;
 class LocalSubscriber;
@@ -27,6 +32,9 @@ private:
   StaticList<LocalSubscriber> local_subscribers;
   StaticList<RemoteSubscriber> remote_subscribers;
   size_t max_queue_length;
+#if R2P_USE_BRIDGE_MODE
+  bool forwarding;
+#endif
 
   StaticList<Topic>::Link by_middleware;
 
@@ -36,6 +44,7 @@ public:
   size_t get_type_size() const;
   size_t get_payload_size() const;
   size_t get_max_queue_length() const;
+  bool is_forwarding() const;
 
   bool has_local_publishers() const;
   bool has_remote_publishers() const;
@@ -50,6 +59,7 @@ public:
   void free_unsafe(Message &msg);
   bool notify_locals_unsafe(Message &msg, const Time &timestamp);
   bool notify_remotes_unsafe(Message &msg, const Time &timestamp);
+  bool forward_unsafe(const Message &msg, const Time &timestamp);
 
   Message *alloc();
   template<typename MessageType> bool alloc(MessageType *&msgp);
@@ -57,6 +67,7 @@ public:
   void free(Message &msg);
   bool notify_locals(Message &msg, const Time &timestamp);
   bool notify_remotes(Message &msg, const Time &timestamp);
+  bool forward(const Message &msg, const Time &timestamp);
   void extend_pool(Message array[], size_t arraylen);
 
   void advertise(LocalPublisher &pub, const Time &publish_timeout);
@@ -64,8 +75,12 @@ public:
   void subscribe(LocalSubscriber &sub, size_t queue_length);
   void subscribe(RemoteSubscriber &sub, size_t queue_length);
 
+private:
+  void patch_pubsub_msg(Message &msg, Transport &transport) const;
+
 public:
-  Topic(const char *namep, size_t type_size);
+  Topic(const char *namep, size_t type_size,
+        bool forwarding = R2P_DEFAULT_FORWARDING_RULE);
 
 public:
   static bool has_name(const Topic &topic, const char *namep);
@@ -137,6 +152,17 @@ inline
 size_t Topic::get_max_queue_length() const {
 
   return max_queue_length;
+}
+
+
+inline
+bool Topic::is_forwarding() const {
+
+#if R2P_USE_BRIDGE_MODE
+  return forwarding;
+#else
+  return R2P_DEFAULT_FORWARDING_RULE;
+#endif
 }
 
 
@@ -244,26 +270,6 @@ inline
 void Topic::free(Message &msg) {
 
   msg_pool.free(reinterpret_cast<void *>(&msg));
-}
-
-
-inline
-bool Topic::notify_locals(Message &msg, const Time &timestamp) {
-
-  SysLock::acquire();
-  bool success = notify_locals_unsafe(msg, timestamp);
-  SysLock::release();
-  return success;
-}
-
-
-inline
-bool Topic::notify_remotes(Message &msg, const Time &timestamp) {
-
-  SysLock::acquire();
-  bool success = notify_remotes_unsafe(msg, timestamp);
-  SysLock::release();
-  return success;
 }
 
 

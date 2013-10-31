@@ -21,6 +21,7 @@ size_t DebugSubscriber::get_queue_count() const {
 bool DebugSubscriber::notify_unsafe(Message &msg, const Time &timestamp) {
 
   TimestampedMsgPtrQueue::Entry entry(&msg, timestamp);
+
   if (tmsgp_queue.post_unsafe(entry)) {
     if (tmsgp_queue.get_count() == 1) {
       static_cast<DebugTransport *>(get_transport())
