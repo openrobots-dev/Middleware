@@ -140,13 +140,16 @@ RTCANTransport::~RTCANTransport() {
 #include <r2p/msg/imu.hpp>
 
 rtcan_id_t RTCANTransport::topic_id(const char * namep) const {
-	if (strncmp(namep, "R2P", NamingTraits<Topic>::MAX_LENGTH) == 0)
-		return 1 << 8 | stm32_id8();
+
+  if (strncmp(namep, "R2P", NamingTraits<Topic>::MAX_LENGTH) == 0)
+		return (1 << 8) | stm32_id8();
+
 	if (strncmp(namep, "leds", NamingTraits<Topic>::MAX_LENGTH) == 0)
 		return LEDS_ID | stm32_id8();
 
 	if (strncmp(namep, "pwm2", NamingTraits<Topic>::MAX_LENGTH) == 0)
 		return PWM2_ID | stm32_id8();
+
 	if (strncmp(namep, "qei", NamingTraits<Topic>::MAX_LENGTH) == 0)
 		return QEI_ID | stm32_id8();
 
@@ -157,9 +160,9 @@ rtcan_id_t RTCANTransport::topic_id(const char * namep) const {
 		return VELOCITY_ID | stm32_id8();
 
     if (strncmp(namep, "BOOT_IMU", NamingTraits<Topic>::MAX_LENGTH) == 0)
-        return 201 << 8 | stm32_id8();
+        return (201 << 8) | stm32_id8();
 
-	return 255 << 8;
+	return (255 << 8);
 }
 
 } // namespace r2p

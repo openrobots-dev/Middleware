@@ -50,7 +50,7 @@ bool Topic::notify_remotes_unsafe(Message &msg, const Time &timestamp) {
 }
 
 
-bool Topic::forward_unsafe(const Message &msg, const Time &timestamp) {
+bool Topic::forward_copy_unsafe(const Message &msg, const Time &timestamp) {
 
   bool all = true;
 
@@ -134,7 +134,7 @@ bool Topic::notify_remotes(Message &msg, const Time &timestamp) {
 }
 
 
-bool Topic::forward(const Message &msg, const Time &timestamp) {
+bool Topic::forward_copy(const Message &msg, const Time &timestamp) {
 
   bool all = true;
 
@@ -217,14 +217,18 @@ void Topic::patch_pubsub_msg(Message &msg, Transport &transport) const {
   if (this != &Middleware::instance.get_mgmt_topic()) return;
 
   MgmtMsg &mgmt_msg = static_cast<MgmtMsg &>(msg);
+
   switch (mgmt_msg.type) {
   case MgmtMsg::ADVERTISE:
   case MgmtMsg::SUBSCRIBE_REQUEST:
   case MgmtMsg::SUBSCRIBE_RESPONSE: {
-    transport.fill_raw_params(*this, mgmt_msg.pubsub.raw_params);
+    // TODO: Get the topic from a reference in function parameters, to speed up
+    Topic *topicp = Middleware::instance.find_topic(mgmt_msg.pubsub.topic);
+    if (topicp != NULL) {
+      transport.fill_raw_params(*topicp, mgmt_msg.pubsub.raw_params);
+    }
     break;
   }
-  default: break;
   }
 }
 

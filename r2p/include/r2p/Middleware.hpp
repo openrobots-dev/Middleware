@@ -36,7 +36,8 @@ public:
     PubSubStep  *nextp;
     Time        timestamp;
     Transport   *transportp;
-    size_t      payload_size;
+    uint16_t    payload_size;
+    uint16_t    queue_length;
     char        topic[NamingTraits<Topic>::MAX_LENGTH];
     uint8_t     type;
   };
@@ -158,7 +159,7 @@ private:
 #endif
 
 public:
-  static bool has_rebooted();
+  static bool is_rebooted();
   static bool is_bootloader_mode();
 };
 
@@ -221,7 +222,7 @@ void Middleware::preload_bootloader_mode(bool enable) {
 
 
 inline
-bool Middleware::has_rebooted() {
+bool Middleware::is_rebooted() {
 
   return rebooted_magic == REBOOTED_MAGIC;
 }

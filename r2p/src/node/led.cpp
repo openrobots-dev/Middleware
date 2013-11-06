@@ -108,8 +108,6 @@ msg_t ledsub_node(void * arg) {
 	for (;;) {
 		if (!node.spin(Time::ms(1000))) {
 			palTogglePad((GPIO_TypeDef *)led2gpio(4), led2pin(4));
-		} else {
-			palSetPad((GPIO_TypeDef *)led2gpio(4), led2pin(4));
 		}
 	}
 	return CH_SUCCESS;

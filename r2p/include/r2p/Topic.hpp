@@ -48,26 +48,33 @@ public:
 
   bool has_local_publishers() const;
   bool has_remote_publishers() const;
+  bool has_publishers() const;
   bool has_local_subscribers() const;
   bool has_remote_subscribers() const;
+  bool has_subscribers() const;
   bool is_awaiting_advertisements() const;
   bool is_awaiting_subscriptions() const;
 
+  const Time compute_deadline_unsafe(const Time &timestamp) const;
+  const Time compute_deadline_unsafe() const;
   Message *alloc_unsafe();
   template<typename MessageType> bool alloc_unsafe(MessageType *&msgp);
   bool release_unsafe(Message &msg);
   void free_unsafe(Message &msg);
   bool notify_locals_unsafe(Message &msg, const Time &timestamp);
   bool notify_remotes_unsafe(Message &msg, const Time &timestamp);
-  bool forward_unsafe(const Message &msg, const Time &timestamp);
+  bool forward_copy_unsafe(const Message &msg, const Time &timestamp);
 
+
+  const Time compute_deadline(const Time &timestamp) const;
+  const Time compute_deadline() const;
   Message *alloc();
   template<typename MessageType> bool alloc(MessageType *&msgp);
   bool release(Message &msg);
   void free(Message &msg);
   bool notify_locals(Message &msg, const Time &timestamp);
   bool notify_remotes(Message &msg, const Time &timestamp);
-  bool forward(const Message &msg, const Time &timestamp);
+  bool forward_copy(const Message &msg, const Time &timestamp);
   void extend_pool(Message array[], size_t arraylen);
 
   void advertise(LocalPublisher &pub, const Time &publish_timeout);
@@ -167,6 +174,27 @@ bool Topic::is_forwarding() const {
 
 
 inline
+bool Topic::has_local_publishers() const {
+
+  return num_local_publishers > 0;
+}
+
+
+inline
+bool Topic::has_remote_publishers() const {
+
+  return num_remote_publishers > 0;
+}
+
+
+inline
+bool Topic::has_publishers() const {
+
+  return num_local_publishers > 0 || num_remote_publishers > 0;
+}
+
+
+inline
 bool Topic::has_local_subscribers() const {
 
   return !local_subscribers.is_empty_unsafe();
@@ -181,16 +209,10 @@ bool Topic::has_remote_subscribers() const {
 
 
 inline
-bool Topic::has_local_publishers() const {
+bool Topic::has_subscribers() const {
 
-  return num_local_publishers > 0;
-}
-
-
-inline
-bool Topic::has_remote_publishers() const {
-
-  return num_remote_publishers > 0;
+  return !local_subscribers.is_empty_unsafe() ||
+         !remote_subscribers.is_empty_unsafe();
 }
 
 
@@ -207,6 +229,20 @@ bool Topic::is_awaiting_subscriptions() const {
 
   return !has_local_subscribers() && !has_remote_subscribers() &&
          has_local_publishers();
+}
+
+
+inline
+const Time Topic::compute_deadline_unsafe(const Time &timestamp) const {
+
+  return timestamp + publish_timeout;
+}
+
+
+inline
+const Time Topic::compute_deadline_unsafe() const {
+
+  return compute_deadline_unsafe(Time::now());
 }
 
 
@@ -245,6 +281,23 @@ inline
 void Topic::free_unsafe(Message &msg) {
 
   msg_pool.free_unsafe(reinterpret_cast<void *>(&msg));
+}
+
+
+inline
+const Time Topic::compute_deadline(const Time &timestamp) const {
+
+  SysLock::acquire();
+  const Time &deadline = compute_deadline_unsafe(timestamp);
+  SysLock::release();
+  return deadline;
+}
+
+
+inline
+const Time Topic::compute_deadline() const {
+
+  return compute_deadline(Time::now());
 }
 
 

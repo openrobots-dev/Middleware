@@ -41,8 +41,8 @@ bool Transport::touch_subscriber(Topic &topic, size_t queue_length,
   RemoteSubscriber *subp;
   subp = subscribers.find_first(BaseSubscriber::has_topic, topic.get_name());
   if (subp != NULL) {
-	  fill_raw_params(topic, raw_params);
-	  return true;
+    fill_raw_params(topic, raw_params);
+    return true;
   }
 
   // Create a new remote subscriber
@@ -121,8 +121,10 @@ bool Transport::subscribe(RemoteSubscriber &sub, const char *namep,
 
 void Transport::fill_raw_params(const Topic &topic, uint8_t raw_params[]) {
 
-    (void)topic;
-    (void)raw_params;
+  (void)topic;
+  (void)raw_params;
+
+  memset(raw_params, 0xCC, MgmtMsg::PubSub::MAX_RAW_PARAMS_LENGTH);
 }
 
 

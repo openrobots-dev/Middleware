@@ -1,30 +1,31 @@
 #include "common.hpp"
-
-using namespace r2p;
+#include <r2p/node/led.hpp>
+#include <r2p/msg/led.hpp>
 
 
 struct AppConfig {
     uint32_t    spin_delay_ms;
-    char        led_topic_name[NamingTraits<Topic>::MAX_LENGTH + 1];
-    char        sub_node_name[NamingTraits<Node>::MAX_LENGTH + 1];
-};
+    char        led_topic_name[r2p::NamingTraits<r2p::Topic>::MAX_LENGTH + 1];
+    char        sub_node_name[r2p::NamingTraits<r2p::Node>::MAX_LENGTH + 1];
+} R2P_PACKED;
 
 
 const AppConfig app_config R2P_APP_CONFIG = {
     500,
-    "LED",
+    "leds",
     "LED_SUB"
 };
 
 
-static bool led_callback(const LedMsg &msg) {
+static bool led_callback(const r2p::LedMsg &msg) {
 
-    unsigned led_pin_id = led2pin(msg.id);
+    unsigned led_pin = r2p::led2pin(msg.led);
+    ioportid_t led_gpio = r2p::led2gpio(msg.led);
     
-    if (msg.on) {
-        palClearPad(LED_GPIO, led_pin_id);
+    if (msg.value) {
+        palClearPad(led_gpio, led_pin);
     } else {
-        palSetPad(LED_GPIO, led_pin_id);
+        palSetPad(led_gpio, led_pin);
     }
     return true;
 }
@@ -35,16 +36,14 @@ void app_main(void) {
     
     enum { QUEUE_LENGTH = 4 };
 
-    LedMsg sub_msgbuf[QUEUE_LENGTH], *sub_queue[QUEUE_LENGTH];
+    r2p::LedMsg sub_msgbuf[QUEUE_LENGTH], *sub_queue[QUEUE_LENGTH];
     r2p::Node node(app_config.sub_node_name);
-    r2p::Subscriber<LedMsg> sub(sub_queue, QUEUE_LENGTH, led_callback);
+    r2p::Subscriber<r2p::LedMsg> sub(sub_queue, QUEUE_LENGTH, led_callback);
 
     node.subscribe(sub, app_config.led_topic_name, sub_msgbuf);
     
     while (r2p::ok()) {
-        if (!node.spin(Time::ms(app_config.spin_delay_ms))) {
-            palTogglePad(LED_GPIO, LED4);
-        }
+        node.spin(r2p::Time::ms(app_config.spin_delay_ms));
     }
 }
 

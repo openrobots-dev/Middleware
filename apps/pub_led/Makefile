@@ -77,6 +77,7 @@ CSRC =
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
 CPPSRC = ../common/common.cpp \
+         $(R2P)/src/node/led.cpp \
          pub_led.cpp
 
 # C sources to be compiled in ARM mode regardless of the global setting.

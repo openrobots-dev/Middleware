@@ -33,10 +33,6 @@ public:
   const StaticList<RemotePublisher> &get_publishers() const;
   const StaticList<RemoteSubscriber> &get_subscribers() const;
 
-  bool notify_stop();
-  bool notify_reboot();
-  bool notify_bootload();
-
   virtual void fill_raw_params(const Topic &topic, uint8_t raw_params[]);
 
 protected:
