@@ -2,7 +2,7 @@
 #include <r2p/Bootloader.hpp>
 #include <r2p/Thread.hpp>
 #include <r2p/Publisher.hpp>
-#include <r2p/Subscriber.hpp>
+#include <r2p/SubscriberExtBuf.hpp>
 
 #if R2P_USE_BOOTLOADER
 namespace r2p {
@@ -588,7 +588,7 @@ bool Bootloader::remove_all() {
 
 Bootloader::Bootloader(Flasher::Data *flash_page_bufp,
                        Publisher<BootMsg> &pub,
-                       Subscriber<BootMsg> &sub)
+                       SubscriberExtBuf<BootMsg> &sub)
 :
   basep(NULL),
   flasher(flash_page_bufp),

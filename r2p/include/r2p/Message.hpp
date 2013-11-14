@@ -160,7 +160,7 @@ size_t Message::get_type_size(size_t payload_size) {
 }
 
 
-template<typename MessageType>
+template<typename MessageType> inline
 void Message::copy(MessageType &to, const MessageType &from) {
 
   static_cast_check<MessageType, Message>();

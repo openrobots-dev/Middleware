@@ -9,12 +9,13 @@
 
 namespace r2p {
 
+class Message;
 class Topic;
 class LocalPublisher;
 class LocalSubscriber;
-template<typename Message> class Publisher;
-template<typename Message> class Subscriber;
-class Message;
+template<typename MessageType> class Publisher;
+template<typename MessageType> class SubscriberExtBuf;
+template<typename MessageType, unsigned QUEUE_LENGTH> class Subscriber;
 
 
 class Node : private Uncopyable {
@@ -36,13 +37,15 @@ public:
   bool get_enabled() const;
   void set_enabled(bool enabled);
 
-  template<typename MessageType>
-  bool advertise(Publisher<MessageType> &pub, const char *namep,
+  template<typename MT>
+  bool advertise(Publisher<MT> &pub, const char *namep,
                  const Time &publish_timeout = Time::INFINITE);
 
-  template<typename MessageType>
-  bool subscribe(Subscriber<MessageType> &sub, const char *namep,
-                 MessageType msgpool_buf[]);
+  template<typename MT>
+  bool subscribe(SubscriberExtBuf<MT> &sub, const char *namep, MT mgpool_buf[]);
+
+  template<typename MT, unsigned QL>
+  bool subscribe(Subscriber<MT, QL> &sub, const char *namep);
 
   void notify_unsafe(unsigned event_index);
   void notify_stop_unsafe();
@@ -70,6 +73,7 @@ public:
 } // namespace r2p
 
 #include <r2p/Thread.hpp>
+#include <r2p/Subscriber.hpp>
 
 namespace r2p {
 
@@ -117,11 +121,18 @@ bool Node::advertise(Publisher<MessageType> &pub, const char *namep,
 }
 
 
-template<typename MessageType> inline
-bool Node::subscribe(Subscriber<MessageType> &sub, const char *namep,
-                     MessageType msgpool_buf[]) {
+template<typename MT> inline
+bool Node::subscribe(SubscriberExtBuf<MT> &sub, const char *namep,
+                     MT msgpool_buf[]) {
 
-  return subscribe(sub, namep, msgpool_buf, sizeof(MessageType));
+  return subscribe(sub, namep, msgpool_buf, sizeof(MT));
+}
+
+
+template<typename MT, unsigned QL> inline
+bool Node::subscribe(Subscriber<MT, QL> &sub, const char *namep) {
+
+  return subscribe(sub, namep, sub.msgpool_buf, sizeof(MT));
 }
 
 

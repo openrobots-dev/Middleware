@@ -8,6 +8,7 @@
 #include <r2p/MgmtMsg.hpp>
 #include <r2p/Publisher.hpp>
 #include <r2p/Subscriber.hpp>
+#include <r2p/SubscriberExtBuf.hpp>
 #include <r2p/Node.hpp>
 #include <r2p/Bootloader.hpp>
 #include <r2p/ReMutex.hpp>
@@ -59,7 +60,7 @@ private:
   Thread::Priority mgmt_priority;
   Node mgmt_node;
   Publisher<MgmtMsg> mgmt_pub;
-  Subscriber<MgmtMsg> mgmt_sub;
+  SubscriberExtBuf<MgmtMsg> mgmt_sub;
   MgmtMsg *mgmt_queue_buf[MGMT_BUFFER_LENGTH];
   MgmtMsg mgmt_msg_buf[MGMT_BUFFER_LENGTH];
 

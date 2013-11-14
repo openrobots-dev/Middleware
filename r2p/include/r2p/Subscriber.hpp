@@ -1,80 +1,41 @@
 #pragma once
 
 #include <r2p/common.hpp>
-#include <r2p/LocalSubscriber.hpp>
+#include <r2p/SubscriberExtBuf.hpp>
 
 namespace r2p {
 
 class Time;
 class Message;
+class Node;
 
 
-template<typename MessageType>
-class Subscriber : public LocalSubscriber {
-public:
-  typedef bool (*Callback)(const MessageType &msg);
-
-public:
-  Callback get_callback() const;
-  bool fetch(MessageType *&msgp);
-  bool fetch(MessageType *&msgp, Time &timestamp);
-  bool release(MessageType &msg);
+template<typename MessageType, unsigned QUEUE_LENGTH>
+class Subscriber : public SubscriberExtBuf<MessageType> {
+  friend class Node;
 
 public:
-  Subscriber(MessageType *queue_buf[], size_t queue_length,
-             Callback callback = NULL);
+  typedef typename SubscriberExtBuf<MessageType>::Callback Callback;
+
+private:
+  MessageType msgpool_buf[QUEUE_LENGTH];
+  MessageType *queue_buf[QUEUE_LENGTH];
+
+public:
+  Subscriber(Callback callback = NULL);
   ~Subscriber();
 };
 
-template<typename MessageType> inline
-bool Subscriber<MessageType>::fetch(MessageType *&msgp) {
 
-  return LocalSubscriber::fetch(
-    reinterpret_cast<Message *&>(msgp));
-}
-
-template<typename MessageType> inline
-bool Subscriber<MessageType>::fetch(MessageType *&msgp, Time &timestamp) {
-
-  static_cast_check<MessageType, Message>();
-  return LocalSubscriber::fetch(
-    reinterpret_cast<Message *&>(msgp), timestamp
-  );
-}
-
-
-template<typename MessageType> inline
-typename Subscriber<MessageType>::Callback
-Subscriber<MessageType>::get_callback() const {
-
-  return reinterpret_cast<Callback>(LocalSubscriber::get_callback());
-}
-
-
-template<typename MessageType> inline
-bool Subscriber<MessageType>::release(MessageType &msg) {
-
-  static_cast_check<MessageType, Message>();
-  return LocalSubscriber::release(static_cast<Message &>(msg));
-}
-
-
-template<typename MessageType> inline
-Subscriber<MessageType>::Subscriber(MessageType *queue_buf[],
-                                    size_t queue_length, Callback callback)
+template<typename MT, unsigned QL> inline
+Subscriber<MT, QL>::Subscriber(Callback callback)
 :
-  LocalSubscriber(reinterpret_cast<Message **>(queue_buf), queue_length,
-                  reinterpret_cast<LocalSubscriber::Callback>(callback))
-{
-  static_cast_check<MessageType, Message>();
-}
+  SubscriberExtBuf<MT>(queue_buf, QL, callback)
+{}
 
 
-template<typename MessageType> inline
-Subscriber<MessageType>::~Subscriber() {
-
-  static_cast_check<MessageType, Message>();
-}
+template<typename MT, unsigned QL> inline
+Subscriber<MT, QL>::~Subscriber() {}
 
 
 } // namespace r2p

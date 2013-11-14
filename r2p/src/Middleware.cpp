@@ -738,7 +738,7 @@ Thread::Return Middleware::boot_threadf(Thread::Argument) {
 
   BootMsg msgbuf[BOOT_BUFFER_LENGTH];
   BootMsg *msgqueue_buf[BOOT_BUFFER_LENGTH];
-  Subscriber<BootMsg> sub(msgqueue_buf, BOOT_BUFFER_LENGTH);
+  SubscriberExtBuf<BootMsg> sub(msgqueue_buf, BOOT_BUFFER_LENGTH);
   Publisher<BootMsg> pub;
 
   Node node("R2P_BOOT");

@@ -97,13 +97,13 @@ bool callback(const LedMsg &msg) {
 }
 
 msg_t ledsub_node(void * arg) {
-	LedMsg sub_msgbuf[5], *sub_queue[5];
-	Node node("ledsub");
-    Subscriber<LedMsg> sub(sub_queue, 5, callback);
+
+  Node node("ledsub");
+    Subscriber<LedMsg, 5> sub(callback);
 
     (void)arg;
 
-	node.subscribe(sub, "leds", sub_msgbuf);
+	node.subscribe(sub, "leds");
 
 	for (;;) {
 		if (!node.spin(Time::ms(1000))) {

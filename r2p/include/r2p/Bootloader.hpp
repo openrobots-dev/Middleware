@@ -16,7 +16,7 @@
 namespace r2p {
 
 template<typename MessageType> class Publisher;
-template<typename MessageType> class Subscriber;
+template<typename MessageType> class SubscriberExtBuf;
 
 
 class Bootloader : private Uncopyable {
@@ -109,7 +109,7 @@ private:
   Flasher flasher;
 
   Publisher<BootMsg> *pubp;
-  Subscriber<BootMsg> *subp;
+  SubscriberExtBuf<BootMsg> *subp;
   BootMsg *master_msgp;
   BootMsg *slave_msgp;
 
@@ -151,7 +151,7 @@ private:
 
 public:
   Bootloader(Flasher::Data *flash_page_bufp,
-             Publisher<BootMsg> &pub, Subscriber<BootMsg> &sub);
+             Publisher<BootMsg> &pub, SubscriberExtBuf<BootMsg> &sub);
 
 private:
   static const Iterator begin();
