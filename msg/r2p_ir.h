@@ -1,13 +1,13 @@
 #ifndef __R2P_IR_H_
-#define TOPICS_H_
+#define __R2P_IR_H_
+
+#define IRRAW_ID		(30 << 8)
+#define IR1_ID			(31 << 8)
+#define IR2_ID			(32 << 8)
+#define IR3_ID			(33 << 8)
+#define IR4_ID			(34 << 8)
 
 #include "BaseMessage.hpp"
-
-#define IRRAW_ID		3001
-#define IR1_ID			3011
-#define IR2_ID			3012
-#define IR3_ID			3013
-#define IR4_ID			3014
 
 struct IRRawSingle: public BaseMessage {
 	uint16_t value;
