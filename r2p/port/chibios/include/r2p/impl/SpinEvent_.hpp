@@ -69,9 +69,10 @@ inline
 SpinEvent_::Mask SpinEvent_::wait(const Time &timeout) {
 
   systime_t ticks;
-  if      (timeout == Time::IMMEDIATE)  ticks = TIME_IMMEDIATE;
-  else if (timeout == Time::INFINITE)   ticks = TIME_INFINITE;
-  else                                  ticks = US2ST(timeout.to_us_raw());
+  if      (timeout == Time::IMMEDIATE)   ticks = TIME_IMMEDIATE;
+  else if (timeout == Time::INFINITE)    ticks = TIME_INFINITE;
+  else if (timeout.to_us_raw() > 100000) ticks = MS2ST(timeout.to_ms_raw());
+  else                                   ticks = US2ST(timeout.to_us_raw());
   return chEvtWaitAnyTimeout(ALL_EVENTS, ticks);
 }
 
