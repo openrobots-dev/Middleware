@@ -21,12 +21,16 @@
 #include <cstdlib>
 #include <cstring>
 
-#ifndef R2P_MODULE_NAME
-#define R2P_MODULE_NAME "IMU_GW"
+#if R2P_USE_BRIDGE_MODE
+#define R2P_MODULE_NAME "IMUGW"
+#else
+#define R2P_MODULE_NAME "IMU0"
 #endif
 
-#ifndef DEBUGTRA
+#if R2P_USE_BRIDGE_MODE
 #define DEBUGTRA    1
+#else
+#define DEBUGTRA    0
 #endif
 
 #ifndef RTCANTRA
@@ -65,9 +69,11 @@ r2p::Middleware r2p::Middleware::instance(
 #endif
 );
 
+/*
 static WORKING_AREA(wa1, 1024);
 static WORKING_AREA(wa2, 1024);
 static WORKING_AREA(wa3, 1024);
+*/
 
 #if DEBUGTRA
 static char dbgtra_namebuf[64];
@@ -134,12 +140,10 @@ bool callback_3(const TestMsg &msg) {
 
 
 msg_t Thread2(void *) {
-
-  TestMsg sub2_msgbuf[5], *sub2_queue[5];
   r2p::Node node("Node2");
-  r2p::Subscriber<TestMsg> sub2(sub2_queue, 5, callback_2);
+  r2p::Subscriber<TestMsg, 5> sub2(callback_2);
 
-  node.subscribe(sub2, "test", sub2_msgbuf);
+  node.subscribe(sub2, "test");
 
   for (;;) {
     if (!node.spin()) {
@@ -151,12 +155,10 @@ msg_t Thread2(void *) {
 
 
 msg_t Thread3(void *) {
-
-  TestMsg sub3_msgbuf[5], *sub3_queue[5];
   r2p::Node node("Node3");
-  r2p::Subscriber<TestMsg> sub3(sub3_queue, 5, callback_3);
+  r2p::Subscriber<TestMsg, 5> sub3(callback_3);
 
-  node.subscribe(sub3, "asdf", sub3_msgbuf);
+  node.subscribe(sub3, "asdf");
 
   for (;;) {
     if (!node.spin()) {
@@ -201,7 +203,6 @@ int main(void) {
 
   r2p::Middleware::instance.start();
 
-  (void)wa1; (void)wa2; (void)wa3;
 //  r2p::Thread::create_static(wa3, sizeof(wa3), r2p::Thread::NORMAL - 2, Thread3, NULL, "Thread3");
 //  r2p::Thread::create_static(wa2, sizeof(wa2), r2p::Thread::NORMAL + 1, Thread2, NULL, "Thread2");
 //  r2p::Thread::create_static(wa1, sizeof(wa1), r2p::Thread::NORMAL + 0, Thread1, NULL, "Thread1");
@@ -209,7 +210,12 @@ int main(void) {
   r2p::Thread::set_priority(r2p::Thread::NORMAL);
   for (;;) {
     palTogglePad(LED_GPIO, LED1);
-    r2p::Thread::sleep(r2p::Time::ms(500));
+    if (r2p::Middleware::is_bootloader_mode()) {
+        r2p::Thread::sleep(r2p::Time::ms(100));
+
+    } else {
+        r2p::Thread::sleep(r2p::Time::ms(500));
+    }
   }
   return CH_SUCCESS;
 }

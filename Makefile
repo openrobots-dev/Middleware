@@ -41,6 +41,18 @@ endif
 # Architecture or project specific options
 #
 
+ifeq ($(R2P_USE_BOOTLOADER),)
+  R2P_USE_BOOTLOADER = yes
+endif
+
+ifeq ($(R2P_USE_DEBUGTRANSPORT),)
+  R2P_USE_DEBUGTRANSPORT = yes
+endif
+
+ifeq ($(R2P_USE_RTCANTRANSPORT),)
+  R2P_USE_RTCANTRANSPORT = yes
+endif
+
 # Enable this if you really want to use the STM FWLib.
 ifeq ($(USE_FWLIB),)
   USE_FWLIB = no
@@ -58,8 +70,7 @@ endif
 PROJECT = ch
 
 # Imported source files and paths
-include ./paths.mk
-include $(BOARD)/board.mk
+include ../paths.mk
 include $(CHIBIOS)/os/hal/platforms/STM32F1xx/platform.mk
 include $(CHIBIOS)/os/hal/hal.mk
 include $(CHIBIOS)/os/ports/GCC/ARMCMx/STM32F1xx/port.mk
@@ -79,7 +90,7 @@ CSRC = $(PORTSRC) \
        $(KERNSRC) \
        $(HALSRC) \
        $(PLATFORMSRC) \
-       $(BOARDSRC) \
+       board.c \
        $(CHIBIOS)/os/various/evtimer.c \
        $(CHIBIOS)/os/various/syscalls.c \
        $(RTCANSRC) \
@@ -208,7 +219,7 @@ DLIBS = -lm
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS += -DR2MW_TEST -DR2P_USE_BRIDGE_MODE=1 -DR2P_ITERATE_PUBSUB=0
+UDEFS += -DR2MW_TEST -DR2P_USE_BRIDGE_MODE=1 -DR2P_ITERATE_PUBSUB=1
 
 # Define ASM defines here
 UADEFS +=

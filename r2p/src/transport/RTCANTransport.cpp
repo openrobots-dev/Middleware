@@ -27,8 +27,8 @@ bool RTCANTransport::send(Message * msgp, RTCANSubscriber * rsubp) {
 	rtcan_msg_p->callback = reinterpret_cast<rtcan_msgcallback_t>(send_cb);
 	rtcan_msg_p->params = rsubp;
 	rtcan_msg_p->size = rsubp->get_topic()->get_payload_size();
-	rtcan_msg_p->status = RTCAN_MSG_READY;
 	rtcan_msg_p->data = msgp->get_raw_data();
+	rtcan_msg_p->status = RTCAN_MSG_READY;
 
 	rtcanTransmitI(&rtcan, rtcan_msg_p, 50);
 	return true;
@@ -89,6 +89,7 @@ RemotePublisher *RTCANTransport::create_publisher(Topic &topic, const uint8_t ra
 	rtcan_headerp->params = rpubp;
 	rtcan_headerp->size = topic.get_payload_size();
 	rtcan_headerp->data = msgp->get_raw_data();
+
 	rtcan_headerp->status = RTCAN_MSG_READY;
 
 	rtcanReceiveMask(&RTCAND1, rtcan_headerp, 0xFF00);
@@ -153,14 +154,35 @@ rtcan_id_t RTCANTransport::topic_id(const char * namep) const {
 	if (strncmp(namep, "qei", NamingTraits<Topic>::MAX_LENGTH) == 0)
 		return QEI_ID | stm32_id8();
 
+	if (strncmp(namep, "qei1", NamingTraits<Topic>::MAX_LENGTH) == 0)
+		return QEI1_ID | stm32_id8();
+
+	if (strncmp(namep, "qei2", NamingTraits<Topic>::MAX_LENGTH) == 0)
+		return QEI2_ID | stm32_id8();
+
+	if (strncmp(namep, "encoder1", NamingTraits<Topic>::MAX_LENGTH) == 0)
+		return ENCODER1_ID | stm32_id8();
+
+	if (strncmp(namep, "encoder2", NamingTraits<Topic>::MAX_LENGTH) == 0)
+		return ENCODER2_ID | stm32_id8();
+
 	if (strncmp(namep, "tilt", NamingTraits<Topic>::MAX_LENGTH) == 0)
 		return TILT_ID | stm32_id8();
+
+	if (strncmp(namep, "imuraw", NamingTraits<Topic>::MAX_LENGTH) == 0)
+		return IMURAW9_ID | stm32_id8();
 
 	if (strncmp(namep, "velocity", NamingTraits<Topic>::MAX_LENGTH) == 0)
 		return VELOCITY_ID | stm32_id8();
 
-    if (strncmp(namep, "BOOT_IMU", NamingTraits<Topic>::MAX_LENGTH) == 0)
+	if (strncmp(namep, "speed2", NamingTraits<Topic>::MAX_LENGTH) == 0)
+		return SPEED2_ID | stm32_id8();
+
+    if (strncmp(namep, "BOOT_IMU0", NamingTraits<Topic>::MAX_LENGTH) == 0)
         return (201 << 8) | stm32_id8();
+
+    if (strncmp(namep, "BOOT_IR0", NamingTraits<Topic>::MAX_LENGTH) == 0)
+        return (202 << 8) | stm32_id8();
 
 	return (255 << 8);
 }

@@ -44,7 +44,10 @@ bool Node::spin(const Time &timeout) {
 
   SpinEvent::Mask mask;
   mask = event.wait(timeout);
-  if (mask == 0) return false;
+
+  if (mask == 0) {
+	  return false;
+  }
 
   Time dummy_timestamp;
   SpinEvent::Mask bit = 1;

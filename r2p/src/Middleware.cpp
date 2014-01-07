@@ -327,6 +327,7 @@ void Middleware::do_mgmt_thread() {
   for (;;) {
     if (mgmt_node.spin(Time::ms(MGMT_TIMEOUT_MS))) {
       Time deadline;
+
       while (mgmt_sub.fetch(msgp, deadline)) {
         switch (msgp->type) {
         case MgmtMsg::ADVERTISE: {
@@ -358,7 +359,11 @@ void Middleware::do_mgmt_thread() {
                            NamingTraits<Middleware>::MAX_LENGTH)) {
             stop();
           }
-          mgmt_topic.notify_remotes(*msgp, deadline);
+// [MARTINO]
+//          mgmt_topic.notify_remotes(*msgp, deadline);
+#if R2P_USE_BRIDGE_MODE
+          mgmt_topic.forward_copy(*msgp, deadline);
+#endif // R2P_USE_BRIDGE_MODE
           mgmt_sub.release(*msgp);
           break;
         }
@@ -370,7 +375,11 @@ void Middleware::do_mgmt_thread() {
 #endif
             reboot();
           }
-          mgmt_topic.notify_remotes(*msgp, deadline);
+// [MARTINO]
+//          mgmt_topic.notify_remotes(*msgp, deadline);
+#if R2P_USE_BRIDGE_MODE
+          mgmt_topic.forward_copy(*msgp, deadline);
+#endif // R2P_USE_BRIDGE_MODE
           mgmt_sub.release(*msgp);
           break;
         }
@@ -381,13 +390,21 @@ void Middleware::do_mgmt_thread() {
             preload_bootloader_mode(true);
             reboot();
           }
-          mgmt_topic.notify_remotes(*msgp, deadline);
+// [MARTINO]
+//          mgmt_topic.notify_remotes(*msgp, deadline);
+#if R2P_USE_BRIDGE_MODE
+          mgmt_topic.forward_copy(*msgp, deadline);
+#endif // R2P_USE_BRIDGE_MODE
           mgmt_sub.release(*msgp);
           break;
         }
 #endif
         default: {
-          mgmt_topic.notify_remotes(*msgp, deadline);
+// [MARTINO]
+//           mgmt_topic.notify_remotes(*msgp, deadline);
+#if R2P_USE_BRIDGE_MODE
+          mgmt_topic.forward_copy(*msgp, deadline);
+#endif // R2P_USE_BRIDGE_MODE
           mgmt_sub.release(*msgp);
           break;
         }

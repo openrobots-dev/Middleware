@@ -402,7 +402,7 @@ public:
     return headp == NULL;
   }
 
-  size_t count_unsafe() const;
+  size_t count_unsafe( ) const;
 
   void link_unsafe(Link &link) {
     R2P_ASSERT(link.nextp == NULL);
@@ -410,6 +410,20 @@ public:
 
     link.nextp = headp;
     headp = &link;
+  }
+
+  void link_tail_unsafe(Link &link) {
+    Link *curp = headp;
+
+    R2P_ASSERT(link.nextp == NULL);
+    R2P_ASSERT(!unlink_unsafe(link));
+
+    if (is_empty_unsafe()) {
+    	headp = &link;
+    } else {
+    	while (curp->nextp != NULL) curp = curp->nextp;
+    	curp->nextp = &link;
+    }
   }
 
   bool unlink_unsafe(Link &link);
@@ -616,7 +630,8 @@ template<typename Item> inline
 void StaticList<Item>::link(Link &link) {
 
   SysLock::acquire();
-  link_unsafe(link);
+  link_tail_unsafe(link);
+//  link_unsafe(link);
   SysLock::release();
 }
 

@@ -118,7 +118,7 @@ endif
 
 # Module name
 ifeq ($(BOOT_MODULE),)
-    BOOT_MODULE = IMU_GW
+    BOOT_MODULE = IMU0
 endif
 
 # Bootloader topic name

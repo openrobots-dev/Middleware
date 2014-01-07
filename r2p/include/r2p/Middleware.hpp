@@ -19,7 +19,6 @@ namespace r2p {
 #define R2P_ITERATE_PUBSUB      1
 #endif
 
-
 class Node;
 class Transport;
 class Time;

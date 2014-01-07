@@ -56,7 +56,7 @@ void Bootloader::alloc() {
   R2P_ASSERT(slave_msgp == NULL);
 
   while (!pubp->alloc(slave_msgp)) {
-    Thread::sleep(Time::ms(100)); // TODO: configure
+    Thread::sleep(Time::ms(10)); // TODO: configure
   }
   Message::reset_payload(*slave_msgp);
 }
@@ -68,7 +68,7 @@ void Bootloader::publish() {
   R2P_ASSERT(slave_msgp != NULL);
 
   while (!pubp->publish_remotely(*slave_msgp)) {
-    Thread::sleep(Time::ms(100)); // TODO: Configure
+    Thread::sleep(Time::ms(10)); // TODO: Configure
   }
   slave_msgp = NULL;
 }
@@ -80,7 +80,7 @@ void Bootloader::fetch() {
   R2P_ASSERT(master_msgp == NULL);
 
   while (!subp->fetch(master_msgp)) {
-    Thread::sleep(Time::ms(100)); // TODO: configure
+    Thread::sleep(Time::ms(10)); // TODO: configure
   }
 }
 

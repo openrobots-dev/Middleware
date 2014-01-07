@@ -36,11 +36,10 @@ void app_main(void) {
     
     enum { QUEUE_LENGTH = 4 };
 
-    r2p::LedMsg sub_msgbuf[QUEUE_LENGTH], *sub_queue[QUEUE_LENGTH];
     r2p::Node node(app_config.sub_node_name);
-    r2p::Subscriber<r2p::LedMsg> sub(sub_queue, QUEUE_LENGTH, led_callback);
+    r2p::Subscriber<r2p::LedMsg, 5> sub(led_callback);
 
-    node.subscribe(sub, app_config.led_topic_name, sub_msgbuf);
+    node.subscribe(sub, app_config.led_topic_name);
     
     while (r2p::ok()) {
         node.spin(r2p::Time::ms(app_config.spin_delay_ms));

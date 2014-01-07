@@ -1,5 +1,4 @@
 #pragma once
-
 #include <r2p/common.hpp>
 #include <r2p/BaseSubscriber.hpp>
 #include <r2p/StaticList.hpp>
@@ -83,6 +82,7 @@ inline
 bool LocalSubscriber::notify_unsafe(Message &msg, const Time &timestamp) {
 
   (void)timestamp;
+
   if (nodep->get_enabled() && msgp_queue.post_unsafe(&msg)) {
     nodep->notify_unsafe(event_index);
     return true;

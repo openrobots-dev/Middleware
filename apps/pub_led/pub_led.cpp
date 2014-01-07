@@ -15,7 +15,7 @@ const AppConfig app_config R2P_APP_CONFIG = {
     "leds",
     "LED_PUB",
     200,
-    1
+    3
 };
 
 
