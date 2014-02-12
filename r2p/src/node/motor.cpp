@@ -17,13 +17,18 @@ namespace r2p {
 extern PWMConfig pwmcfg;
 extern QEIConfig qeicfg;
 
+#define M1 72
+#define M2 73
+#define M3 89
+
+
 /*===========================================================================*/
 /* Robot parameters.                                                         */
 /*===========================================================================*/
-#define _L        0.450f    // Wheel distance [m]
-#define _R        0.127f    // Wheel radius [m]
+#define _L        0.30f    // Wheel distance [m]
+#define _R        0.05f    // Wheel radius [m]
 #define _TICKS 2000.0f
-#define _RATIO 74.0f
+#define _RATIO 14.0f
 #define _PI 3.14159265359f
 
 #define R2T(r) ((r / (2 * _PI)) * (_TICKS * _RATIO))
@@ -53,10 +58,10 @@ bool callback(const PWM2Msg &msg) {
 	int16_t pwm;
 
 	switch (stm32_id8()) {
-	case 40:
+	case M1:
 		pwm = msg.pwm1;
 		break;
-	case 49:
+	case M2:
 		pwm = msg.pwm2;
 		break;
 	default:
@@ -136,7 +141,7 @@ bool enc_callback(const r2p::tEncoderMsg &msg) {
 }
 
 
-msg_t pid_node(void * arg) {
+msg_t pid2_node(void * arg) {
 	Node node("pid");
 	Subscriber<Speed2Msg, 5> speed_sub;
 	Subscriber<tEncoderMsg, 5> enc_sub(enc_callback);
@@ -150,10 +155,10 @@ msg_t pid_node(void * arg) {
 	speed_pid.config(450.0, 0.125, 0.0, 0.01, -4095.0, 4095.0);
 
 	switch (stm32_id8()) {
-	case 40:
+	case M1:
 		index = 0;
 		break;
-	case 49:
+	case M2:
 		index = 1;
 		break;
 	default:
@@ -167,12 +172,90 @@ msg_t pid_node(void * arg) {
 
 	node.subscribe(speed_sub, "speed2");
 
-	if (stm32_id8() == 40) {
+	switch (stm32_id8()) {
+	case M1:
 		node.subscribe(enc_sub, "encoder1");
-	} else if (stm32_id8() == 49) {
+		break;
+	case M2:
 		node.subscribe(enc_sub, "encoder2");
-	} else {
+		break;
+	default:
 		node.subscribe(enc_sub, "encoder");
+		break;
+	}
+
+	for (;;) {
+		if (node.spin(Time::ms(100))) {
+			if (speed_sub.fetch(msgp)) {
+				speed_pid.set(msgp->value[index]);
+				last_setpoint = Time::now();
+				speed_sub.release(*msgp);
+
+				palTogglePad(LED3_GPIO, LED3);
+
+			} else if (Time::now() - last_setpoint > Time::ms(100)) {
+					speed_pid.set(0);
+			}
+		} else {
+			// Stop motor if no messages for 100 ms
+			pwm_lld_disable_channel(&PWM_DRIVER, 0);
+			pwm_lld_disable_channel(&PWM_DRIVER, 1);
+
+			palTogglePad(LED4_GPIO, LED4);
+		}
+	}
+
+	return CH_SUCCESS;
+}
+
+msg_t pid3_node(void * arg) {
+	Node node("pid");
+	Subscriber<Speed3Msg, 5> speed_sub;
+	Subscriber<tEncoderMsg, 5> enc_sub(enc_callback);
+	Speed3Msg * msgp;
+	Time last_setpoint(0);
+
+	(void) arg;
+
+	chRegSetThreadName("pid");
+
+//	speed_pid.config(450.0, 0.125, 0.0, 0.01, -4095.0, 4095.0); /* Robocom */
+	speed_pid.config(250.0, 0.0, 0.0, 0.01, -4095.0, 4095.0); /* Triskar */
+
+	switch (stm32_id8()) {
+	case M1:
+		index = 0;
+		break;
+	case M2:
+		index = 1;
+		break;
+	case M3:
+		index = 2;
+		break;
+	default:
+		break;
+	}
+
+	// Init motor driver
+	palSetPad(DRIVER_GPIO, DRIVER_RESET);
+	chThdSleepMilliseconds(500);
+	pwmStart(&PWM_DRIVER, &pwmcfg);
+
+	node.subscribe(speed_sub, "speed3");
+
+	switch (stm32_id8()) {
+	case M1:
+		node.subscribe(enc_sub, "encoder1");
+		break;
+	case M2:
+		node.subscribe(enc_sub, "encoder2");
+		break;
+	case M3:
+		node.subscribe(enc_sub, "encoder3");
+		break;
+	default:
+		node.subscribe(enc_sub, "encoder");
+		break;
 	}
 
 	for (;;) {
@@ -219,25 +302,33 @@ msg_t qeipub_node(void *arg) {
 	qeiStart(&QEI_DRIVER, &qeicfg);
 	qeiEnable (&QEI_DRIVER);
 
-	if (stm32_id8() == 40) {
+	switch (stm32_id8()) {
+	case M1:
 		node.advertise(qei_pub, "qei1");
-	} else if (stm32_id8() == 49) {
+		break;
+	case M2:
 		node.advertise(qei_pub, "qei2");
-	} else {
+		break;
+	case M3:
+		node.advertise(qei_pub, "qei3");
+		break;
+	default:
 		node.advertise(qei_pub, "qei");
+		break;
 	}
 
 	for (;;) {
 		time = chTimeNow();
+		int16_t delta = qeiUpdate(&QEI_DRIVER);
 
 		if (qei_pub.alloc(msgp)) {
 			msgp->timestamp.sec = 0;
 			msgp->timestamp.nsec = 0;
-			msgp->delta = qeiUpdate(&QEI_DRIVER);
+			msgp->delta = delta;
 			qei_pub.publish(*msgp);
 		}
 
-		time += MS2ST(10);
+		time += MS2ST(50);
 		chThdSleepUntil(time);
 	}
 
@@ -256,12 +347,20 @@ msg_t encoder_node(void *arg) {
 	qeiStart(&QEI_DRIVER, &qeicfg);
 	qeiEnable (&QEI_DRIVER);
 
-	if (stm32_id8() == 40) {
+
+	switch (stm32_id8()) {
+	case M1:
 		node.advertise(enc_pub, "encoder1");
-	} else if (stm32_id8() == 49) {
+		break;
+	case M2:
 		node.advertise(enc_pub, "encoder2");
-	} else {
+		break;
+	case M3:
+		node.advertise(enc_pub, "encoder3");
+		break;
+	default:
 		node.advertise(enc_pub, "encoder");
+		break;
 	}
 
 	for (;;) {

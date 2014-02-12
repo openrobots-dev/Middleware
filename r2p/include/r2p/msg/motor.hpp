@@ -34,9 +34,7 @@ public:
 
 class Speed3Msg: public Message {
 public:
-	int16_t speed1;
-	int16_t speed2;
-	int16_t speed3;
+	float value[3];
 }R2P_PACKED;
 
 class QEIMsg: public Message {
