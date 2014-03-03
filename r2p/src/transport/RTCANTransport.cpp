@@ -184,7 +184,16 @@ rtcan_id_t RTCANTransport::topic_id(const char * namep) const {
     if (strncmp(namep, "BOOT_IR0", NamingTraits<Topic>::MAX_LENGTH) == 0)
         return (202 << 8) | stm32_id8();
 
-	return (255 << 8);
+    if (strncmp(namep, "vel_cmd", NamingTraits<Topic>::MAX_LENGTH) == 0)
+        return VEL_CMD_ID | stm32_id8();
+
+    if (strncmp(namep, "steer_encoder", NamingTraits<Topic>::MAX_LENGTH) == 0)
+        return STEER_ENCODER_ID | stm32_id8();
+
+    if (strncmp(namep, "wheel_encoders", NamingTraits<Topic>::MAX_LENGTH) == 0)
+        return WHEEL_ENCODERS_ID | stm32_id8();
+
+    return (255 << 8);
 }
 
 } // namespace r2p
