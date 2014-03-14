@@ -56,7 +56,7 @@ void RTCANTransport::recv_cb(rtcan_msg_t &rtcan_msg) {
       pubp->publish_remotely_unsafe(*msgp);
     } }
 #else
-    pubp->publish_locally_unsafe(*msgp);
+	pubp->publish_locally_unsafe(*msgp);
 #endif
 
 	// allocate again for next message from RTCAN
@@ -192,6 +192,9 @@ rtcan_id_t RTCANTransport::topic_id(const char * namep) const {
 
     if (strncmp(namep, "wheel_encoders", NamingTraits<Topic>::MAX_LENGTH) == 0)
         return WHEEL_ENCODERS_ID | stm32_id8();
+
+    if (strncmp(namep, "abs_encoder", NamingTraits<Topic>::MAX_LENGTH) == 0)
+        return ABS_ENCODER_ID | stm32_id8();
 
     return (255 << 8);
 }

@@ -65,6 +65,11 @@ public:
 	float delta;
 }R2P_PACKED;
 
+class AbsoluteEncoder: public Message {
+public:
+	float position;
+}R2P_PACKED;
+
 class Velocity3Msg: public Message {
 public:
 	float x;
@@ -89,4 +94,5 @@ public:
 #define VEL_CMD_ID			(0x2C << 8)
 #define STEER_ENCODER_ID	(0x2D << 8)
 #define WHEEL_ENCODERS_ID	(0x2E << 8)
+#define ABS_ENCODER_ID	    (0x2F << 8)
 
