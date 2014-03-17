@@ -1,5 +1,7 @@
 #pragma once
 
+#if R2P_USE_BOOTLOADER
+
 #include <r2p/common.hpp>
 
 extern "C" {
@@ -184,3 +186,5 @@ size_t Flasher_::get_ram_length() {
 
 
 } // namespace r2p
+
+#endif /*# R2P_USE_BOOTLOADER */

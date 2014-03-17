@@ -1,4 +1,6 @@
 
+#if R2P_USE_BOOTLOADER
+
 #include <ch.h>
 #include <hal.h>
 #include <r2p/impl/Flasher_.hpp>
@@ -409,3 +411,6 @@ void Flasher_::jump_to(const uint8_t *address) {
 
 
 } // namespace r2p
+
+#endif /* R2P_USE_BOOTLOADER */
+
