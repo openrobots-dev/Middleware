@@ -37,7 +37,7 @@ private:
 public:
   bool send(Message * msgp, RTCANSubscriber * rsubp);
 
-  rtcan_id_t topic_id(const char * namep) const; // FIXME
+  rtcan_id_t topic_id(const Topic &topic) const; // FIXME
 
   void initialize(const RTCANConfig &rtcan_config);
   void fill_raw_params(const Topic &topic, uint8_t raw_params[]);

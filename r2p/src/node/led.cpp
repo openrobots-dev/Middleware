@@ -7,9 +7,13 @@
 #include <r2p/Publisher.hpp>
 #include <r2p/Subscriber.hpp>
 
+#include <r2p/node/led.hpp>
 #include <r2p/msg/led.hpp>
 
 namespace r2p {
+
+ledpub_conf default_ledpub_conf = { "led2", 2 };
+ledsub_conf default_ledsub_conf = { "led2" };
 
 /*
  * Utility functions.
@@ -26,7 +30,8 @@ ioportid_t led2gpio(unsigned led_id) {
 	case 4:
 		return LED4_GPIO;
 	default:
-		chSysHalt();
+		chSysHalt()
+		;
 		return 0;
 	}
 }
@@ -43,7 +48,8 @@ unsigned led2pin(unsigned led_id) {
 	case 4:
 		return LED4;
 	default:
-		chSysHalt();
+		chSysHalt()
+		;
 		return 0;
 	}
 }
@@ -51,18 +57,18 @@ unsigned led2pin(unsigned led_id) {
 /*
  * Led publisher node
  */
-msg_t ledpub_node(void *arg) {
+msg_t ledpub_node(void * arg) {
+	ledpub_conf * conf = reinterpret_cast<ledpub_conf *>(arg);
 	Node node("ledpub");
 	Publisher<LedMsg> led_pub;
-	uint8_t led = *(uint8_t *) arg;
+	uint8_t led;
 	uint32_t toggle = 0;
-#if R2P_LEDDEBUG
-	uint32_t cnt = 0;
-#endif
 
-	R2P_ASSERT(led);
+	if (conf == NULL) conf = &default_ledpub_conf;
 
-	node.advertise(led_pub, "leds");
+	led = conf->led;
+
+	node.advertise(led_pub, conf->topic);
 
 	for (;;) {
 		LedMsg *msgp;
@@ -70,10 +76,6 @@ msg_t ledpub_node(void *arg) {
 			msgp->led = led;
 			msgp->value = toggle;
 			toggle ^= 1;
-#if R2P_LEDDEBUG
-			msgp->cnt = cnt;
-			cnt++;
-#endif
 			if (!led_pub.publish(*msgp)) {
 				R2P_ASSERT(false);
 			}
@@ -91,20 +93,19 @@ msg_t ledpub_node(void *arg) {
 
 bool callback(const LedMsg &msg) {
 
-	palWritePad((GPIO_TypeDef *)led2gpio(msg.led), led2pin(msg.led), msg.value);
-	palSetPad((GPIO_TypeDef *)led2gpio(4), led2pin(4));
+	palWritePad((GPIO_TypeDef *)led2gpio(msg.led), led2pin(msg.led), msg.value); palSetPad((GPIO_TypeDef *)led2gpio(4), led2pin(4));
 
 	return true;
 }
 
 msg_t ledsub_node(void * arg) {
+	ledsub_conf * conf = reinterpret_cast<ledsub_conf *>(arg);
+	Node node("ledsub");
+	Subscriber<LedMsg, 5> sub(callback);
 
-  Node node("ledsub");
-    Subscriber<LedMsg, 5> sub(callback);
+	if (conf == NULL) conf = &default_ledsub_conf;
 
-    (void)arg;
-
-	node.subscribe(sub, "leds");
+	node.subscribe(sub, conf->topic);
 
 	for (;;) {
 		if (!node.spin(Time::ms(1000))) {

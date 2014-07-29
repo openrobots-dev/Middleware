@@ -12,6 +12,8 @@
 #include <r2p/Node.hpp>
 #include <r2p/Bootloader.hpp>
 #include <r2p/ReMutex.hpp>
+#include <r2p/transport/DebugTransport.hpp>
+#include <r2p/transport/RTCANTransport.hpp>
 
 namespace r2p {
 

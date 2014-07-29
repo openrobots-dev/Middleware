@@ -81,32 +81,6 @@ float PID::update(float measure) {
 	}
 
 	return output;
-//
-//	/* saturation filter */
-//	if (output > max_) {
-//		/* conditional anti-windup: integrate only if error and setpoint have different sign */
-//		if ((error >= 0) && (setpoint_ <= 0)) {
-//			i_ += error * dt;
-//			output += (ki_ * i_);
-//		}
-//		output = max_;
-//	} else if (output < min_) {
-//		/* conditional anti-windup: integrate only if error and setpoint have different sign */
-//		if ((error >= 0) && (setpoint_ <= 0)) {
-//			i_ += error * dt;
-//			output += (ki_ * i_);
-//		}
-//		output = min_;
-//	} else {
-//		i_ += error * dt;
-//		output += (ki_ * i_);
-//	}
-//
-//	/* derivative term */
-//	output += (kd_ * (error - d_));
-//	d_ = error;
-//
-//	return output;
 }
 
 #endif /* _PID_HPP_ */

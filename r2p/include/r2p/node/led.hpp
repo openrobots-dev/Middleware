@@ -6,6 +6,15 @@
 
 namespace r2p {
 
+struct ledpub_conf {
+	const char * topic;
+	uint8_t led;
+};
+
+struct ledsub_conf {
+	const char * topic;
+};
+
 ioportid_t led2gpio(unsigned led_id);
 unsigned led2pin(unsigned led_id);
 
