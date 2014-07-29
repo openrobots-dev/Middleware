@@ -112,6 +112,11 @@ INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
 SYS_ELF = $(BOARD)/build/ch.elf
 
 # Application (R2P Node) name
+ifeq ($(VERBOSITY),)
+	VERBOSITY = --verbosity 4
+endif
+
+# Application (R2P Node) name
 ifeq ($(APP_NAME),)
 	APP_NAME = $(PROJECT)
 endif

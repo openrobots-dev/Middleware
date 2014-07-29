@@ -102,18 +102,18 @@ RemoteSubscriber *RTCANTransport::create_subscriber(Topic &topic, TimestampedMsg
 
 	// TODO: dynamic ID arbitration
 
-	rsubp->rtcan_id = topic_id(topic.get_name());
+	rsubp->rtcan_id = topic_id(topic);
 
 	return rsubp;
 }
 
 void RTCANTransport::fill_raw_params(const Topic &topic, uint8_t raw_params[]) {
-	*reinterpret_cast<rtcan_id_t *>(raw_params) = topic_id(topic.get_name());
+	*reinterpret_cast<rtcan_id_t *>(raw_params) = topic_id(topic);
 }
 
 void RTCANTransport::initialize(const RTCANConfig &rtcan_config) {
 	Topic & mgmt_topic = Middleware::instance.get_mgmt_topic();
-	rtcan_id_t rtcan_id = topic_id(mgmt_topic.get_name());
+	rtcan_id_t rtcan_id = topic_id(mgmt_topic);
 
 	rtcanInit();
 	rtcanStart(&rtcan, &rtcan_config);
@@ -134,6 +134,23 @@ RTCANTransport::RTCANTransport(RTCANDriver &rtcan) :
 RTCANTransport::~RTCANTransport() {
 }
 
+
+rtcan_id_t RTCANTransport::topic_id(const Topic &topic) const {
+	const StaticList<Topic> & topic_list = Middleware::instance.get_topics();
+	Topic & mgmt_topic = Middleware::instance.get_mgmt_topic();
+	int index = topic_list.index_of(topic);
+	rtcan_id_t rtcan_id;
+
+	// id 0 reserved to management topic
+	if (&topic == &mgmt_topic) return ((0x00 << 8) & stm32_id8());
+
+	if (index < 0) return (255 << 8);
+
+	rtcan_id = ((index & 0x0F) << 12) | ((stm32_id8() & 0x0F) << 8) | stm32_id8();
+	return rtcan_id;
+}
+
+/*
 // FIXME: to implement
 
 #include <r2p/msg/led.hpp>
@@ -144,6 +161,18 @@ rtcan_id_t RTCANTransport::topic_id(const char * namep) const {
 
   if (strncmp(namep, "R2P", NamingTraits<Topic>::MAX_LENGTH) == 0)
 		return (1 << 8) | stm32_id8();
+
+  if (strncmp(namep, "BOOT_IMUGW", NamingTraits<Topic>::MAX_LENGTH) == 0)
+      return (200 << 8) | stm32_id8();
+
+  if (strncmp(namep, "BOOT_IMU1", NamingTraits<Topic>::MAX_LENGTH) == 0)
+      return (201 << 8) | stm32_id8();
+
+  if (strncmp(namep, "BOOT_IMU2", NamingTraits<Topic>::MAX_LENGTH) == 0)
+      return (202 << 8) | stm32_id8();
+
+  if (strncmp(namep, "BOOT_IR0", NamingTraits<Topic>::MAX_LENGTH) == 0)
+      return (202 << 8) | stm32_id8();
 
 	if (strncmp(namep, "leds", NamingTraits<Topic>::MAX_LENGTH) == 0)
 		return LEDS_ID | stm32_id8();
@@ -178,12 +207,6 @@ rtcan_id_t RTCANTransport::topic_id(const char * namep) const {
 	if (strncmp(namep, "speed2", NamingTraits<Topic>::MAX_LENGTH) == 0)
 		return SPEED2_ID | stm32_id8();
 
-    if (strncmp(namep, "BOOT_IMU0", NamingTraits<Topic>::MAX_LENGTH) == 0)
-        return (201 << 8) | stm32_id8();
-
-    if (strncmp(namep, "BOOT_IR0", NamingTraits<Topic>::MAX_LENGTH) == 0)
-        return (202 << 8) | stm32_id8();
-
     if (strncmp(namep, "vel_cmd", NamingTraits<Topic>::MAX_LENGTH) == 0)
         return VEL_CMD_ID | stm32_id8();
 
@@ -198,5 +221,7 @@ rtcan_id_t RTCANTransport::topic_id(const char * namep) const {
 
     return (255 << 8);
 }
+
+*/
 
 } // namespace r2p

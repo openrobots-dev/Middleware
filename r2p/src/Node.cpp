@@ -11,6 +11,9 @@ namespace r2p {
 bool Node::advertise(LocalPublisher &pub, const char *namep,
                      const Time &publish_timeout, size_t msg_size) {
 
+  // already advertised
+  if (pub.get_topic() != NULL) return false;
+
   if (Middleware::instance.advertise(pub, namep, publish_timeout, msg_size)) {
     publishers.link(pub.by_node);
     return true;
@@ -21,6 +24,9 @@ bool Node::advertise(LocalPublisher &pub, const char *namep,
 
 bool Node::subscribe(LocalSubscriber &sub, const char *namep,
                      Message msgpool_buf[], size_t msg_size) {
+
+  // already subscribed
+  if (sub.get_topic() != NULL) return false;
 
   sub.nodep = this;
   int index = subscribers.count();
