@@ -77,6 +77,22 @@ public:
 	float w;
 }R2P_PACKED;
 
+class tVelocity3Msg: public Message {
+public:
+	timestamp_t timestamp;
+	float x;
+	float y;
+	float w;
+}R2P_PACKED;
+
+class tPose3Msg: public Message {
+public:
+	timestamp_t timestamp;
+	float x;
+	float y;
+	float w;
+}R2P_PACKED;
+
 } /* namespace r2p */
 
 #define PWM_ID				(0x20 << 8)

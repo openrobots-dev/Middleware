@@ -82,7 +82,7 @@ msg_t ledpub_node(void * arg) {
 
 		}
 
-		r2p::Thread::sleep(r2p::Time::ms(500)); //TODO: Node::sleep()
+		chThdSleepMilliseconds(500); //TODO: Node::sleep()
 	}
 	return CH_SUCCESS;
 }
