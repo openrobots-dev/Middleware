@@ -93,7 +93,7 @@ msg_t ledpub_node(void * arg) {
 
 bool callback(const LedMsg &msg) {
 
-	palWritePad((GPIO_TypeDef *)led2gpio(msg.led), led2pin(msg.led), msg.value); palSetPad((GPIO_TypeDef *)led2gpio(4), led2pin(4));
+	palWritePad((GPIO_TypeDef *)led2gpio(msg.led), led2pin(msg.led), msg.value);
 
 	return true;
 }
